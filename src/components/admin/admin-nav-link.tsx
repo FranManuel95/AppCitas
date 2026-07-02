@@ -33,9 +33,10 @@ const ICONS = {
 export type AdminNavIcon = keyof typeof ICONS;
 
 /**
- * Enlace del sidebar del panel admin con icono y estado activo según la ruta.
- * "/admin" solo se marca activo con coincidencia exacta para que el Dashboard
- * no quede resaltado en todas las subrutas.
+ * Pestaña de la barra superior del panel admin con icono y estado activo
+ * según la ruta: la activa se marca con un borde inferior de 2px en color de
+ * marca, sin fondo. "/admin" solo se marca activa con coincidencia exacta
+ * para que el Dashboard no quede resaltado en todas las subrutas.
  */
 export function AdminNavLink({
   href,
@@ -58,10 +59,10 @@ export function AdminNavLink({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
+        "group flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm transition-colors",
         active
-          ? "bg-brand-50 font-medium text-brand-700"
-          : "text-ink-soft hover:bg-surface-3 hover:text-ink",
+          ? "border-brand-600 font-medium text-ink"
+          : "border-transparent text-ink-soft hover:text-ink",
       )}
     >
       <Icon

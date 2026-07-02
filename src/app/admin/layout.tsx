@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, ExternalLink, LogOut } from "lucide-react";
+import { ExternalLink, LogOut } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { LogoutButton } from "@/components/logout-button";
@@ -42,48 +42,34 @@ export default async function AdminLayout({
   ]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-2 md:flex-row">
-      <aside className="flex shrink-0 flex-col border-b border-border bg-surface md:sticky md:top-0 md:h-screen md:w-60 md:border-b-0 md:border-r">
-        <div className="flex items-center gap-2.5 px-5 pb-3 pt-4 md:pb-4 md:pt-5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white shadow-xs">
-            <CalendarDays className="h-4 w-4" aria-hidden />
-          </span>
-          <div className="min-w-0">
+    <div className="flex min-h-screen flex-col bg-surface-2">
+      {/* Cabecera editorial de dos niveles: cabecera de revista + pestañas. */}
+      <header className="border-b border-border bg-surface">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 pb-2 pt-4 md:px-8">
+          <div className="flex min-w-0 items-baseline gap-x-3">
             <Link
               href="/"
-              className="block text-sm font-semibold tracking-tight text-ink transition-colors hover:text-brand-700"
+              className="shrink-0 font-serif text-xl font-semibold tracking-tight text-ink transition-colors hover:text-brand-700"
             >
               AppCitas
             </Link>
-            <p className="truncate text-xs text-ink-muted">{business.name}</p>
+            <span className="truncate text-sm text-ink-muted">
+              {business.name}
+            </span>
           </div>
-        </div>
 
-        <nav className="min-h-0 md:flex-1 md:overflow-y-auto">
-          <ul className="flex items-center gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:items-stretch md:gap-0.5 md:overflow-x-visible md:py-1">
-            {NAV.map((item) => (
-              <li key={item.href} className="shrink-0 md:shrink">
-                <AdminNavLink href={item.href} icon={item.icon}>
-                  {item.label}
-                </AdminNavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border px-3 py-2 md:block md:py-3">
-          <Link
-            href={`/b/${business.slug}`}
-            className="group flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm text-ink-soft transition-colors hover:bg-surface-3 hover:text-ink"
-          >
-            <ExternalLink
-              className="h-4 w-4 shrink-0 text-ink-muted group-hover:text-ink-soft"
-              aria-hidden
-            />
-            Ver página pública
-          </Link>
-          <div className="flex items-center gap-3 px-3 py-1 md:mt-1 md:justify-between md:py-2">
-            <span className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-x-4 sm:gap-x-5">
+            <Link
+              href={`/b/${business.slug}`}
+              className="group flex shrink-0 items-center gap-1.5 text-sm text-ink-soft underline decoration-border-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-ink-soft"
+            >
+              <ExternalLink
+                className="h-4 w-4 shrink-0 text-ink-muted group-hover:text-ink-soft"
+                aria-hidden
+              />
+              Ver página pública
+            </Link>
+            <span className="flex min-w-0 items-center gap-2 border-l border-border pl-4 sm:pl-5">
               <Avatar name={admin.name} size="sm" />
               <span className="hidden max-w-28 truncate text-sm text-ink-muted sm:inline">
                 {admin.name}
@@ -95,7 +81,20 @@ export default async function AdminLayout({
             </span>
           </div>
         </div>
-      </aside>
+
+        <nav className="mx-auto w-full max-w-6xl px-4 md:px-8">
+          {/* -mb-px: el borde activo de 2px pisa la regla fina de la cabecera. */}
+          <ul className="-mb-px flex items-center gap-1 overflow-x-auto">
+            {NAV.map((item) => (
+              <li key={item.href} className="shrink-0">
+                <AdminNavLink href={item.href} icon={item.icon}>
+                  {item.label}
+                </AdminNavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </header>
 
       <main className="min-w-0 flex-1 bg-surface-2 px-4 py-6 md:px-8 md:py-8">
         <div className="mx-auto w-full max-w-6xl">

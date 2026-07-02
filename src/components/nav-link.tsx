@@ -25,10 +25,10 @@ export function NavLink({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+        "px-3 py-1.5 text-xs font-medium uppercase tracking-[0.18em] transition-colors",
         active
-          ? "bg-brand-50 text-brand-700"
-          : "text-ink-soft hover:bg-surface-3 hover:text-ink",
+          ? "text-brand-700 underline decoration-1 underline-offset-8"
+          : "text-ink-soft hover:text-ink",
         className,
       )}
     >

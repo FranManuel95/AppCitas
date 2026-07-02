@@ -1,39 +1,40 @@
 @import "tailwindcss";
 
 /*
-  Capa de tokens de AppCitas (tema claro).
+  Capa de tokens de AppCitas — MODELO EDITORIAL (boutique/revista).
 
-  - La escala `brand` es el único punto de personalización de marca: cambiar
-    el hue aquí (y en src/lib/design/tokens.ts, que duplica los hex para los
-    gráficos) re-tiñe toda la app.
-  - Los semánticos success/warning/danger/info los comparten badges y
-    gráficos, de modo que un estado se ve siempre del mismo color.
-  - Contrastes verificados (WCAG AA): blanco sobre brand-600 6.72:1, texto
-    `-strong` sobre fondo `-soft` ≥4.5:1, rellenos de gráfico ≥3:1.
+  - Crema cálida como fondo, terracota como marca, serif en titulares y
+    botones pill: estética de papel para negocios boutique (estudios,
+    peluquerías premium, consultas).
+  - La escala `brand` sigue siendo el único punto de personalización
+    (duplicada en src/lib/design/tokens.ts para los gráficos).
+  - Contrastes verificados (WCAG AA): blanco sobre brand-600 6.46:1,
+    terracota-600 sobre crema 6.09:1, ink-muted sobre crema 4.96:1,
+    texto -strong sobre fondo -soft ≥4.5:1.
 */
 @theme {
-  /* Escala de marca (violeta-índigo) */
-  --color-brand-50: #f3f1fd;
-  --color-brand-100: #e9e5fb;
-  --color-brand-200: #d6cef8;
-  --color-brand-300: #b9abf2;
-  --color-brand-400: #977fe9;
-  --color-brand-500: #7a5ce0;
-  --color-brand-600: #5b3fd6;
-  --color-brand-700: #4c32b8;
-  --color-brand-800: #3f2b96;
-  --color-brand-900: #352878;
-  --color-brand-950: #21174d;
+  /* Escala de marca (terracota editorial) */
+  --color-brand-50: #fbf3ee;
+  --color-brand-100: #f7e8de;
+  --color-brand-200: #eed0bc;
+  --color-brand-300: #e3b294;
+  --color-brand-400: #d38d64;
+  --color-brand-500: #bc6636;
+  --color-brand-600: #9e421b;
+  --color-brand-700: #833614;
+  --color-brand-800: #6b2d13;
+  --color-brand-900: #572715;
+  --color-brand-950: #30130a;
 
-  /* Neutrales semánticos (fríos, con un matiz violeta muy leve) */
-  --color-surface: #ffffff;
-  --color-surface-2: #f7f7fb;
-  --color-surface-3: #f1f1f7;
-  --color-border: #e7e7ef;
-  --color-border-strong: #d5d5e2;
-  --color-ink: #16161d;
-  --color-ink-soft: #4b4b57;
-  --color-ink-muted: #6e6e7a;
+  /* Neutrales cálidos: papel y tinta */
+  --color-surface: #fffdfa;
+  --color-surface-2: #faf7f2;
+  --color-surface-3: #f3efe7;
+  --color-border: #e9e3d8;
+  --color-border-strong: #d8d0c2;
+  --color-ink: #211d1a;
+  --color-ink-soft: #55504a;
+  --color-ink-muted: #726b62;
 
   /* Estados (compartidos por badges y gráficos; ver src/lib/design/tokens.ts) */
   --color-success: #0ca30c;
@@ -49,32 +50,41 @@
   --color-info-soft: #e8f1fb;
   --color-info-strong: #1d5eb0;
 
-  /* Radios ligeramente más suaves que los de serie */
-  --radius-lg: 0.625rem;
-  --radius-xl: 0.875rem;
-  --radius-2xl: 1.125rem;
+  /* Radios contenidos: tarjetas de esquina discreta (los botones van pill) */
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.75rem;
 
-  /* Sombras por capas: elevación real en vez de un borde difuso */
-  --shadow-xs:
-    0 1px 2px 0 rgb(22 22 29 / 0.05);
-  --shadow-sm:
-    0 1px 2px 0 rgb(22 22 29 / 0.05),
-    0 2px 8px -2px rgb(22 22 29 / 0.08);
+  /* Elevación casi plana: el papel se separa con líneas, no con sombras */
+  --shadow-xs: 0 1px 0 0 rgb(33 29 26 / 0.04);
+  --shadow-sm: 0 1px 2px 0 rgb(33 29 26 / 0.05);
   --shadow-md:
-    0 2px 4px -1px rgb(22 22 29 / 0.06),
-    0 8px 24px -6px rgb(22 22 29 / 0.12);
+    0 1px 2px 0 rgb(33 29 26 / 0.05),
+    0 6px 20px -8px rgb(33 29 26 / 0.14);
 }
 
-/* La fuente la inyecta next/font como variable en <html> (ver layout.tsx). */
+/* La sans la inyecta next/font (layout.tsx); la serif es de sistema. */
 @theme inline {
   --font-sans:
     var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-serif:
+    ui-serif, Georgia, Cambria, "Iowan Old Style", "Times New Roman", serif;
 }
 
 body {
   background: var(--color-surface-2);
   color: var(--color-ink);
+}
+
+/* Firma editorial: los titulares van en serif en toda la app */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    letter-spacing: -0.01em;
+  }
 }
 
 ::selection {
@@ -87,16 +97,16 @@ body {
    repite las utilidades compartidas en lugar de heredar de una clase .btn. */
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 border border-border-strong bg-surface text-ink-soft hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 border border-border-strong bg-surface text-ink-soft hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 bg-danger text-white hover:bg-danger-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 bg-danger text-white hover:bg-danger-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger;
   }
   .card {
-    @apply rounded-xl border border-border bg-surface p-5 shadow-sm;
+    @apply rounded-xl border border-border bg-surface p-5 shadow-xs;
   }
   .input {
     @apply w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-200;

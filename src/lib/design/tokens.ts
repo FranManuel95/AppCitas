@@ -13,31 +13,31 @@
 
 /** Escala de marca. Cambiar el hue aquí + globals.css re-tiñe toda la app. */
 export const BRAND = {
-  50: "#f3f1fd",
-  100: "#e9e5fb",
-  200: "#d6cef8",
-  300: "#b9abf2",
-  400: "#977fe9",
-  500: "#7a5ce0",
-  600: "#5b3fd6",
-  700: "#4c32b8",
-  800: "#3f2b96",
-  900: "#352878",
-  950: "#21174d",
+  50: "#fbf3ee",
+  100: "#f7e8de",
+  200: "#eed0bc",
+  300: "#e3b294",
+  400: "#d38d64",
+  500: "#bc6636",
+  600: "#9e421b",
+  700: "#833614",
+  800: "#6b2d13",
+  900: "#572715",
+  950: "#30130a",
 } as const;
 
 /** Tinta de texto para gráficos (idéntica a --color-ink*). */
 export const INK = {
-  primary: "#16161d",
-  secondary: "#4b4b57",
-  muted: "#6e6e7a",
+  primary: "#211d1a",
+  secondary: "#55504a",
+  muted: "#726b62",
 } as const;
 
 /** Cromo recesivo de gráficos: rejilla, ejes y superficie. */
 export const CHROME = {
-  grid: "#e7e7ef",
-  axis: "#c9c9d6",
-  surface: "#ffffff",
+  grid: "#e9e3d8",
+  axis: "#cec5b4",
+  surface: "#fffdfa",
 } as const;
 
 /** Serie única de magnitud (ingresos, totales): el color de marca. */

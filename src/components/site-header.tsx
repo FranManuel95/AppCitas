@@ -15,13 +15,11 @@ export async function SiteHeader() {
   const isStaff = user?.role === "STAFF" && !!user.businessId;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-surface/80 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-border bg-surface">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4">
         <Link href="/" className="flex shrink-0 items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white shadow-xs">
-            <CalendarDays className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="text-lg font-semibold tracking-tight text-ink">
+          <CalendarDays className="h-5 w-5 text-brand-600" aria-hidden />
+          <span className="font-serif text-lg tracking-tight text-ink">
             AppCitas
           </span>
         </Link>
@@ -61,6 +59,7 @@ export async function SiteHeader() {
           )}
         </nav>
       </div>
+      <div aria-hidden className="h-[3px] border-t border-border" />
     </header>
   );
 }
