@@ -64,7 +64,10 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
 
 1. Crea el proyecto en supabase.com y ve a *Settings → Database*.
 2. Supabase ofrece varias cadenas de conexión; usa la adecuada:
-   - **Vercel/serverless** → la del *Transaction pooler* (puerto 6543).
+   - **Vercel/serverless** → la del *Transaction pooler* (puerto 6543),
+     añadiendo `?pgbouncer=true` al final (evita el error "prepared
+     statement already exists" bajo conexiones agrupadas). Verificado con
+     @prisma/adapter-pg contra Postgres real.
    - **VPS/Docker (procesos persistentes)** → la del *Session pooler* o la
      conexión directa (puerto 5432).
    - **Migraciones y seed** (`prisma migrate deploy`, `db:seed`) → siempre la
