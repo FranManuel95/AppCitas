@@ -15,18 +15,31 @@ export default async function BookingPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ servicio?: string }>;
 }) {
-  const [{ slug }, { servicio }, user] = await Promise.all([
+  const [{ slug }, { servicio }, sessionUser] = await Promise.all([
     params,
     searchParams,
     getSessionUser(),
   ]);
 
-  const business = await prisma.business.findFirst({
-    where: { slug, active: true },
-    include: {
-      services: { where: { active: true }, orderBy: { priceCents: "asc" } },
-    },
-  });
+  const [business, user] = await Promise.all([
+    prisma.business.findFirst({
+      where: { slug, active: true },
+      include: {
+        services: { where: { active: true }, orderBy: { priceCents: "asc" } },
+        staff: {
+          where: { active: true },
+          include: { services: { select: { serviceId: true } } },
+          orderBy: { name: "asc" },
+        },
+      },
+    }),
+    sessionUser
+      ? prisma.user.findUnique({
+          where: { id: sessionUser.id },
+          select: { phone: true },
+        })
+      : null,
+  ]);
   if (!business) notFound();
 
   return (
@@ -52,6 +65,7 @@ export default async function BookingPage({
               cancellationWindowHours: business.cancellationWindowHours,
               lateCancellationFeePercent: business.lateCancellationFeePercent,
               maxAdvanceBookingDays: business.maxAdvanceBookingDays,
+              requireCardToBook: business.requireCardToBook,
             }}
             services={business.services.map((s) => ({
               id: s.id,
@@ -60,8 +74,15 @@ export default async function BookingPage({
               durationMinutes: s.durationMinutes,
               priceCents: s.priceCents,
             }))}
+            staff={business.staff.map((m) => ({
+              id: m.id,
+              name: m.name,
+              color: m.color,
+              serviceIds: m.services.map((x) => x.serviceId),
+            }))}
             initialServiceId={servicio}
-            isLoggedIn={!!user}
+            isLoggedIn={!!sessionUser}
+            userHasPhone={!!user?.phone}
           />
         </div>
       </main>

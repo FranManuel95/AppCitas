@@ -32,6 +32,12 @@ export default async function SettingsPage() {
           slotGranularityMinutes: business.slotGranularityMinutes,
           maxAdvanceBookingDays: business.maxAdvanceBookingDays,
           minNoticeMinutes: business.minNoticeMinutes,
+          requireCardToBook: business.requireCardToBook,
+          remindersEnabled: business.remindersEnabled,
+          reminderHoursBefore: business.reminderHoursBefore,
+          notifyByEmail: business.notifyByEmail,
+          notifyBySms: business.notifyBySms,
+          notifyByWhatsapp: business.notifyByWhatsapp,
         }}
       />
     </div>

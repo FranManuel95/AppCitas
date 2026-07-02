@@ -54,7 +54,11 @@ export async function getDashboardStats(
 ): Promise<DashboardStats> {
   const business = await prisma.business.findUniqueOrThrow({
     where: { id: businessId },
-    include: { hours: true, closures: true },
+    include: {
+      hours: true,
+      closures: true,
+      staff: { where: { active: true }, include: { hours: true } },
+    },
   });
   const tz = business.timezone;
 
@@ -156,7 +160,9 @@ export async function getDashboardStats(
     }
   }
 
-  // Minutos abiertos del mes actual según horario semanal (menos cierres)
+  // Minutos abiertos del mes actual según horario semanal (menos cierres).
+  // Con equipo, la capacidad real es la suma de los horarios de cada empleado
+  // (propio o heredado del negocio); sin equipo, el horario del negocio.
   const closedDates = new Set(business.closures.map((c) => c.date));
   let monthOpenMinutes = 0;
   {
@@ -166,8 +172,24 @@ export async function getDashboardStats(
       const dateISO = `${currentMonth}-${String(d).padStart(2, "0")}`;
       if (closedDates.has(dateISO)) continue;
       const weekday = weekdayOfDateISO(dateISO);
-      for (const h of business.hours.filter((x) => x.weekday === weekday)) {
-        monthOpenMinutes += minutesOfRange(h.openTime, h.closeTime);
+      const businessDayRanges = business.hours.filter(
+        (x) => x.weekday === weekday,
+      );
+
+      if (business.staff.length > 0) {
+        for (const member of business.staff) {
+          const ranges =
+            member.hours.length > 0
+              ? member.hours.filter((x) => x.weekday === weekday)
+              : businessDayRanges;
+          for (const h of ranges) {
+            monthOpenMinutes += minutesOfRange(h.openTime, h.closeTime);
+          }
+        }
+      } else {
+        for (const h of businessDayRanges) {
+          monthOpenMinutes += minutesOfRange(h.openTime, h.closeTime);
+        }
       }
     }
   }
@@ -213,6 +235,7 @@ export async function getDayAgenda(
     include: {
       service: { select: { name: true, color: true, durationMinutes: true } },
       client: { select: { id: true, name: true, email: true, phone: true } },
+      staff: { select: { id: true, name: true, color: true } },
     },
     orderBy: { startAt: "asc" },
   });

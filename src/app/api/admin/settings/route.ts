@@ -17,6 +17,14 @@ const updateSchema = z.object({
   slotGranularityMinutes: z.number().int().min(5).max(120).optional(),
   maxAdvanceBookingDays: z.number().int().min(1).max(365).optional(),
   minNoticeMinutes: z.number().int().min(0).max(60 * 24 * 7).optional(),
+  // Pagos
+  requireCardToBook: z.boolean().optional(),
+  // Recordatorios y canales
+  remindersEnabled: z.boolean().optional(),
+  reminderHoursBefore: z.number().int().min(1).max(24 * 14).optional(),
+  notifyByEmail: z.boolean().optional(),
+  notifyBySms: z.boolean().optional(),
+  notifyByWhatsapp: z.boolean().optional(),
 });
 
 export const GET = apiHandler(async () => {

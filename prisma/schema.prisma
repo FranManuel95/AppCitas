@@ -23,6 +23,9 @@ model User {
   businessId   String?
   business     Business? @relation(fields: [businessId], references: [id])
 
+  // Cliente de la pasarela de pagos (Stripe) si guardó tarjeta
+  stripeCustomerId String?
+
   appointments Appointment[] @relation("ClientAppointments")
 
   createdAt DateTime @default(now())
@@ -52,16 +55,71 @@ model Business {
   maxAdvanceBookingDays      Int @default(60)
   minNoticeMinutes           Int @default(60)
 
+  // Pagos: exigir tarjeta guardada para reservar (permite cobrar cancelaciones
+  // tardías automáticamente). Requiere pasarela configurada.
+  requireCardToBook Boolean @default(false)
+
+  // Recordatorios y canales de notificación
+  remindersEnabled    Boolean @default(true)
+  reminderHoursBefore Int     @default(26)
+  notifyByEmail       Boolean @default(true)
+  notifyBySms         Boolean @default(false)
+  notifyByWhatsapp    Boolean @default(true)
+
   active Boolean @default(true)
 
-  users        User[]
-  services     Service[]
-  hours        BusinessHour[]
-  closures     Closure[]
+  users         User[]
+  services      Service[]
+  hours         BusinessHour[]
+  closures      Closure[]
+  appointments  Appointment[]
+  staff         StaffMember[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StaffMember {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  email      String?
+  phone      String?
+  color      String   @default("#0ea5e9")
+  active     Boolean  @default(true)
+
+  // Horario propio; si no tiene tramos, hereda el horario del negocio
+  hours        StaffHour[]
+  // Servicios que realiza; sin filas = realiza todos los servicios
+  services     StaffService[]
   appointments Appointment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([businessId, active])
+}
+
+model StaffHour {
+  id        String      @id @default(cuid())
+  staffId   String
+  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  weekday   Int
+  openTime  String
+  closeTime String
+
+  @@index([staffId, weekday])
+}
+
+model StaffService {
+  staffId   String
+  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([staffId, serviceId])
 }
 
 model Service {
@@ -76,6 +134,7 @@ model Service {
   active          Boolean @default(true)
 
   appointments Appointment[]
+  staff        StaffService[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -115,6 +174,8 @@ model Appointment {
   service    Service  @relation(fields: [serviceId], references: [id])
   clientId   String
   client     User     @relation("ClientAppointments", fields: [clientId], references: [id])
+  staffId    String?
+  staff      StaffMember? @relation(fields: [staffId], references: [id])
 
   startAt DateTime
   endAt   DateTime
@@ -128,10 +189,55 @@ model Appointment {
   notes        String?
   cancelledAt  DateTime?
 
+  // Confirmación de asistencia desde el recordatorio (enlace público firmado)
+  confirmationToken     String    @unique @default(cuid())
+  attendanceConfirmedAt DateTime?
+
+  // Resultado del cobro del cargo (si lo hubo):
+  // NONE | CHARGED | SIMULATED | CHARGE_FAILED | UNCOLLECTED
+  paymentStatus String  @default("NONE")
+  paymentRef    String?
+
+  notifications Notification[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([businessId, startAt])
   @@index([clientId, startAt])
   @@index([businessId, status, startAt])
+  @@index([staffId, startAt])
+}
+
+// Outbox de notificaciones: cada mensaje se persiste y un worker/cron lo
+// despacha cuando vence (scheduledFor). Reintentos con backoff simple.
+model Notification {
+  id            String       @id @default(cuid())
+  businessId    String
+  business      Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  // EMAIL | SMS | WHATSAPP
+  channel String
+  // BOOKING_CONFIRMED | REMINDER | CANCELLED
+  template String
+  recipient String
+  subject   String?
+  body      String
+
+  // PENDING | SENT | FAILED | SKIPPED
+  status       String    @default("PENDING")
+  scheduledFor DateTime
+  attempts     Int       @default(0)
+  lastError    String?
+  providerRef  String?
+  sentAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledFor])
+  @@index([businessId, createdAt])
+  @@index([appointmentId])
 }

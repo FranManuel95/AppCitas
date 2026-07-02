@@ -78,6 +78,14 @@ export default async function AgendaPage({
                   <p className="text-sm text-slate-500">
                     {a.service.name} ·{" "}
                     {formatCents(a.priceCents, business.currency)}
+                    {a.staff && (
+                      <span
+                        className="ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white"
+                        style={{ background: a.staff.color }}
+                      >
+                        {a.staff.name}
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs text-slate-400">
                     {[a.client.email, a.client.phone]

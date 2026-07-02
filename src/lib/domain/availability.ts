@@ -98,3 +98,65 @@ export function isOfferedSlot(input: SlotEngineInput, startAt: Date): boolean {
     (s) => s.start.getTime() === startAt.getTime(),
   );
 }
+
+// ---------------------------------------------------------------------------
+// Multi-empleado
+// ---------------------------------------------------------------------------
+
+export interface StaffAgendaContext {
+  id: string;
+  // Horario propio del empleado; si está vacío hereda el del negocio
+  hours: HourRange[];
+  // Citas que bloquean SU agenda ese día (incluye las citas sin empleado
+  // asignado, que se consideran de sala y bloquean a todos)
+  busy: BusyInterval[];
+}
+
+export interface StaffSlot extends Slot {
+  staffIds: string[]; // empleados disponibles en ese hueco
+}
+
+// Unión de los huecos de cada empleado cualificado: un hueco se oferta si al
+// menos un empleado puede atenderlo, y lleva la lista de candidatos.
+export function computeStaffDaySlots(
+  base: Omit<SlotEngineInput, "busy" | "hours">,
+  businessHours: HourRange[],
+  staff: StaffAgendaContext[],
+): StaffSlot[] {
+  const merged = new Map<number, StaffSlot>();
+
+  for (const member of staff) {
+    const slots = computeDaySlots({
+      ...base,
+      hours: member.hours.length > 0 ? member.hours : businessHours,
+      busy: member.busy,
+    });
+    for (const slot of slots) {
+      const key = slot.start.getTime();
+      const existing = merged.get(key);
+      if (existing) {
+        existing.staffIds.push(member.id);
+      } else {
+        merged.set(key, { ...slot, staffIds: [member.id] });
+      }
+    }
+  }
+
+  return [...merged.values()].sort(
+    (a, b) => a.start.getTime() - b.start.getTime(),
+  );
+}
+
+// Asignación automática: entre los candidatos de un hueco, elige el empleado
+// con menos carga (citas del día). Determinista: a igual carga, orden estable.
+export function chooseStaffId(
+  candidates: string[],
+  dayLoadByStaff: Map<string, number>,
+): string | null {
+  if (candidates.length === 0) return null;
+  return [...candidates].sort((a, b) => {
+    const loadDiff =
+      (dayLoadByStaff.get(a) ?? 0) - (dayLoadByStaff.get(b) ?? 0);
+    return loadDiff !== 0 ? loadDiff : a.localeCompare(b);
+  })[0];
+}

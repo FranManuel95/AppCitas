@@ -8,6 +8,7 @@ import {
   wallTimeToUtc,
   weekdayOfDateISO,
 } from "../src/lib/domain/dates";
+import { reminderMessage } from "../src/lib/notifications/templates";
 
 const prisma = new PrismaClient({
   adapter: new PrismaBetterSqlite3({
@@ -35,7 +36,11 @@ const TZ = "Europe/Madrid";
 
 async function main() {
   console.log("Limpiando base de datos…");
+  await prisma.notification.deleteMany();
   await prisma.appointment.deleteMany();
+  await prisma.staffService.deleteMany();
+  await prisma.staffHour.deleteMany();
+  await prisma.staffMember.deleteMany();
   await prisma.closure.deleteMany();
   await prisma.businessHour.deleteMany();
   await prisma.service.deleteMany();
@@ -60,6 +65,10 @@ async function main() {
       slotGranularityMinutes: 30,
       maxAdvanceBookingDays: 60,
       minNoticeMinutes: 60,
+      remindersEnabled: true,
+      reminderHoursBefore: 26,
+      notifyByEmail: true,
+      notifyByWhatsapp: true,
       hours: {
         create: [
           // L-V mañana y tarde
@@ -114,6 +123,10 @@ async function main() {
       slotGranularityMinutes: 15,
       maxAdvanceBookingDays: 30,
       minNoticeMinutes: 30,
+      remindersEnabled: true,
+      reminderHoursBefore: 25,
+      notifyByEmail: true,
+      notifyByWhatsapp: true,
       hours: {
         create: [1, 2, 3, 4, 5, 6].map((weekday) => ({
           weekday,
@@ -140,6 +153,75 @@ async function main() {
     },
     include: { services: true },
   });
+
+  console.log("Creando equipo…");
+  const [sesionEstandar, sesionPremium] = [
+    aurora.services.find((s) => s.name === "Sesión estándar")!,
+    aurora.services.find((s) => s.name === "Sesión premium")!,
+  ];
+
+  const auroraStaff = await Promise.all([
+    prisma.staffMember.create({
+      data: {
+        businessId: aurora.id,
+        name: "Ana García",
+        email: "ana@estudioaurora.example",
+        color: "#6366f1",
+      },
+      include: { hours: true, services: true },
+    }),
+    prisma.staffMember.create({
+      data: {
+        businessId: aurora.id,
+        name: "Bruno Pérez",
+        email: "bruno@estudioaurora.example",
+        color: "#0ea5e9",
+      },
+      include: { hours: true, services: true },
+    }),
+    prisma.staffMember.create({
+      data: {
+        businessId: aurora.id,
+        name: "Carla Ruiz",
+        email: "carla@estudioaurora.example",
+        color: "#f59e0b",
+        // Solo mañanas y solo sesiones (no consultas iniciales)
+        hours: {
+          create: [1, 2, 3, 4, 5].map((weekday) => ({
+            weekday,
+            openTime: "09:00",
+            closeTime: "14:00",
+          })),
+        },
+        services: {
+          create: [
+            { serviceId: sesionEstandar.id },
+            { serviceId: sesionPremium.id },
+          ],
+        },
+      },
+      include: { hours: true, services: true },
+    }),
+  ]);
+
+  const barberiaStaff = await Promise.all([
+    prisma.staffMember.create({
+      data: {
+        businessId: barberia.id,
+        name: "Braulio Norte",
+        color: "#10b981",
+      },
+      include: { hours: true, services: true },
+    }),
+    prisma.staffMember.create({
+      data: {
+        businessId: barberia.id,
+        name: "Diego Sanz",
+        color: "#8b5cf6",
+      },
+      include: { hours: true, services: true },
+    }),
+  ]);
 
   console.log("Creando usuarios…");
   const [ownerHash, clientHash] = await Promise.all([
@@ -196,6 +278,8 @@ async function main() {
           email: `cliente${i + 1}@demo.com`,
           passwordHash: clientHash,
           name,
+          // Dos de cada tres clientes tienen teléfono (para SMS/WhatsApp)
+          phone: i % 3 === 2 ? null : `+34 6${String(10000000 + i * 111111).slice(0, 8)}`,
           role: "CLIENT",
         },
       }),
@@ -206,8 +290,20 @@ async function main() {
   const now = new Date();
   const todayISO = toLocalDateISO(now, TZ);
 
-  for (const business of [aurora, barberia]) {
-    const hours = await prisma.businessHour.findMany({
+  const setups: Array<{
+    business: typeof aurora;
+    staff: Array<{
+      id: string;
+      hours: Array<{ weekday: number; openTime: string; closeTime: string }>;
+      services: Array<{ serviceId: string }>;
+    }>;
+  }> = [
+    { business: aurora, staff: auroraStaff },
+    { business: barberia, staff: barberiaStaff },
+  ];
+
+  for (const { business, staff } of setups) {
+    const businessHours = await prisma.businessHour.findMany({
       where: { businessId: business.id },
     });
 
@@ -216,84 +312,152 @@ async function main() {
 
     while (dateISO <= endISO) {
       const weekday = weekdayOfDateISO(dateISO);
-      const ranges = hours.filter((h) => h.weekday === weekday);
-      if (ranges.length > 0) {
-        // Ocupación variable por día (más densa en meses recientes)
-        const target = 2 + Math.floor(rand() * 4);
-        const usedIntervals: Array<{ start: number; end: number }> = [];
+      // Intentos por día proporcionales al tamaño del equipo
+      const target = (2 + Math.floor(rand() * 4)) * staff.length;
+      // Ocupación por empleado para evitar solapamientos
+      const usedByStaff = new Map<
+        string,
+        Array<{ start: number; end: number }>
+      >(staff.map((m) => [m.id, []]));
 
-        for (let k = 0; k < target; k++) {
-          const service = pick(business.services);
-          const range = pick(ranges);
-          const [oh, om] = range.openTime.split(":").map(Number);
-          const [ch] = range.closeTime.split(":").map(Number);
-          const openMin = oh * 60 + om;
-          const closeMin = ch * 60;
-          if (closeMin - openMin < service.durationMinutes) continue;
+      for (let k = 0; k < target; k++) {
+        const service = pick(business.services);
+        // Empleados cualificados para el servicio
+        const qualified = staff.filter(
+          (m) =>
+            m.services.length === 0 ||
+            m.services.some((x) => x.serviceId === service.id),
+        );
+        if (qualified.length === 0) continue;
+        const member = pick(qualified);
 
-          const step = business.slotGranularityMinutes;
-          const maxStart = closeMin - service.durationMinutes;
-          const startMin =
-            openMin +
-            Math.floor((rand() * (maxStart - openMin)) / step) * step;
-          const endMin = startMin + service.durationMinutes;
+        const memberRanges = (
+          member.hours.length > 0 ? member.hours : businessHours
+        ).filter((h) => h.weekday === weekday);
+        if (memberRanges.length === 0) continue;
+        const range = pick(memberRanges);
 
-          if (
-            usedIntervals.some((u) => startMin < u.end && endMin > u.start)
-          ) {
-            continue; // hueco ocupado, se descarta este intento
+        const [oh, om] = range.openTime.split(":").map(Number);
+        const [ch] = range.closeTime.split(":").map(Number);
+        const openMin = oh * 60 + om;
+        const closeMin = ch * 60;
+        if (closeMin - openMin < service.durationMinutes) continue;
+
+        const step = business.slotGranularityMinutes;
+        const maxStart = closeMin - service.durationMinutes;
+        const startMin =
+          openMin + Math.floor((rand() * (maxStart - openMin)) / step) * step;
+        const endMin = startMin + service.durationMinutes;
+
+        const used = usedByStaff.get(member.id)!;
+        if (used.some((u) => startMin < u.end && endMin > u.start)) {
+          continue; // ese empleado ya está ocupado, se descarta el intento
+        }
+        used.push({ start: startMin, end: endMin });
+
+        const hh = String(Math.floor(startMin / 60)).padStart(2, "0");
+        const mm = String(startMin % 60).padStart(2, "0");
+        const startAt = wallTimeToUtc(dateISO, `${hh}:${mm}`, TZ);
+        const endAt = new Date(
+          startAt.getTime() + service.durationMinutes * 60_000,
+        );
+
+        const isPast = startAt.getTime() < now.getTime();
+        let status = "CONFIRMED";
+        let chargedCents = 0;
+        let cancelledAt: Date | null = null;
+        let paymentStatus = "NONE";
+
+        if (isPast) {
+          const r = rand();
+          if (r < 0.78) {
+            status = "COMPLETED";
+            chargedCents = service.priceCents;
+          } else if (r < 0.86) {
+            status = "CANCELLED";
+            cancelledAt = new Date(startAt.getTime() - 48 * 3_600_000);
+          } else if (r < 0.94) {
+            status = "CANCELLED_LATE";
+            chargedCents = Math.round(
+              (service.priceCents * business.lateCancellationFeePercent) / 100,
+            );
+            cancelledAt = new Date(startAt.getTime() - 5 * 3_600_000);
+            paymentStatus = "UNCOLLECTED";
+          } else {
+            status = "NO_SHOW";
+            chargedCents = Math.round(
+              (service.priceCents * business.lateCancellationFeePercent) / 100,
+            );
+            paymentStatus = "UNCOLLECTED";
           }
-          usedIntervals.push({ start: startMin, end: endMin });
+        }
 
-          const hh = String(Math.floor(startMin / 60)).padStart(2, "0");
-          const mm = String(startMin % 60).padStart(2, "0");
-          const startAt = wallTimeToUtc(dateISO, `${hh}:${mm}`, TZ);
-          const endAt = new Date(
-            startAt.getTime() + service.durationMinutes * 60_000,
+        const client = pick(clients);
+        const appointment = await prisma.appointment.create({
+          data: {
+            businessId: business.id,
+            serviceId: service.id,
+            clientId: client.id,
+            staffId: member.id,
+            startAt,
+            endAt,
+            status,
+            priceCents: service.priceCents,
+            chargedCents,
+            cancelledAt,
+            paymentStatus,
+          },
+        });
+
+        // Recordatorio programado para citas futuras (outbox pendiente)
+        if (!isPast && status === "CONFIRMED" && business.remindersEnabled) {
+          const remindAt = new Date(
+            startAt.getTime() - business.reminderHoursBefore * 3_600_000,
           );
-
-          const isPast = startAt.getTime() < now.getTime();
-          let status = "CONFIRMED";
-          let chargedCents = 0;
-          let cancelledAt: Date | null = null;
-
-          if (isPast) {
-            const r = rand();
-            if (r < 0.78) {
-              status = "COMPLETED";
-              chargedCents = service.priceCents;
-            } else if (r < 0.86) {
-              status = "CANCELLED";
-              cancelledAt = new Date(startAt.getTime() - 48 * 3_600_000);
-            } else if (r < 0.94) {
-              status = "CANCELLED_LATE";
-              chargedCents = Math.round(
-                (service.priceCents * business.lateCancellationFeePercent) /
-                  100,
-              );
-              cancelledAt = new Date(startAt.getTime() - 5 * 3_600_000);
-            } else {
-              status = "NO_SHOW";
-              chargedCents = Math.round(
-                (service.priceCents * business.lateCancellationFeePercent) /
-                  100,
-              );
+          if (remindAt.getTime() > now.getTime() + 5 * 60_000) {
+            const staffName =
+              staff.find((m) => m.id === member.id) === undefined
+                ? null
+                : (await prisma.staffMember.findUnique({
+                    where: { id: member.id },
+                    select: { name: true },
+                  }))?.name;
+            const message = reminderMessage({
+              clientName: client.name,
+              businessName: business.name,
+              serviceName: service.name,
+              staffName,
+              startAt,
+              timezone: TZ,
+              currency: business.currency,
+              priceCents: service.priceCents,
+              cancellationWindowHours: business.cancellationWindowHours,
+              lateCancellationFeePercent: business.lateCancellationFeePercent,
+              confirmationUrl: `${process.env.APP_BASE_URL ?? "http://localhost:3000"}/c/${appointment.confirmationToken}`,
+            });
+            const deliveries: Array<{ channel: string; recipient: string }> =
+              [];
+            if (business.notifyByEmail && client.email) {
+              deliveries.push({ channel: "EMAIL", recipient: client.email });
+            }
+            if (business.notifyByWhatsapp && client.phone) {
+              deliveries.push({ channel: "WHATSAPP", recipient: client.phone });
+            }
+            if (deliveries.length > 0) {
+              await prisma.notification.createMany({
+                data: deliveries.map((d) => ({
+                  businessId: business.id,
+                  appointmentId: appointment.id,
+                  channel: d.channel,
+                  template: "REMINDER",
+                  recipient: d.recipient,
+                  subject: message.subject,
+                  body: message.body,
+                  scheduledFor: remindAt,
+                })),
+              });
             }
           }
-
-          await prisma.appointment.create({
-            data: {
-              businessId: business.id,
-              serviceId: service.id,
-              clientId: pick(clients).id,
-              startAt,
-              endAt,
-              status,
-              priceCents: service.priceCents,
-              chargedCents,
-              cancelledAt,
-            },
-          });
         }
       }
       dateISO = addDaysISO(dateISO, 1);
@@ -301,7 +465,12 @@ async function main() {
   }
 
   const total = await prisma.appointment.count();
-  console.log(`Seed completado: ${total} citas creadas.`);
+  const pendingNotifications = await prisma.notification.count({
+    where: { status: "PENDING" },
+  });
+  console.log(
+    `Seed completado: ${total} citas y ${pendingNotifications} recordatorios programados.`,
+  );
   console.log("Credenciales demo:");
   console.log("  Dueño Estudio Aurora → admin@demo.com / admin1234");
   console.log("  Dueño Barbería Norte → barberia@demo.com / admin1234");

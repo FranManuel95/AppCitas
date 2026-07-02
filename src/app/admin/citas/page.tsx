@@ -70,6 +70,7 @@ export default async function AppointmentsPage({
       include: {
         service: { select: { name: true } },
         client: { select: { name: true, email: true } },
+        staff: { select: { name: true, color: true } },
       },
       orderBy: { startAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
@@ -209,7 +210,18 @@ export default async function AppointmentsPage({
                   <p className="font-medium text-slate-800">{a.client.name}</p>
                   <p className="text-xs text-slate-400">{a.client.email}</p>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{a.service.name}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  {a.service.name}
+                  {a.staff && (
+                    <span className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400">
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ background: a.staff.color }}
+                      />
+                      {a.staff.name}
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <StatusBadge status={a.status} />
                 </td>

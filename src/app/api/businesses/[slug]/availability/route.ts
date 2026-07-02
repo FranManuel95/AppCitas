@@ -9,9 +9,10 @@ import { toLocalTime } from "@/lib/domain/dates";
 const querySchema = z.object({
   serviceId: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato esperado: YYYY-MM-DD"),
+  staffId: z.string().optional(),
 });
 
-// GET /api/businesses/[slug]/availability?serviceId=…&date=YYYY-MM-DD
+// GET /api/businesses/[slug]/availability?serviceId=…&date=YYYY-MM-DD[&staffId=…]
 // Público: los huecos libres no revelan datos de otras citas.
 export const GET = apiHandler(
   async (
@@ -20,7 +21,7 @@ export const GET = apiHandler(
   ) => {
     const { slug } = await params;
     const url = new URL(request.url);
-    const { serviceId, date } = querySchema.parse(
+    const { serviceId, date, staffId } = querySchema.parse(
       Object.fromEntries(url.searchParams),
     );
 
@@ -36,6 +37,7 @@ export const GET = apiHandler(
       businessId: business.id,
       serviceId,
       dateISO: date,
+      staffId,
     });
 
     return NextResponse.json({
@@ -45,6 +47,7 @@ export const GET = apiHandler(
         startAt: s.start.toISOString(),
         endAt: s.end.toISOString(),
         label: toLocalTime(s.start, business.timezone),
+        staffIds: s.staffIds,
       })),
     });
   },

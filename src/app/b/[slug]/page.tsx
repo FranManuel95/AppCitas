@@ -18,6 +18,11 @@ export default async function BusinessPage({
     include: {
       services: { where: { active: true }, orderBy: { priceCents: "asc" } },
       hours: { orderBy: { openTime: "asc" } },
+      staff: {
+        where: { active: true },
+        select: { id: true, name: true, color: true },
+        orderBy: { name: "asc" },
+      },
     },
   });
   if (!business) notFound();
@@ -95,6 +100,26 @@ export default async function BusinessPage({
           </section>
 
           <aside className="space-y-6">
+            {business.staff.length > 0 && (
+              <div className="card">
+                <h2 className="font-semibold text-slate-900">Equipo</h2>
+                <ul className="mt-3 space-y-2">
+                  {business.staff.map((m) => (
+                    <li key={m.id} className="flex items-center gap-2 text-sm">
+                      <span
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white"
+                        style={{ background: m.color }}
+                        aria-hidden
+                      >
+                        {m.name.slice(0, 1).toUpperCase()}
+                      </span>
+                      <span className="text-slate-700">{m.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="card">
               <h2 className="font-semibold text-slate-900">Horario</h2>
               <ul className="mt-3 space-y-1.5 text-sm">

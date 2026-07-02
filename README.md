@@ -2,8 +2,8 @@
 
 Plataforma **genérica y multi-negocio** de agendación de citas. Los clientes
 reservan online y cancelan dentro del plazo de cada negocio; los dueños
-gestionan agenda, citas, servicios, horarios, política de cancelación,
-ingresos y estadísticas desde su panel.
+gestionan agenda multi-empleado, citas, servicios, horarios, política de
+cancelación, cobros, notificaciones, ingresos y estadísticas desde su panel.
 
 Es un **proyecto base multi-sector**: el núcleo no asume ningún tipo de
 negocio (peluquería, clínica, taller, consultoría…), de modo que puede
@@ -14,11 +14,39 @@ especializarse a cualquier sector sin refactorizar el dominio.
 > Un cliente puede cancelar su cita gratis hasta **24 horas antes** (ventana
 > configurable por negocio). Si cancela más tarde —o no se presenta— se le
 > cobra el **porcentaje configurado** del precio del servicio (100% por
-> defecto).
+> defecto), automáticamente con su tarjeta guardada si el negocio usa Stripe.
 
 Implementada en `src/lib/domain/cancellation.ts` como función pura y cubierta
 por tests. El importe cobrado queda registrado en la cita (`chargedCents`) y
 alimenta las estadísticas de ingresos.
+
+## Funcionalidades
+
+**Para clientes**: reserva en 3-4 pasos (servicio → profesional → fecha/hueco
+→ confirmación), cancelación con aviso del cargo exacto antes de confirmar,
+recordatorios con enlace de "¿vas a asistir?" de un toque, tarjeta guardada
+solo si el negocio la exige.
+
+**Para negocios**: dashboard con KPIs y gráficas, agenda diaria por empleado,
+listado filtrable de citas, equipo con horarios propios y servicios asignados,
+CRUD de servicios, horario semanal + festivos, log de notificaciones, política
+de cancelación/recordatorios/pagos configurable.
+
+**Integraciones** (todas opcionales; sin configurar, la app funciona y lo
+simula/registra):
+
+| Capacidad | Proveedor | Variables |
+|---|---|---|
+| Cobro automático de cancelación tardía / no-show | Stripe (SetupIntent + cargo off-session) | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` |
+| Email (confirmación, recordatorio, cancelación) | SMTP genérico — Brevo, Resend, Mailgun, Gmail… | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` |
+| SMS | Twilio (API REST, sin SDK) | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` |
+| WhatsApp (sin API oficial de WhatsApp Business) | **UltraMsg** (hosted, QR en minutos) o **Evolution API** (autoalojado sobre Baileys, **gratis**: un Docker en cualquier VPS) | `ULTRAMSG_INSTANCE_ID`+`ULTRAMSG_TOKEN` **o** `EVOLUTION_API_URL`+`EVOLUTION_API_KEY`+`EVOLUTION_INSTANCE` |
+
+Sobre WhatsApp y coste: la opción más barata es **Evolution API** (wrapper
+REST de Baileys, 0 € de licencia, solo el VPS); UltraMsg es la más rápida de
+montar. Ambas usan WhatsApp Web por detrás: usa un número dedicado del
+negocio, no el personal. Si el volumen crece, el adaptador se cambia por la
+API oficial sin tocar el resto del sistema (interfaz `Channel`).
 
 ## Stack
 
@@ -28,6 +56,8 @@ alimenta las estadísticas de ingresos.
 | Estilos | Tailwind CSS 4 |
 | Base de datos | SQLite en desarrollo · PostgreSQL en producción (Prisma 7 con driver adapters) |
 | Autenticación | JWT firmado (jose) en cookie httpOnly + bcryptjs |
+| Pagos | Stripe (adaptador simulado sin claves) |
+| Notificaciones | Outbox propio + nodemailer / Twilio / UltraMsg / Evolution API |
 | Validación | Zod en todos los endpoints |
 | Gráficas | Recharts |
 | Tests | Vitest |
@@ -38,117 +68,131 @@ alimenta las estadísticas de ingresos.
 npm install                 # instala y genera el cliente Prisma (postinstall)
 cp .env.example .env        # DATABASE_URL ya apunta a SQLite local
 npx prisma migrate dev      # crea la base de datos
-npm run db:seed             # datos demo (2 negocios, usuarios, ~1600 citas)
+npm run db:seed             # datos demo (2 negocios, 5 empleados, ~3800 citas)
 npm run dev                 # http://localhost:3000
+npm run worker              # (otra terminal) despacha recordatorios cada 30s
 ```
 
 Credenciales demo:
 
 | Rol | Email | Contraseña |
 |---|---|---|
-| Dueño (Estudio Aurora) | `admin@demo.com` | `admin1234` |
-| Dueño (Barbería Norte) | `barberia@demo.com` | `admin1234` |
+| Dueño (Estudio Aurora, 3 empleados) | `admin@demo.com` | `admin1234` |
+| Dueño (Barbería Norte, 2 empleados) | `barberia@demo.com` | `admin1234` |
 | Cliente | `cliente@demo.com` | `cliente1234` |
 
-Otros comandos: `npm test` (tests de dominio), `npm run build && npm start`
-(producción; requiere `AUTH_SECRET` en el entorno), `npm run db:reset`.
+Otros comandos: `npm test`, `npm run build && npm start` (producción; requiere
+`AUTH_SECRET`), `npm run db:reset`.
+
+### Envío de notificaciones en producción
+
+Los mensajes se persisten en un **outbox** (`Notification`) con su hora de
+envío; un proceso los despacha con reintentos:
+
+- **Servidor propio**: `npm run worker` (bucle cada 30 s), o
+- **Serverless (Vercel u otros)**: un cron que llame cada minuto a
+  `POST /api/jobs/notifications` con cabecera `Authorization: Bearer $CRON_SECRET`.
+
+En desarrollo, los canales sin configurar "envían" al log del worker para
+poder probar el flujo completo; en producción quedan marcados como omitidos.
+
+### Recordatorio con confirmación de asistencia
+
+El recordatorio (por defecto 26 h antes, configurable) incluye un enlace
+`/c/<token>` único por cita: el cliente responde **"Sí, asistiré"** o
+**"No podré asistir"** sin iniciar sesión. El "no" aplica la política de
+cancelación mostrando el cargo exacto antes de confirmar. Se recomienda
+programar el recordatorio *antes* de que venza la ventana gratuita para que
+el cliente aún pueda cancelar sin coste (26 h > 24 h por defecto).
+
+### Cobro automático (Stripe)
+
+Si el negocio activa "exigir tarjeta para reservar", el wizard guarda la
+tarjeta con un SetupIntent (Payment Element). Al producirse una cancelación
+tardía o un no-show, el cargo se ejecuta **off-session** automáticamente;
+si falla o no hay tarjeta, queda registrado como pendiente de cobro en
+persona. El webhook (`/api/payments/webhook`) mantiene el estado sincronizado.
+Sin claves de Stripe, una pasarela simulada permite recorrer todo el flujo en
+desarrollo.
 
 ## Arquitectura
 
 ```
 src/
-├── app/                        # rutas (App Router)
+├── app/
 │   ├── page.tsx                # landing con negocios
-│   ├── b/[slug]/               # página pública del negocio + wizard de reserva
+│   ├── b/[slug]/               # página pública + wizard (servicio → profesional → hueco → tarjeta)
 │   ├── mis-citas/              # citas del cliente (cancelación con política)
-│   ├── login, register, register-business
+│   ├── c/[token]/              # confirmación de asistencia desde el recordatorio
 │   ├── admin/                  # panel del negocio (guard por rol)
 │   │   ├── page.tsx            # dashboard: KPIs + gráficas
-│   │   ├── agenda/             # agenda diaria con acciones
+│   │   ├── agenda/             # agenda diaria (empleado visible por color)
 │   │   ├── citas/              # listado filtrable + paginado
-│   │   ├── servicios/          # CRUD de servicios
-│   │   ├── horario/            # horario semanal + cierres/festivos
-│   │   └── ajustes/            # datos y política de cancelación
+│   │   ├── equipo/             # CRUD de empleados, horarios propios, servicios
+│   │   ├── servicios/ horario/ notificaciones/ ajustes/
 │   └── api/                    # REST (route handlers + zod)
-│       ├── auth/               # login, logout, registro cliente y negocio
-│       ├── businesses/[slug]/availability
-│       ├── appointments/       # crear, listar, cancelar
-│       └── admin/              # citas, estados, servicios, horario, ajustes
+│       ├── auth/ businesses/ appointments/ confirmations/
+│       ├── payments/           # setup-intent + webhook Stripe
+│       ├── jobs/notifications  # cron protegido (outbox)
+│       └── admin/              # citas, estados, servicios, staff, horario, ajustes
 ├── lib/
-│   ├── domain/                 # ★ capa de dominio (independiente de la UI)
-│   │   ├── availability.ts     # motor de huecos (función pura, testeada)
-│   │   ├── cancellation.ts     # política de cancelación (pura, testeada)
+│   ├── domain/                 # ★ capa de dominio (pura, testeada)
+│   │   ├── availability.ts     # motor de huecos + multi-empleado + asignación
+│   │   ├── cancellation.ts     # política de cancelación
 │   │   ├── appointments.ts     # reservar/cancelar/estados (transaccional)
-│   │   ├── stats.ts            # agregados del dashboard
-│   │   └── dates.ts            # zona horaria del negocio ↔ UTC
-│   ├── auth/                   # sesión JWT, hash, guards por rol
-│   ├── prisma.ts               # singleton con driver adapter
-│   └── money.ts                # importes en céntimos (enteros)
-└── components/                 # UI (cliente y admin)
-prisma/
-├── schema.prisma               # modelo multi-tenant
-└── seed.ts                     # dataset demo determinista
+│   │   └── stats.ts dates.ts   # agregados y zona horaria
+│   ├── payments/               # PaymentProvider: stripe | dev (simulado)
+│   ├── notifications/          # outbox + canales EMAIL/SMS/WHATSAPP + plantillas
+│   └── auth/ prisma.ts money.ts
+├── components/                 # UI (cliente y admin)
+scripts/worker.ts               # despachador local del outbox
+prisma/schema.prisma seed.ts    # modelo multi-tenant + dataset demo
 ```
 
 ### Modelo de datos
 
-`Business` (tenant) ← `User` (roles CLIENT / OWNER / STAFF / SUPER_ADMIN),
-`Service`, `BusinessHour` (tramos semanales), `Closure` (festivos),
-`Appointment` (estados `CONFIRMED / COMPLETED / CANCELLED / CANCELLED_LATE /
-NO_SHOW`, precio congelado al reservar, importe cobrado).
-
-Cada negocio configura su propia política: ventana de cancelación, % de cargo,
-granularidad de huecos, antelación mínima y máxima.
+`Business` (tenant) ← `User`, `Service`, `BusinessHour`, `Closure`,
+`StaffMember` (+`StaffHour` horario propio, +`StaffService` servicios que
+realiza), `Appointment` (estado, precio congelado, cargo, empleado, token de
+confirmación, estado de cobro) y `Notification` (outbox programado).
 
 ### Decisiones de escalabilidad
 
-- **Dominio desacoplado**: las reglas viven en `src/lib/domain`, sin
-  dependencias de la UI. Se pueden extraer a un servicio propio o reutilizar
-  desde una app móvil sin tocarlas. La API REST ya expone todos los flujos.
-- **Sesión stateless (JWT)**: sin estado de sesión en servidor; escala
-  horizontalmente sin Redis ni sticky sessions.
-- **Dinero en céntimos (enteros)**: sin errores de coma flotante, portable
-  entre motores de BD.
-- **UTC en persistencia, zona horaria por negocio en presentación**: negocios
-  en distintas zonas conviven en la misma instancia.
-- **Anti doble-reserva**: el hueco se valida contra la oferta real y se
-  re-comprueba dentro de una transacción justo antes de insertar (cierra la
-  carrera entre dos clientes que pulsan a la vez).
-- **Índices** en las consultas calientes (`businessId+startAt`,
-  `clientId+startAt`, `businessId+status+startAt`) y paginación en listados.
-- **SQLite → PostgreSQL** sin cambiar código de dominio: Prisma 7 con driver
-  adapters (cambiar provider del schema y adaptador en `src/lib/prisma.ts`,
-  p. ej. `@prisma/adapter-pg`). Los agregados del dashboard se calculan sobre
-  una única consulta acotada por índice; con volúmenes muy grandes se
-  materializarían con `GROUP BY` nativo o tablas de resumen.
+- **Dominio desacoplado y puro** (31 tests): reglas reutilizables desde una
+  app móvil o un servicio aparte sin tocar la UI.
+- **Multi-empleado sin romper compatibilidad**: sin equipo definido, el
+  negocio funciona con agenda única; con equipo, cada empleado tiene su
+  propia agenda (horario propio o heredado) y la asignación automática elige
+  al menos cargado. Las citas antiguas sin empleado bloquean a todos
+  (conservador, sin dobles reservas).
+- **Outbox de notificaciones**: los envíos sobreviven a reinicios, se
+  reintentan con backoff y son auditables desde el panel. Los proveedores son
+  adaptadores de ~40 líneas: añadir Telegram o push es trivial.
+- **Pagos con proveedor intercambiable**: la interfaz `PaymentProvider`
+  aísla Stripe; el modo simulado permite CI y desarrollo sin claves.
+- **Sesión stateless (JWT)**, **dinero en céntimos**, **UTC en persistencia**
+  con zona horaria por negocio, **anti doble-reserva transaccional** (ahora
+  por empleado), índices en consultas calientes y paginación.
+- **SQLite → PostgreSQL** cambiando provider + adaptador (`@prisma/adapter-pg`).
 
 ## Cómo especializar el proyecto base a un sector
 
-El core es agnóstico; especializar es aditivo:
-
-1. **Vocabulario**: `Business.category` es una etiqueta libre; los textos de
-   UI están centralizados en los componentes (fácil de tematizar o traducir).
-2. **Campos propios del sector** (nº de silla, box, matrícula del coche…):
-   añadir columnas o un JSON de metadatos a `Service`/`Appointment`; el motor
-   de huecos y la política de cancelación no cambian.
-3. **Recursos por empleado/sala**: el modelo ya separa `BusinessHour` del
-   negocio; añadir una entidad `Resource` con sus horas y un `resourceId` en
-   `Appointment` extiende el motor de huecos sin reescribirlo (la consulta de
-   solapamiento pasa a filtrar por recurso).
-4. **Reglas de precio del sector** (recargos, bonos, packs): el precio se
-   congela al reservar (`priceCents`), de modo que cualquier motor de precios
-   puede enchufarse en `createAppointment` sin afectar al histórico.
+1. **Vocabulario**: `Business.category` es una etiqueta libre; textos de UI
+   centralizados en componentes.
+2. **Campos del sector**: columnas o JSON de metadatos en
+   `Service`/`Appointment`; el motor de huecos no cambia.
+3. **Recursos físicos** (salas, boxes, sillones): el patrón `StaffMember` ya
+   modela agendas paralelas; duplicarlo para `Resource` es directo.
+4. **Precios del sector**: el precio se congela al reservar; cualquier motor
+   de precios se enchufa en `createAppointment` sin afectar al histórico.
 
 ## Roadmap sugerido
 
-- Pagos reales (Stripe): guardar tarjeta al reservar y ejecutar el cargo de
-  cancelación tardía automáticamente (hoy el cargo queda registrado y el
-  cobro es responsabilidad del negocio).
-- Notificaciones (email/SMS) de confirmación y recordatorio.
-- Multi-empleado: agenda por profesional con horarios propios.
+- Verificación de email y recuperación de contraseña.
 - Rate limiting en `/api/auth/*` y auditoría de accesos.
-- Recuperación de contraseña y verificación de email.
-- i18n completo (los textos están en español).
+- Bonos/packs de sesiones y cupones.
+- Portal del empleado (rol STAFF con su propia agenda).
+- i18n completo (textos hoy en español).
 
 ## Tests
 
@@ -156,7 +200,7 @@ El core es agnóstico; especializar es aditivo:
 npm test
 ```
 
-22 tests cubren el motor de disponibilidad (horarios, tramos múltiples,
-solapamientos, antelaciones, cierres, zona horaria) y la política de
-cancelación (límite exacto de 24h, porcentajes, redondeos, ventanas
-personalizadas).
+31 tests cubren el motor de disponibilidad (horarios, tramos, solapamientos,
+antelaciones, cierres, zona horaria), la agenda multi-empleado (horario
+propio/heredado, unión de huecos, asignación al menos cargado) y la política
+de cancelación (límite exacto, porcentajes, redondeos).

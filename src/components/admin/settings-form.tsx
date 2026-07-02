@@ -15,6 +15,12 @@ interface BusinessSettings {
   slotGranularityMinutes: number;
   maxAdvanceBookingDays: number;
   minNoticeMinutes: number;
+  requireCardToBook: boolean;
+  remindersEnabled: boolean;
+  reminderHoursBefore: number;
+  notifyByEmail: boolean;
+  notifyBySms: boolean;
+  notifyByWhatsapp: boolean;
 }
 
 export function SettingsForm({ business }: { business: BusinessSettings }) {
@@ -34,6 +40,8 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
     const str = (k: string) => String(form.get(k) ?? "").trim();
     const num = (k: string) => Number(form.get(k));
 
+    const bool = (k: string) => form.get(k) === "on";
+
     const res = await fetch("/api/admin/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -49,6 +57,12 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
         slotGranularityMinutes: num("slotGranularityMinutes"),
         maxAdvanceBookingDays: num("maxAdvanceBookingDays"),
         minNoticeMinutes: num("minNoticeMinutes"),
+        requireCardToBook: bool("requireCardToBook"),
+        remindersEnabled: bool("remindersEnabled"),
+        reminderHoursBefore: num("reminderHoursBefore"),
+        notifyByEmail: bool("notifyByEmail"),
+        notifyBySms: bool("notifyBySms"),
+        notifyByWhatsapp: bool("notifyByWhatsapp"),
       }),
     });
     const json = await res.json().catch(() => ({}));
@@ -199,6 +213,93 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
               className="input"
             />
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 className="font-semibold text-slate-900">
+          Recordatorios y notificaciones
+        </h2>
+        <p className="text-xs text-slate-500">
+          Confirmación al reservar y recordatorio con enlace de asistencia
+          (&quot;¿vas a venir?&quot;) antes de cada cita.
+        </p>
+        <div className="mt-4 space-y-3">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              name="remindersEnabled"
+              defaultChecked={business.remindersEnabled}
+            />
+            Enviar recordatorio antes de la cita
+          </label>
+          <div className="max-w-xs">
+            <label className="label">Horas de antelación del recordatorio</label>
+            <input
+              name="reminderHoursBefore"
+              type="number"
+              min={1}
+              max={336}
+              required
+              defaultValue={business.reminderHoursBefore}
+              className="input"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Consejo: mayor que la ventana de cancelación, para que el cliente
+              aún pueda cancelar gratis desde el recordatorio.
+            </p>
+          </div>
+          <p className="pt-1 text-sm font-medium text-slate-700">Canales</p>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                name="notifyByEmail"
+                defaultChecked={business.notifyByEmail}
+              />
+              Email
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                name="notifyBySms"
+                defaultChecked={business.notifyBySms}
+              />
+              SMS
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                name="notifyByWhatsapp"
+                defaultChecked={business.notifyByWhatsapp}
+              />
+              WhatsApp
+            </label>
+          </div>
+          <p className="text-xs text-slate-400">
+            Cada canal requiere su proveedor configurado en el servidor (SMTP,
+            Twilio, UltraMsg o Evolution API). Sin configurar, los mensajes
+            quedan registrados pero no se envían.
+          </p>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 className="font-semibold text-slate-900">Pagos</h2>
+        <div className="mt-4 space-y-2">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              name="requireCardToBook"
+              defaultChecked={business.requireCardToBook}
+            />
+            Exigir tarjeta guardada para reservar
+          </label>
+          <p className="text-xs text-slate-400">
+            Permite cobrar automáticamente el cargo por cancelación tardía o
+            no-show. Requiere Stripe configurado en el servidor; sin tarjeta
+            guardada, el cargo queda registrado para cobrarlo en persona.
+          </p>
         </div>
       </div>
 

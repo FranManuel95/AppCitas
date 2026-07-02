@@ -10,7 +10,10 @@ const createSchema = z.object({
   businessId: z.string().min(1),
   serviceId: z.string().min(1),
   startAt: z.iso.datetime(),
+  staffId: z.string().optional(),
   notes: z.string().trim().max(500).optional(),
+  // Teléfono para recordatorios por SMS/WhatsApp (se guarda en el perfil)
+  phone: z.string().trim().min(6).max(30).optional(),
 });
 
 // POST /api/appointments — reservar (cliente autenticado)
@@ -18,11 +21,19 @@ export const POST = apiHandler(async (request: Request) => {
   const user = await apiRequireUser();
   const data = createSchema.parse(await request.json());
 
+  if (data.phone) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { phone: data.phone },
+    });
+  }
+
   const appointment = await createAppointment({
     businessId: data.businessId,
     serviceId: data.serviceId,
     clientId: user.id,
     startAt: new Date(data.startAt),
+    staffId: data.staffId,
     notes: data.notes,
   });
 
@@ -36,6 +47,7 @@ export const POST = apiHandler(async (request: Request) => {
         priceCents: appointment.priceCents,
         service: appointment.service.name,
         business: appointment.business.name,
+        staff: appointment.staff?.name ?? null,
         freeCancellationUntil: cancellationDeadline(
           appointment.startAt,
           appointment.business.cancellationWindowHours,
@@ -54,6 +66,7 @@ export const GET = apiHandler(async () => {
     where: { clientId: user.id },
     include: {
       service: { select: { name: true, durationMinutes: true } },
+      staff: { select: { name: true } },
       business: {
         select: {
           name: true,

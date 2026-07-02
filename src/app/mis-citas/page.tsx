@@ -16,6 +16,7 @@ export default async function MyAppointmentsPage() {
     where: { clientId: user.id },
     include: {
       service: { select: { name: true, durationMinutes: true } },
+      staff: { select: { name: true } },
       business: {
         select: {
           name: true,
@@ -73,6 +74,7 @@ export default async function MyAppointmentsPage() {
                     <p className="mt-1 text-sm text-slate-600">
                       {formatDate(a.startAt, a.business.timezone)} ·{" "}
                       {a.service.durationMinutes} min
+                      {a.staff ? ` · con ${a.staff.name}` : ""}
                     </p>
                     <p className="mt-1 text-sm font-medium text-slate-700">
                       {formatCents(a.priceCents, a.business.currency)}
