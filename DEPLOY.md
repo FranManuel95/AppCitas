@@ -71,6 +71,12 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
      conexión **directa** (5432).
 3. Ventaja añadida: el *Table Editor* de Supabase te deja inspeccionar citas,
    clientes e ingresos visualmente, y los backups vienen incluidos.
+4. **Sin acceso directo al puerto 5432** (red corporativa, sandbox…): pega el
+   contenido de `scripts/supabase-bootstrap.sql` en el **SQL Editor** del
+   panel de Supabase y ejecútalo. Crea el esquema completo, activa RLS en
+   todas las tablas (la API pública de Supabase no podrá leer tus datos; la
+   app no se ve afectada) y deja el registro de migraciones coherente para
+   futuros `prisma migrate deploy`.
 
 > ¿Y Airtable? No es apto como base de datos de esta app: sin transacciones
 > no se puede garantizar el anti doble-reserva, y su límite de 5 peticiones/s
