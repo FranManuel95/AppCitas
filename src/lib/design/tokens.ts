@@ -13,17 +13,17 @@
 
 /** Escala de marca. Cambiar el hue aquí + globals.css re-tiñe toda la app. */
 export const BRAND = {
-  50: "#f3f1fd",
-  100: "#e9e5fb",
-  200: "#d6cef8",
-  300: "#b9abf2",
-  400: "#977fe9",
-  500: "#7a5ce0",
-  600: "#5b3fd6",
-  700: "#4c32b8",
-  800: "#3f2b96",
-  900: "#352878",
-  950: "#21174d",
+  50: "#eff6ff",
+  100: "#dbeafe",
+  200: "#bfdbfe",
+  300: "#93c5fd",
+  400: "#60a5fa",
+  500: "#3b82f6",
+  600: "#2563eb",
+  700: "#1d4ed8",
+  800: "#1e40af",
+  900: "#1e3a8a",
+  950: "#172554",
 } as const;
 
 /** Tinta de texto para gráficos (idéntica a --color-ink*). */

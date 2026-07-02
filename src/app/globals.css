@@ -12,18 +12,18 @@
     `-strong` sobre fondo `-soft` ≥4.5:1, rellenos de gráfico ≥3:1.
 */
 @theme {
-  /* Escala de marca (violeta-índigo) */
-  --color-brand-50: #f3f1fd;
-  --color-brand-100: #e9e5fb;
-  --color-brand-200: #d6cef8;
-  --color-brand-300: #b9abf2;
-  --color-brand-400: #977fe9;
-  --color-brand-500: #7a5ce0;
-  --color-brand-600: #5b3fd6;
-  --color-brand-700: #4c32b8;
-  --color-brand-800: #3f2b96;
-  --color-brand-900: #352878;
-  --color-brand-950: #21174d;
+  /* Escala de marca (azul — variante clásica profesional) */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+  --color-brand-950: #172554;
 
   /* Neutrales semánticos (fríos, con un matiz violeta muy leve) */
   --color-surface: #ffffff;
@@ -49,10 +49,10 @@
   --color-info-soft: #e8f1fb;
   --color-info-strong: #1d5eb0;
 
-  /* Radios ligeramente más suaves que los de serie */
-  --radius-lg: 0.625rem;
-  --radius-xl: 0.875rem;
-  --radius-2xl: 1.125rem;
+  /* Radios contenidos: personalidad sobria de la variante azul */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
 
   /* Sombras por capas: elevación real en vez de un borde difuso */
   --shadow-xs:
