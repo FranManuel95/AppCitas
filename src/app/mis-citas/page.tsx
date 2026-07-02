@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/guards";
 import { SiteHeader } from "@/components/site-header";
 import { StatusBadge } from "@/components/status-badge";
 import { CancelAppointmentButton } from "@/components/cancel-appointment-button";
+import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { formatCents } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,11 @@ export const metadata = { title: "Mis citas" };
 
 export default async function MyAppointmentsPage() {
   const user = await requireUser();
+
+  const account = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { emailVerifiedAt: true },
+  });
 
   const appointments = await prisma.appointment.findMany({
     where: { clientId: user.id },
@@ -52,6 +58,9 @@ export default async function MyAppointmentsPage() {
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
+        {account && !account.emailVerifiedAt && (
+          <VerifyEmailBanner email={user.email} />
+        )}
         <h1 className="text-2xl font-bold text-slate-900">Mis citas</h1>
 
         <section className="mt-8">

@@ -15,8 +15,9 @@ export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
 // Estados que ocupan hueco en la agenda (una cita cancelada libera su hueco)
 export const BLOCKING_STATUSES: AppointmentStatus[] = ["CONFIRMED", "COMPLETED"];
 
-// Roles con acceso al panel de administración de un negocio
-export const ADMIN_ROLES: Role[] = ["OWNER", "STAFF", "SUPER_ADMIN"];
+// Roles con acceso al panel de administración de un negocio.
+// STAFF no administra: tiene su propio portal (/personal) con su agenda.
+export const ADMIN_ROLES: Role[] = ["OWNER", "SUPER_ADMIN"];
 
 export const STATUS_LABELS: Record<AppointmentStatus, string> = {
   CONFIRMED: "Confirmada",

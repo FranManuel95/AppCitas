@@ -23,15 +23,36 @@ model User {
   businessId   String?
   business     Business? @relation(fields: [businessId], references: [id])
 
+  emailVerifiedAt DateTime?
+
   // Cliente de la pasarela de pagos (Stripe) si guardó tarjeta
   stripeCustomerId String?
 
   appointments Appointment[] @relation("ClientAppointments")
+  authTokens   AuthToken[]
+  // Ficha de empleado vinculada (portal del empleado, rol STAFF)
+  staffProfile StaffMember?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([businessId])
+}
+
+// Tokens de un solo uso para verificación de email, restablecimiento de
+// contraseña e invitaciones de empleados. Se guarda solo el hash SHA-256.
+model AuthToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  // EMAIL_VERIFY | PASSWORD_RESET
+  type      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, type])
 }
 
 model Business {
@@ -89,6 +110,10 @@ model StaffMember {
   phone      String?
   color      String   @default("#0ea5e9")
   active     Boolean  @default(true)
+
+  // Cuenta de acceso al portal del empleado (rol STAFF), si se ha invitado
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
 
   // Horario propio; si no tiene tramos, hereda el horario del negocio
   hours        StaffHour[]

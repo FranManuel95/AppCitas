@@ -40,6 +40,7 @@ export default async function StaffPage() {
           phone: m.phone,
           color: m.color,
           active: m.active,
+          hasAccess: !!m.userId,
           hours: m.hours.map((h) => ({
             weekday: h.weekday,
             openTime: h.openTime,

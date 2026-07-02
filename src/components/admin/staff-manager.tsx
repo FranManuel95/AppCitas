@@ -17,6 +17,7 @@ interface StaffDTO {
   phone: string | null;
   color: string;
   active: boolean;
+  hasAccess: boolean;
   hours: HourRange[];
   serviceIds: string[];
 }
@@ -261,10 +262,27 @@ export function StaffManager({
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState<string | null>(null);
 
   function refresh() {
     setEditing(null);
     setCreating(false);
+    router.refresh();
+  }
+
+  async function invite(member: StaffDTO) {
+    setInviteMessage(null);
+    const res = await fetch(`/api/admin/staff/${member.id}/access`, {
+      method: "POST",
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setInviteMessage(json.error ?? "No se pudo enviar la invitación");
+      return;
+    }
+    setInviteMessage(
+      `Invitación enviada a ${json.email}: recibirá un enlace para establecer su contraseña.`,
+    );
     router.refresh();
   }
 
@@ -291,6 +309,11 @@ export function StaffManager({
         <button className="btn-primary" onClick={() => setCreating(true)}>
           + Añadir empleado
         </button>
+      )}
+      {inviteMessage && (
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          {inviteMessage}
+        </p>
       )}
       {creating && (
         <div className="card">
@@ -337,10 +360,23 @@ export function StaffManager({
                       {member.hours.length > 0
                         ? " · horario propio"
                         : " · horario del negocio"}
+                      {member.hasAccess && (
+                        <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          Portal activo
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  {!member.hasAccess && member.email && member.active && (
+                    <button
+                      className="btn-secondary"
+                      onClick={() => invite(member)}
+                    >
+                      Dar acceso
+                    </button>
+                  )}
                   <button
                     className="btn-secondary"
                     onClick={() => setEditing(member.id)}

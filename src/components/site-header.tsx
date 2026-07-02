@@ -6,6 +6,7 @@ import { LogoutButton } from "./logout-button";
 export async function SiteHeader() {
   const user = await getSessionUser();
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role) && !!user.businessId;
+  const isStaff = user?.role === "STAFF" && !!user.businessId;
 
   return (
     <header className="border-b border-slate-200 bg-white">
@@ -22,6 +23,13 @@ export async function SiteHeader() {
                   className="font-medium text-slate-600 hover:text-slate-900"
                 >
                   Panel del negocio
+                </Link>
+              ) : isStaff ? (
+                <Link
+                  href="/personal"
+                  className="font-medium text-slate-600 hover:text-slate-900"
+                >
+                  Mi agenda
                 </Link>
               ) : (
                 <Link

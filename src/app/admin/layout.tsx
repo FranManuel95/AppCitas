@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { LogoutButton } from "@/components/logout-button";
+import { VerifyEmailBanner } from "@/components/verify-email-banner";
 
 const NAV = [
   { href: "/admin", label: "Dashboard" },
@@ -20,10 +21,16 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const admin = await requireBusinessAdmin();
-  const business = await prisma.business.findUniqueOrThrow({
-    where: { id: admin.businessId },
-    select: { name: true, slug: true },
-  });
+  const [business, account] = await Promise.all([
+    prisma.business.findUniqueOrThrow({
+      where: { id: admin.businessId },
+      select: { name: true, slug: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: admin.id },
+      select: { emailVerifiedAt: true },
+    }),
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -68,7 +75,12 @@ export default async function AdminLayout({
             ))}
           </ul>
         </nav>
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1">
+          {account && !account.emailVerifiedAt && (
+            <VerifyEmailBanner email={admin.email} />
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

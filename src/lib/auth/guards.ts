@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { ADMIN_ROLES } from "@/lib/domain/types";
 import { DomainError } from "@/lib/domain/errors";
 import { getSessionUser, type SessionUser } from "./session";
@@ -44,4 +45,43 @@ export function isBusinessAdmin(
   return (
     !!user && ADMIN_ROLES.includes(user.role) && user.businessId === businessId
   );
+}
+
+// --- Portal del empleado (rol STAFF) ---------------------------------------
+
+export interface StaffSession extends SessionUser {
+  businessId: string;
+  staffId: string;
+  staffName: string;
+}
+
+async function resolveStaff(user: SessionUser): Promise<StaffSession | null> {
+  if (user.role !== "STAFF" || !user.businessId) return null;
+  const profile = await prisma.staffMember.findFirst({
+    where: { userId: user.id, businessId: user.businessId, active: true },
+    select: { id: true, name: true },
+  });
+  if (!profile) return null;
+  return {
+    ...user,
+    businessId: user.businessId,
+    staffId: profile.id,
+    staffName: profile.name,
+  };
+}
+
+export async function requireStaff(): Promise<StaffSession> {
+  const user = await requireUser();
+  const staff = await resolveStaff(user);
+  if (!staff) redirect("/");
+  return staff;
+}
+
+export async function apiRequireStaff(): Promise<StaffSession> {
+  const user = await apiRequireUser();
+  const staff = await resolveStaff(user);
+  if (!staff) {
+    throw new DomainError("Acceso restringido a empleados", "FORBIDDEN", 403);
+  }
+  return staff;
 }

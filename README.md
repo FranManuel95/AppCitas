@@ -30,7 +30,19 @@ solo si el negocio la exige.
 **Para negocios**: dashboard con KPIs y gráficas, agenda diaria por empleado,
 listado filtrable de citas, equipo con horarios propios y servicios asignados,
 CRUD de servicios, horario semanal + festivos, log de notificaciones, política
-de cancelación/recordatorios/pagos configurable.
+de cancelación/recordatorios/pagos configurable, e invitación de empleados a
+su propio portal.
+
+**Para empleados (rol STAFF)**: portal propio en `/personal` con su agenda
+diaria, datos de contacto del cliente y acciones de completar / no presentado
+sobre sus citas (sin acceso al panel de administración). El dueño les invita
+desde Equipo → "Dar acceso": reciben un email con un enlace de un solo uso
+para establecer su contraseña.
+
+**Cuentas**: verificación de email al registrarse (banner con reenvío hasta
+confirmar), recuperación de contraseña por enlace de un solo uso con caducidad
+(30 min) y rate limiting en todos los endpoints de autenticación (fuerza
+bruta, enumeración y abuso de reenvíos).
 
 **Integraciones** (todas opcionales; sin configurar, la app funciona y lo
 simula/registra):
@@ -79,6 +91,7 @@ Credenciales demo:
 |---|---|---|
 | Dueño (Estudio Aurora, 3 empleados) | `admin@demo.com` | `admin1234` |
 | Dueño (Barbería Norte, 2 empleados) | `barberia@demo.com` | `admin1234` |
+| Empleada (portal /personal) | `ana@demo.com` | `staff1234` |
 | Cliente | `cliente@demo.com` | `cliente1234` |
 
 Otros comandos: `npm test`, `npm run build && npm start` (producción; requiere
@@ -151,10 +164,25 @@ prisma/schema.prisma seed.ts    # modelo multi-tenant + dataset demo
 
 ### Modelo de datos
 
-`Business` (tenant) ← `User`, `Service`, `BusinessHour`, `Closure`,
-`StaffMember` (+`StaffHour` horario propio, +`StaffService` servicios que
-realiza), `Appointment` (estado, precio congelado, cargo, empleado, token de
-confirmación, estado de cobro) y `Notification` (outbox programado).
+`Business` (tenant) ← `User` (con `emailVerifiedAt` y vínculo opcional a su
+ficha de empleado), `Service`, `BusinessHour`, `Closure`, `StaffMember`
+(+`StaffHour` horario propio, +`StaffService` servicios que realiza),
+`Appointment` (estado, precio congelado, cargo, empleado, token de
+confirmación, estado de cobro), `Notification` (outbox programado) y
+`AuthToken` (tokens de un solo uso — verificación, reset, invitación — solo
+se persiste su hash SHA-256).
+
+### Seguridad de cuentas
+
+- **Verificación de email**: enlace de 24 h al registrarse; los enlaces de
+  reset/invitación también verifican (llegar al email demuestra propiedad).
+- **Recuperación de contraseña**: token de un solo uso (30 min), respuesta
+  uniforme que no revela si la cuenta existe.
+- **Rate limiting** (ventana deslizante en memoria; interfaz lista para
+  Redis multi-instancia): login 10/15 min por IP+cuenta, registros 5/h,
+  recuperación 3/15 min, reenvío de verificación 3/15 min.
+- **Separación de privilegios**: el panel `/admin` es solo del dueño; el
+  empleado opera únicamente sus citas vía `/api/staff/*`.
 
 ### Decisiones de escalabilidad
 
@@ -188,10 +216,9 @@ confirmación, estado de cobro) y `Notification` (outbox programado).
 
 ## Roadmap sugerido
 
-- Verificación de email y recuperación de contraseña.
-- Rate limiting en `/api/auth/*` y auditoría de accesos.
 - Bonos/packs de sesiones y cupones.
-- Portal del empleado (rol STAFF con su propia agenda).
+- Auditoría de accesos y revocación de sesiones activas (versionado de JWT).
+- Exportación de datos (CSV de citas/ingresos) y facturación.
 - i18n completo (textos hoy en español).
 
 ## Tests
@@ -200,7 +227,8 @@ confirmación, estado de cobro) y `Notification` (outbox programado).
 npm test
 ```
 
-31 tests cubren el motor de disponibilidad (horarios, tramos, solapamientos,
+35 tests cubren el motor de disponibilidad (horarios, tramos, solapamientos,
 antelaciones, cierres, zona horaria), la agenda multi-empleado (horario
-propio/heredado, unión de huecos, asignación al menos cargado) y la política
-de cancelación (límite exacto, porcentajes, redondeos).
+propio/heredado, unión de huecos, asignación al menos cargado), la política
+de cancelación (límite exacto, porcentajes, redondeos) y el rate limiter
+(ventana deslizante, aislamiento por clave, tiempo de espera).

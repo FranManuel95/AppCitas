@@ -224,6 +224,7 @@ async function main() {
   ]);
 
   console.log("Creando usuarios…");
+  const now0 = new Date();
   const [ownerHash, clientHash] = await Promise.all([
     hashPassword("admin1234"),
     hashPassword("cliente1234"),
@@ -236,6 +237,7 @@ async function main() {
       name: "Ana Propietaria",
       role: "OWNER",
       businessId: aurora.id,
+      emailVerifiedAt: now0,
     },
   });
   await prisma.user.create({
@@ -245,7 +247,24 @@ async function main() {
       name: "Braulio Norte",
       role: "OWNER",
       businessId: barberia.id,
+      emailVerifiedAt: now0,
     },
+  });
+
+  // Cuenta del portal del empleado para Ana García (staff demo)
+  const staffUser = await prisma.user.create({
+    data: {
+      email: "ana@demo.com",
+      passwordHash: await hashPassword("staff1234"),
+      name: "Ana García",
+      role: "STAFF",
+      businessId: aurora.id,
+      emailVerifiedAt: now0,
+    },
+  });
+  await prisma.staffMember.update({
+    where: { id: auroraStaff[0].id },
+    data: { userId: staffUser.id },
   });
 
   const demoClient = await prisma.user.create({
@@ -255,6 +274,7 @@ async function main() {
       name: "Carlos Cliente",
       phone: "+34 600 111 222",
       role: "CLIENT",
+      emailVerifiedAt: now0,
     },
   });
 
@@ -281,6 +301,7 @@ async function main() {
           // Dos de cada tres clientes tienen teléfono (para SMS/WhatsApp)
           phone: i % 3 === 2 ? null : `+34 6${String(10000000 + i * 111111).slice(0, 8)}`,
           role: "CLIENT",
+          emailVerifiedAt: now0,
         },
       }),
     );
@@ -474,6 +495,7 @@ async function main() {
   console.log("Credenciales demo:");
   console.log("  Dueño Estudio Aurora → admin@demo.com / admin1234");
   console.log("  Dueño Barbería Norte → barberia@demo.com / admin1234");
+  console.log("  Empleada (portal) → ana@demo.com / staff1234");
   console.log("  Cliente → cliente@demo.com / cliente1234");
 }
 

@@ -10,10 +10,15 @@ export function AppointmentActions({
   appointmentId,
   status,
   isPast,
+  endpointBase = "/api/admin/appointments",
+  canCancel = true,
 }: {
   appointmentId: string;
   status: string;
   isPast: boolean;
+  // El portal del empleado usa /api/staff/appointments (solo sus citas)
+  endpointBase?: string;
+  canCancel?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -22,7 +27,7 @@ export function AppointmentActions({
   async function setStatus(next: string) {
     setBusy(true);
     setError(null);
-    const res = await fetch(`/api/admin/appointments/${appointmentId}/status`, {
+    const res = await fetch(`${endpointBase}/${appointmentId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: next }),
@@ -74,7 +79,7 @@ export function AppointmentActions({
           </button>
         </>
       )}
-      {status === "CONFIRMED" && !isPast && (
+      {status === "CONFIRMED" && !isPast && canCancel && (
         <button className={buttonClass} disabled={busy} onClick={cancelByBusiness}>
           Cancelar (sin cargo)
         </button>

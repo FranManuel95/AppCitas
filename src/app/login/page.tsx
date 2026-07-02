@@ -50,6 +50,11 @@ export default function LoginPage() {
             </Link>
             .
           </p>
+          <p className="mt-2 text-sm text-slate-500">
+            <Link href="/recuperar" className="text-indigo-600">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </p>
         </div>
       </main>
     </>

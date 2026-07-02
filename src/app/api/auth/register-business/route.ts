@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
+import { createAuthToken } from "@/lib/auth/tokens";
+import { sendVerificationEmail } from "@/lib/auth/mailer";
 import { DomainError } from "@/lib/domain/errors";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   ownerName: z.string().trim().min(2).max(100),
@@ -26,6 +29,7 @@ function slugify(value: string): string {
 }
 
 export const POST = apiHandler(async (request: Request) => {
+  enforceRateLimit(request, "register", { limit: 5, windowMs: 60 * 60_000 });
   const data = schema.parse(await request.json());
 
   const existing = await prisma.user.findUnique({
@@ -87,6 +91,14 @@ export const POST = apiHandler(async (request: Request) => {
     role: "OWNER",
     businessId: business.id,
   });
+
+  // Verificación de email: el fallo de envío no bloquea el registro
+  try {
+    const token = await createAuthToken(user.id, "EMAIL_VERIFY", 24 * 60);
+    await sendVerificationEmail({ to: user.email, name: user.name, token });
+  } catch (error) {
+    console.error("[register-business] no se pudo enviar la verificación:", error);
+  }
 
   return NextResponse.json(
     { business: { id: business.id, slug: business.slug, name: business.name } },

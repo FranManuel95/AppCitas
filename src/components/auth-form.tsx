@@ -53,11 +53,9 @@ export function AuthForm({
 
     const next = searchParams.get("next");
     const isAdmin =
-      adminRedirect ||
-      json.user?.role === "OWNER" ||
-      json.user?.role === "STAFF" ||
-      !!json.business;
-    router.push(next ?? (isAdmin ? "/admin" : "/"));
+      adminRedirect || json.user?.role === "OWNER" || !!json.business;
+    const isStaff = json.user?.role === "STAFF";
+    router.push(next ?? (isAdmin ? "/admin" : isStaff ? "/personal" : "/"));
     router.refresh();
   }
 
