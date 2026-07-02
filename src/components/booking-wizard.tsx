@@ -2,8 +2,24 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Store,
+  Tag,
+  User,
+  Wallet,
+} from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { fmt, intlLocale, type Dict, type Locale } from "@/lib/i18n/shared";
+import { cn } from "@/lib/cn";
+import { Card } from "@/components/ui/card";
+import { Stepper } from "@/components/ui/stepper";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Field, Input, Textarea } from "@/components/ui/field";
 import { CardSetup } from "./card-setup";
 
 type BookingDict = Dict["booking"];
@@ -60,6 +76,11 @@ function addDays(dateISO: string, days: number): string {
   const d = new Date(`${dateISO}T00:00:00`);
   d.setDate(d.getDate() + days);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Quita un posible prefijo numérico ("1. ", "2) ") de la etiqueta de paso. */
+function stepLabel(label: string): string {
+  return label.replace(/^\s*\d+\s*[.)]?\s*/, "");
 }
 
 export function BookingWizard({
@@ -229,27 +250,27 @@ export function BookingWizard({
 
   if (confirmed) {
     return (
-      <div className="card mx-auto max-w-lg text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl">
-          ✓
+      <Card className="mx-auto max-w-lg p-8 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success-soft text-success-strong">
+          <CheckCircle2 className="h-8 w-8" aria-hidden />
         </div>
-        <h2 className="mt-4 text-xl font-semibold text-slate-900">
+        <h2 className="mt-5 text-2xl font-semibold tracking-tight text-ink">
           {t.confirmedTitle}
         </h2>
-        <p className="mt-2 text-slate-600">
+        <p className="mt-2 text-ink-soft">
           {confirmed.service}
           {confirmed.staff ? fmt(t.confirmedWith, { staff: confirmed.staff }) : ""} ·{" "}
           {dateFormatter.format(new Date(confirmed.startAt))}
         </p>
-        <p className="mt-2 text-sm text-slate-500">{t.confirmedNotice}</p>
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="mt-2 text-sm text-ink-muted">{t.confirmedNotice}</p>
+        <div className="mt-4 rounded-lg bg-warning-soft px-3 py-2.5 text-sm text-warning-strong">
           {fmt(t.freeCancelUntil, {
             deadline: dateFormatter.format(
               new Date(confirmed.freeCancellationUntil),
             ),
           })}
-        </p>
-        <div className="mt-6 flex justify-center gap-3">
+        </div>
+        <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
           <Link href="/mis-citas" className="btn-primary">
             {t.seeMyAppointments}
           </Link>
@@ -257,349 +278,385 @@ export function BookingWizard({
             {t.backToBusiness}
           </Link>
         </div>
-      </div>
+      </Card>
     );
   }
 
-  let step = 1;
+  const steps = [
+    stepLabel(t.stepService),
+    ...(hasStaff ? [stepLabel(t.stepStaff)] : []),
+    stepLabel(t.stepDate),
+    stepLabel(t.stepConfirm),
+  ];
+  // Paso activo según lo que falte por elegir: servicio → hueco → confirmación
+  const currentStep = !serviceId
+    ? 0
+    : !selectedSlot
+      ? steps.length - 2
+      : steps.length - 1;
+
   const canBook =
     isLoggedIn && !!selectedSlot && (cardSaved || !business.requireCardToBook);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      <div className="space-y-6 lg:col-span-2">
-        {/* Servicio */}
-        <section className="card">
-          <h2 className="font-semibold text-slate-900">
-            {step++}. {t.stepService}
-          </h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {services.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  setServiceId(s.id);
-                  setStaffId("");
-                }}
-                className={`rounded-lg border p-3 text-left transition-colors ${
-                  s.id === serviceId
-                    ? "border-indigo-500 bg-indigo-50"
-                    : "border-slate-200 bg-white hover:border-slate-300"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-slate-900">{s.name}</span>
-                  <span className="text-sm font-semibold text-slate-700">
-                    {formatCents(s.priceCents, business.currency)}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  {s.durationMinutes} min
-                </p>
-              </button>
-            ))}
-          </div>
-        </section>
+    <div className="space-y-6">
+      <Card className="px-4 py-4 sm:px-6">
+        <Stepper steps={steps} current={currentStep} />
+      </Card>
 
-        {/* Profesional (solo negocios con equipo) */}
-        {hasStaff && (
-          <section className="card">
-            <h2 className="font-semibold text-slate-900">
-              {step++}. {t.stepStaff}
-            </h2>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                onClick={() => setStaffId("")}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                  staffId === ""
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                    : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
-                }`}
-              >
-                {t.anyStaff}
-              </button>
-              {qualifiedStaff.map((m) => (
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          {/* Servicio */}
+          <Card>
+            <SectionHeader as="h2" title={stepLabel(t.stepService)} />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {services.map((s) => (
                 <button
-                  key={m.id}
-                  onClick={() => setStaffId(m.id)}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                    staffId === m.id
-                      ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                      : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
-                  }`}
+                  key={s.id}
+                  onClick={() => {
+                    setServiceId(s.id);
+                    setStaffId("");
+                  }}
+                  className={cn(
+                    "rounded-xl border p-4 text-left transition-colors",
+                    s.id === serviceId
+                      ? "border-brand-600 bg-brand-50 ring-1 ring-brand-600"
+                      : "border-border bg-surface hover:border-brand-300",
+                  )}
                 >
-                  <span
-                    className="inline-block h-2.5 w-2.5 rounded-full"
-                    style={{ background: m.color }}
-                  />
-                  {m.name}
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="font-medium text-ink">{s.name}</span>
+                    <span className="shrink-0 text-sm font-semibold text-ink">
+                      {formatCents(s.priceCents, business.currency)}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 flex items-center gap-1 text-xs text-ink-muted">
+                    <Clock className="h-3.5 w-3.5" aria-hidden />
+                    {s.durationMinutes} min
+                  </p>
                 </button>
               ))}
             </div>
-            {qualifiedStaff.length === 0 && (
-              <p className="mt-3 text-sm text-slate-500">
-                {t.noStaffForService}
-              </p>
-            )}
-          </section>
-        )}
+          </Card>
 
-        {/* Fecha y hora */}
-        <section className="card">
-          <h2 className="font-semibold text-slate-900">
-            {step++}. {t.stepDate}
-          </h2>
-          <div className="mt-4">
-            <label className="label" htmlFor="fecha">
-              {t.date}
-            </label>
-            <input
-              id="fecha"
-              type="date"
-              className="input max-w-xs"
-              value={dateISO}
-              min={todayISO()}
-              max={addDays(todayISO(), business.maxAdvanceBookingDays)}
-              onChange={(e) => setDateISO(e.target.value)}
-            />
-          </div>
-          <div className="mt-4">
-            {loadingSlots && (
-              <p className="text-sm text-slate-500">{t.searchingSlots}</p>
-            )}
-            {!loadingSlots && slots && slots.length === 0 && (
-              <p className="text-sm text-slate-500">
-                {t.noSlots}
-              </p>
-            )}
-            {!loadingSlots && slots && slots.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {slots.map((slot) => (
+          {/* Profesional (solo negocios con equipo) */}
+          {hasStaff && (
+            <Card>
+              <SectionHeader as="h2" title={stepLabel(t.stepStaff)} />
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  onClick={() => setStaffId("")}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                    staffId === ""
+                      ? "border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600"
+                      : "border-border bg-surface text-ink-soft hover:border-brand-300",
+                  )}
+                >
+                  {t.anyStaff}
+                </button>
+                {qualifiedStaff.map((m) => (
                   <button
-                    key={slot.startAt}
-                    onClick={() => setSelectedSlot(slot)}
-                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-                      selectedSlot?.startAt === slot.startAt
-                        ? "border-indigo-600 bg-indigo-600 text-white"
-                        : "border-slate-300 bg-white text-slate-700 hover:border-indigo-400"
-                    }`}
+                    key={m.id}
+                    onClick={() => setStaffId(m.id)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                      staffId === m.id
+                        ? "border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600"
+                        : "border-border bg-surface text-ink-soft hover:border-brand-300",
+                    )}
                   >
-                    {slot.label}
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full"
+                      style={{ background: m.color }}
+                      aria-hidden
+                    />
+                    {m.name}
                   </button>
                 ))}
               </div>
-            )}
-          </div>
-        </section>
-
-        {/* Confirmación */}
-        <section className="card">
-          <h2 className="font-semibold text-slate-900">
-            {step++}. {t.stepConfirm}
-          </h2>
-
-          {isLoggedIn && !userHasPhone && (
-            <div className="mt-4">
-              <label className="label" htmlFor="telefono">
-                {t.phoneLabel}
-              </label>
-              <input
-                id="telefono"
-                type="tel"
-                className="input max-w-xs"
-                placeholder="+34 600 000 000"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
+              {qualifiedStaff.length === 0 && (
+                <p className="mt-3 rounded-lg bg-surface-3 px-3 py-2.5 text-sm text-ink-muted">
+                  {t.noStaffForService}
+                </p>
+              )}
+            </Card>
           )}
 
-          {/* Promoción: bono del cliente o cupón (excluyentes) */}
-          {isLoggedIn && myPackages.length > 0 && (
-            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-              <label className="flex items-center gap-2 text-sm font-medium text-emerald-800">
-                <input
-                  type="checkbox"
-                  checked={!!usePackageId}
-                  onChange={(e) =>
-                    setUsePackageId(e.target.checked ? myPackages[0].id : "")
-                  }
+          {/* Fecha y hora */}
+          <Card>
+            <SectionHeader as="h2" title={stepLabel(t.stepDate)} />
+            <Field label={t.date} htmlFor="fecha" className="mt-4">
+              <Input
+                id="fecha"
+                type="date"
+                className="max-w-xs"
+                value={dateISO}
+                min={todayISO()}
+                max={addDays(todayISO(), business.maxAdvanceBookingDays)}
+                onChange={(e) => setDateISO(e.target.value)}
+              />
+            </Field>
+            <div className="mt-4">
+              {loadingSlots && (
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                  <span className="sr-only">{t.searchingSlots}</span>
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <Skeleton key={i} className="h-9" />
+                  ))}
+                </div>
+              )}
+              {!loadingSlots && slots && slots.length === 0 && (
+                <p className="rounded-lg bg-surface-3 px-3 py-2.5 text-sm text-ink-muted">
+                  {t.noSlots}
+                </p>
+              )}
+              {!loadingSlots && slots && slots.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                  {slots.map((slot) => (
+                    <button
+                      key={slot.startAt}
+                      onClick={() => setSelectedSlot(slot)}
+                      className={cn(
+                        "rounded-lg border px-2 py-2 text-sm font-medium tabular-nums transition-colors",
+                        selectedSlot?.startAt === slot.startAt
+                          ? "border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600"
+                          : "border-border bg-surface text-ink-soft hover:border-brand-300",
+                      )}
+                    >
+                      {slot.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Confirmación */}
+          <Card>
+            <SectionHeader as="h2" title={stepLabel(t.stepConfirm)} />
+
+            {isLoggedIn && !userHasPhone && (
+              <Field label={t.phoneLabel} htmlFor="telefono" className="mt-4">
+                <Input
+                  id="telefono"
+                  type="tel"
+                  className="max-w-xs"
+                  placeholder="+34 600 000 000"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                 />
-                {fmt(t.usePackage, {
-                  name: myPackages[0].name,
-                  n: myPackages[0].remainingSessions,
-                })}
-              </label>
-              {usePackageId && (
-                <p className="mt-1 text-xs text-emerald-700">
-                  {t.packageNote}
-                </p>
-              )}
-            </div>
-          )}
+              </Field>
+            )}
 
-          {isLoggedIn && !usePackageId && (
-            <div className="mt-4">
-              <label className="label" htmlFor="cupon">
-                {t.couponLabel}
-              </label>
-              <input
-                id="cupon"
-                className="input max-w-xs uppercase"
-                placeholder={t.couponPlaceholder}
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              />
-            </div>
-          )}
-
-          <div className="mt-4">
-            <label className="label" htmlFor="notas">
-              {t.notesLabel}
-            </label>
-            <textarea
-              id="notas"
-              className="input"
-              rows={2}
-              maxLength={500}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-
-          {/* Tarjeta (solo si el negocio la exige) */}
-          {isLoggedIn && business.requireCardToBook && (
-            <div className="mt-4">
-              <p className="label">{t.cardTitle}</p>
-              <p className="mb-2 text-xs text-slate-500">
-                {fmt(t.cardNote, { hours: business.cancellationWindowHours })}
-              </p>
-              {checkingCard ? (
-                <p className="text-sm text-slate-500">{t.cardChecking}</p>
-              ) : cardSaved ? (
-                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                  {t.cardSaved}
-                </p>
-              ) : (
-                <CardSetup onSaved={() => setCardSaved(true)} />
-              )}
-            </div>
-          )}
-
-          {error && (
-            <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              {error}
-            </p>
-          )}
-          {isLoggedIn ? (
-            <button
-              className="btn-primary mt-4 w-full sm:w-auto"
-              disabled={!canBook || submitting}
-              onClick={book}
-            >
-              {submitting
-                ? t.booking
-                : !selectedSlot
-                  ? t.chooseSlot
-                  : business.requireCardToBook && !cardSaved
-                    ? t.saveCardFirst
-                    : service
-                      ? fmt(t.bookCta, {
-                          service: service.name,
-                          slot: selectedSlot.label,
-                        })
-                      : t.stepConfirm}
-            </button>
-          ) : (
-            <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-              <Link
-                href={`/login?next=/b/${business.slug}/reservar${serviceId ? `?servicio=${serviceId}` : ""}`}
-                className="font-medium text-indigo-600"
-              >
-                {t.loginPrompt1}
-              </Link>{" "}
-              {t.loginPrompt2}{" "}
-              <Link
-                href={`/register?next=/b/${business.slug}/reservar${serviceId ? `?servicio=${serviceId}` : ""}`}
-                className="font-medium text-indigo-600"
-              >
-                {t.loginPrompt3}
-              </Link>{" "}
-              {t.loginPrompt4}
-            </div>
-          )}
-        </section>
-      </div>
-
-      <aside>
-        <div className="card sticky top-6">
-          <h2 className="font-semibold text-slate-900">{t.summary}</h2>
-          <dl className="mt-3 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-slate-500">{t.business}</dt>
-              <dd className="text-slate-800">{business.name}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">{t.service}</dt>
-              <dd className="text-slate-800">{service?.name ?? "—"}</dd>
-            </div>
-            {hasStaff && (
-              <div className="flex justify-between">
-                <dt className="text-slate-500">{t.staff}</dt>
-                <dd className="text-slate-800">
-                  {staffId
-                    ? (qualifiedStaff.find((m) => m.id === staffId)?.name ?? "—")
-                    : t.anyStaff}
-                </dd>
+            {/* Promoción: bono del cliente o cupón (excluyentes) */}
+            {isLoggedIn && myPackages.length > 0 && (
+              <div className="mt-4 rounded-lg border border-border bg-success-soft p-3">
+                <label className="flex items-center gap-2 text-sm font-medium text-success-strong">
+                  <input
+                    type="checkbox"
+                    className="accent-brand-600"
+                    checked={!!usePackageId}
+                    onChange={(e) =>
+                      setUsePackageId(e.target.checked ? myPackages[0].id : "")
+                    }
+                  />
+                  {fmt(t.usePackage, {
+                    name: myPackages[0].name,
+                    n: myPackages[0].remainingSessions,
+                  })}
+                </label>
+                {usePackageId && (
+                  <p className="mt-1 text-xs text-success-strong">
+                    {t.packageNote}
+                  </p>
+                )}
               </div>
             )}
-            <div className="flex justify-between">
-              <dt className="text-slate-500">{t.duration}</dt>
-              <dd className="text-slate-800">
-                {service ? `${service.durationMinutes} min` : "—"}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">{t.dateLabel}</dt>
-              <dd className="text-right text-slate-800">
-                {selectedSlot
-                  ? dateFormatter.format(new Date(selectedSlot.startAt))
-                  : dateISO}
-              </dd>
-            </div>
-            <div className="flex justify-between border-t border-slate-100 pt-2">
-              <dt className="font-medium text-slate-700">{t.price}</dt>
-              <dd className="font-semibold text-slate-900">
-                {usePackageId ? (
-                  <>
-                    <span className="mr-1 text-slate-400 line-through">
-                      {service
-                        ? formatCents(service.priceCents, business.currency)
-                        : ""}
-                    </span>
-                    {t.packagePrice}
-                  </>
-                ) : service ? (
-                  formatCents(service.priceCents, business.currency)
-                ) : (
-                  "—"
-                )}
-              </dd>
-            </div>
-            {!usePackageId && couponCode.trim() && (
-              <p className="text-xs text-slate-500">
-                {fmt(t.couponWillValidate, { code: couponCode.trim() })}
-              </p>
+
+            {isLoggedIn && !usePackageId && (
+              <Field label={t.couponLabel} htmlFor="cupon" className="mt-4">
+                <Input
+                  id="cupon"
+                  className="max-w-xs uppercase"
+                  placeholder={t.couponPlaceholder}
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                />
+              </Field>
             )}
-          </dl>
-          <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            {fmt(t.policyShort, {
-              hours: business.cancellationWindowHours,
-              percent: business.lateCancellationFeePercent,
-            })}
-          </p>
+
+            <Field label={t.notesLabel} htmlFor="notas" className="mt-4">
+              <Textarea
+                id="notas"
+                rows={2}
+                maxLength={500}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </Field>
+
+            {/* Tarjeta (solo si el negocio la exige) */}
+            {isLoggedIn && business.requireCardToBook && (
+              <div className="mt-4">
+                <p className="label">{t.cardTitle}</p>
+                <p className="mb-2 text-xs text-ink-muted">
+                  {fmt(t.cardNote, { hours: business.cancellationWindowHours })}
+                </p>
+                {checkingCard ? (
+                  <div>
+                    <span className="sr-only">{t.cardChecking}</span>
+                    <Skeleton className="h-10 w-full max-w-xs" />
+                  </div>
+                ) : cardSaved ? (
+                  <p className="rounded-lg bg-success-soft px-3 py-2 text-sm font-medium text-success-strong">
+                    {t.cardSaved}
+                  </p>
+                ) : (
+                  <CardSetup onSaved={() => setCardSaved(true)} />
+                )}
+              </div>
+            )}
+          </Card>
         </div>
-      </aside>
+
+        <aside>
+          <Card className="sticky top-6">
+            <h2 className="font-semibold text-ink">{t.summary}</h2>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <dt className="flex shrink-0 items-center gap-2 text-ink-muted">
+                  <Store className="h-4 w-4" aria-hidden />
+                  {t.business}
+                </dt>
+                <dd className="text-right font-medium text-ink">
+                  {business.name}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="flex shrink-0 items-center gap-2 text-ink-muted">
+                  <Tag className="h-4 w-4" aria-hidden />
+                  {t.service}
+                </dt>
+                <dd className="text-right font-medium text-ink">
+                  {service?.name ?? "—"}
+                </dd>
+              </div>
+              {hasStaff && (
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="flex shrink-0 items-center gap-2 text-ink-muted">
+                    <User className="h-4 w-4" aria-hidden />
+                    {t.staff}
+                  </dt>
+                  <dd className="text-right font-medium text-ink">
+                    {staffId
+                      ? (qualifiedStaff.find((m) => m.id === staffId)?.name ??
+                        "—")
+                      : t.anyStaff}
+                  </dd>
+                </div>
+              )}
+              <div className="flex items-start justify-between gap-3">
+                <dt className="flex shrink-0 items-center gap-2 text-ink-muted">
+                  <Clock className="h-4 w-4" aria-hidden />
+                  {t.duration}
+                </dt>
+                <dd className="text-right font-medium text-ink">
+                  {service ? `${service.durationMinutes} min` : "—"}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="flex shrink-0 items-center gap-2 text-ink-muted">
+                  <CalendarDays className="h-4 w-4" aria-hidden />
+                  {t.dateLabel}
+                </dt>
+                <dd className="text-right font-medium text-ink">
+                  {selectedSlot
+                    ? dateFormatter.format(new Date(selectedSlot.startAt))
+                    : dateISO}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
+                <dt className="flex shrink-0 items-center gap-2 font-medium text-ink-soft">
+                  <Wallet className="h-4 w-4" aria-hidden />
+                  {t.price}
+                </dt>
+                <dd className="text-right font-semibold text-ink">
+                  {usePackageId ? (
+                    <>
+                      <span className="mr-1 font-normal text-ink-muted line-through">
+                        {service
+                          ? formatCents(service.priceCents, business.currency)
+                          : ""}
+                      </span>
+                      {t.packagePrice}
+                    </>
+                  ) : service ? (
+                    formatCents(service.priceCents, business.currency)
+                  ) : (
+                    "—"
+                  )}
+                </dd>
+              </div>
+              {!usePackageId && couponCode.trim() && (
+                <p className="text-xs text-ink-muted">
+                  {fmt(t.couponWillValidate, { code: couponCode.trim() })}
+                </p>
+              )}
+            </dl>
+            <p className="mt-4 rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning-strong">
+              {fmt(t.policyShort, {
+                hours: business.cancellationWindowHours,
+                percent: business.lateCancellationFeePercent,
+              })}
+            </p>
+
+            {error && (
+              <div className="mt-4 flex items-start gap-2 rounded-lg bg-danger-soft p-3 text-sm text-danger-strong">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <p>{error}</p>
+              </div>
+            )}
+            {isLoggedIn ? (
+              <button
+                className="btn-primary mt-4 w-full"
+                disabled={!canBook || submitting}
+                onClick={book}
+              >
+                {submitting
+                  ? t.booking
+                  : !selectedSlot
+                    ? t.chooseSlot
+                    : business.requireCardToBook && !cardSaved
+                      ? t.saveCardFirst
+                      : service
+                        ? fmt(t.bookCta, {
+                            service: service.name,
+                            slot: selectedSlot.label,
+                          })
+                        : t.stepConfirm}
+              </button>
+            ) : (
+              <div className="mt-4 rounded-lg bg-surface-3 p-3 text-sm text-ink-soft">
+                <Link
+                  href={`/login?next=/b/${business.slug}/reservar${serviceId ? `?servicio=${serviceId}` : ""}`}
+                  className="font-medium text-brand-700 hover:text-brand-800"
+                >
+                  {t.loginPrompt1}
+                </Link>{" "}
+                {t.loginPrompt2}{" "}
+                <Link
+                  href={`/register?next=/b/${business.slug}/reservar${serviceId ? `?servicio=${serviceId}` : ""}`}
+                  className="font-medium text-brand-700 hover:text-brand-800"
+                >
+                  {t.loginPrompt3}
+                </Link>{" "}
+                {t.loginPrompt4}
+              </div>
+            )}
+          </Card>
+        </aside>
+      </div>
     </div>
   );
 }

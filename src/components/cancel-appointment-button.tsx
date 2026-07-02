@@ -2,6 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { TriangleAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/money";
 import { fmt, type Dict } from "@/lib/i18n/shared";
 
@@ -53,40 +56,54 @@ export function CancelAppointmentButton({
 
   if (!open) {
     return (
-      <button className="btn-secondary" onClick={() => setOpen(true)}>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
         {t.cancelCta}
-      </button>
+      </Button>
     );
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+    <div
+      className={cn(
+        "rounded-lg border p-4 text-sm",
+        isLate ? "border-warning/30 bg-warning-soft" : "border-border bg-surface-2",
+      )}
+    >
       {isLate ? (
-        <p className="text-amber-800">
-          {fmt(t.cancelLate, {
-            hours: windowHours,
-            amount: formatCents(feeCents, currency),
-          })}
+        <p className="flex items-start gap-2 text-warning-strong">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>
+            {fmt(t.cancelLate, {
+              hours: windowHours,
+              amount: formatCents(feeCents, currency),
+            })}
+          </span>
         </p>
       ) : (
-        <p className="text-slate-600">{t.cancelFree}</p>
+        <p className="text-ink-soft">{t.cancelFree}</p>
       )}
-      {error && <p className="mt-2 text-rose-700">{error}</p>}
-      <div className="mt-3 flex gap-2">
-        <button className="btn-danger" disabled={busy} onClick={confirmCancel}>
+      {error && <p className="mt-2 text-danger-strong">{error}</p>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          variant="danger"
+          size="sm"
+          disabled={busy}
+          onClick={confirmCancel}
+        >
           {busy
             ? t.cancelling
             : isLate
               ? t.cancelConfirmLate
               : t.cancelConfirmFree}
-        </button>
-        <button
-          className="btn-secondary"
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
           disabled={busy}
           onClick={() => setOpen(false)}
         >
           {t.goBack}
-        </button>
+        </Button>
       </div>
     </div>
   );

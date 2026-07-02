@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Field, Input } from "@/components/ui/field";
 
 export interface ForgotPasswordLabels {
   emailLabel: string;
@@ -36,33 +38,26 @@ export function ForgotPasswordForm({ labels }: { labels: ForgotPasswordLabels })
 
   if (sent) {
     return (
-      <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-        {labels.sent}
-      </p>
+      <div className="flex items-start gap-2.5 rounded-lg bg-success-soft px-3.5 py-3 text-sm text-success-strong">
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        <p>{labels.sent}</p>
+      </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label className="label" htmlFor="email">
-          {labels.emailLabel}
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          className="input"
-        />
-      </div>
+      <Field label={labels.emailLabel} htmlFor="email">
+        <Input id="email" name="email" type="email" required autoComplete="email" />
+      </Field>
       {error && (
-        <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {error}
-        </p>
+        <div className="flex items-start gap-2.5 rounded-lg bg-danger-soft px-3.5 py-2.5 text-sm text-danger-strong">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <p>{error}</p>
+        </div>
       )}
       <button type="submit" disabled={busy} className="btn-primary w-full">
+        {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
         {busy ? labels.busy : labels.button}
       </button>
     </form>

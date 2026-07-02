@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth/session";
 import { getDict } from "@/lib/i18n";
@@ -43,13 +44,19 @@ export default async function BookingPage({
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10">
-        <p className="text-sm text-slate-500">
-          <Link href={`/b/${business.slug}`} className="hover:text-slate-800">
-            ← {business.name}
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:py-10">
+        <p className="text-sm text-ink-muted">
+          <Link
+            href={`/b/${business.slug}`}
+            className="inline-flex items-center gap-1.5 transition-colors hover:text-ink"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            {business.name}
           </Link>
         </p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t.booking.title}</h1>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">
+          {t.booking.title}
+        </h1>
         <div className="mt-6">
           <BookingWizard
             business={{

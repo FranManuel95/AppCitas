@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Locale } from "@/lib/i18n/shared";
+import { cn } from "@/lib/cn";
 
 export function LanguageSwitcher({ current }: { current: Locale }) {
   const router = useRouter();
@@ -21,22 +22,21 @@ export function LanguageSwitcher({ current }: { current: Locale }) {
   }
 
   return (
-    <span className="flex items-center gap-1 text-xs">
-      {(["es", "en"] as const).map((locale, i) => (
-        <span key={locale} className="flex items-center gap-1">
-          {i > 0 && <span className="text-slate-300">·</span>}
-          <button
-            onClick={() => setLocale(locale)}
-            disabled={busy}
-            className={
-              locale === current
-                ? "font-semibold text-slate-800"
-                : "text-slate-400 hover:text-slate-700"
-            }
-          >
-            {locale.toUpperCase()}
-          </button>
-        </span>
+    <span className="inline-flex shrink-0 items-center rounded-full border border-border bg-surface-3 p-0.5 text-xs">
+      {(["es", "en"] as const).map((locale) => (
+        <button
+          key={locale}
+          onClick={() => setLocale(locale)}
+          disabled={busy}
+          className={cn(
+            "rounded-full px-2 py-0.5 font-medium transition-colors disabled:cursor-not-allowed",
+            locale === current
+              ? "bg-surface text-ink shadow-xs"
+              : "text-ink-muted hover:text-ink",
+          )}
+        >
+          {locale.toUpperCase()}
+        </button>
       ))}
     </span>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TriangleAlert } from "lucide-react";
 
 // Aviso persistente hasta verificar el email, con reenvío del enlace.
 export interface VerifyBannerLabels {
@@ -36,13 +37,16 @@ export function VerifyEmailBanner({
   }
 
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-      <p>{l.text}</p>
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning-strong">
+      <span className="flex min-w-0 items-start gap-2.5">
+        <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        <p>{l.text}</p>
+      </span>
       {state === "sent" ? (
-        <span className="font-medium text-emerald-700">{l.resent}</span>
+        <span className="font-medium text-success-strong">{l.resent}</span>
       ) : (
         <button
-          className="font-medium underline hover:text-amber-900 disabled:opacity-50"
+          className="shrink-0 rounded-lg border border-warning/40 bg-surface px-3 py-1.5 text-xs font-medium text-warning-strong shadow-xs transition-colors hover:border-warning/70 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={state === "sending"}
           onClick={resend}
         >

@@ -1,10 +1,22 @@
 import Link from "next/link";
+import {
+  CalendarDays,
+  CalendarX2,
+  Clock,
+  Store,
+  User,
+} from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/guards";
 import { SiteHeader } from "@/components/site-header";
 import { StatusBadge } from "@/components/status-badge";
 import { CancelAppointmentButton } from "@/components/cancel-appointment-button";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { SectionHeader } from "@/components/ui/section-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { buttonClasses } from "@/components/ui/button";
 import { formatCents } from "@/lib/money";
 import { fmt, getDict, intlLocale } from "@/lib/i18n";
 
@@ -62,6 +74,12 @@ export default async function MyAppointmentsPage() {
   function formatDate(date: Date, timezone: string) {
     return new Intl.DateTimeFormat(intlLocale(locale), {
       dateStyle: "full",
+      timeZone: timezone,
+    }).format(date);
+  }
+
+  function formatTime(date: Date, timezone: string) {
+    return new Intl.DateTimeFormat(intlLocale(locale), {
       timeStyle: "short",
       timeZone: timezone,
     }).format(date);
@@ -83,43 +101,71 @@ export default async function MyAppointmentsPage() {
             }}
           />
         )}
-        <h1 className="text-2xl font-bold text-slate-900">
-          {t.myAppointments.title}
-        </h1>
+        <SectionHeader as="h1" title={t.myAppointments.title} />
 
         <section className="mt-8">
-          <h2 className="text-lg font-semibold text-slate-900">
-            {t.myAppointments.upcoming}
-          </h2>
+          <SectionHeader as="h2" title={t.myAppointments.upcoming} />
           <div className="mt-4 space-y-4">
             {upcoming.map((a) => (
-              <div key={a.id} className="card">
+              <Card key={a.id}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      {a.service.name}{" "}
-                      <span className="text-slate-400">·</span>{" "}
-                      <Link
-                        href={`/b/${a.business.slug}`}
-                        className="text-indigo-600 hover:underline"
-                      >
-                        {a.business.name}
-                      </Link>
-                    </p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {formatDate(a.startAt, a.business.timezone)} ·{" "}
-                      {a.service.durationMinutes} min
-                      {a.staff
-                        ? fmt(t.myAppointments.withStaff, { name: a.staff.name })
-                        : ""}
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-slate-700">
+                  <Link
+                    href={`/b/${a.business.slug}`}
+                    className="min-w-0 font-semibold text-ink transition-colors hover:text-brand-700"
+                  >
+                    {a.business.name}
+                  </Link>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <StatusBadge status={a.status} />
+                    <span className="text-sm font-semibold text-ink">
                       {formatCents(a.priceCents, a.business.currency)}
-                    </p>
+                    </span>
                   </div>
-                  <StatusBadge status={a.status} />
                 </div>
-                <div className="mt-4">
+
+                <div className="mt-3 space-y-1.5 text-sm text-ink-soft">
+                  <p className="flex items-center gap-2">
+                    <CalendarDays
+                      className="h-4 w-4 shrink-0 text-ink-muted"
+                      aria-hidden
+                    />
+                    <span>{formatDate(a.startAt, a.business.timezone)}</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Clock
+                      className="h-4 w-4 shrink-0 text-ink-muted"
+                      aria-hidden
+                    />
+                    <span>
+                      {formatTime(a.startAt, a.business.timezone)}{" "}
+                      <span className="text-ink-muted">
+                        · {a.service.durationMinutes} min
+                      </span>
+                    </span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Store
+                      className="h-4 w-4 shrink-0 text-ink-muted"
+                      aria-hidden
+                    />
+                    <span>{a.service.name}</span>
+                  </p>
+                  {a.staff && (
+                    <p className="flex items-center gap-2">
+                      <User
+                        className="h-4 w-4 shrink-0 text-ink-muted"
+                        aria-hidden
+                      />
+                      <span>
+                        {fmt(t.myAppointments.withStaff, {
+                          name: a.staff.name,
+                        }).replace(/^\s*·\s*/, "")}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-4 border-t border-border pt-4">
                   <CancelAppointmentButton
                     appointmentId={a.id}
                     startAt={a.startAt.toISOString()}
@@ -130,42 +176,45 @@ export default async function MyAppointmentsPage() {
                     t={t.myAppointments}
                   />
                 </div>
-              </div>
+              </Card>
             ))}
             {upcoming.length === 0 && (
-              <p className="text-sm text-slate-500">
-                {t.myAppointments.noUpcoming}{" "}
-                <Link href="/" className="text-indigo-600">
-                  {t.myAppointments.bookOne}
-                </Link>
-                .
-              </p>
+              <EmptyState
+                icon={CalendarX2}
+                title={t.myAppointments.noUpcoming}
+                action={
+                  <Link
+                    href="/"
+                    className={buttonClasses({ variant: "primary", size: "sm" })}
+                  >
+                    {t.myAppointments.bookOne}
+                  </Link>
+                }
+              />
             )}
           </div>
         </section>
 
         {myPackages.length > 0 && (
           <section className="mt-10">
-            <h2 className="text-lg font-semibold text-slate-900">
-              {t.myAppointments.myPackages}
-            </h2>
+            <SectionHeader as="h2" title={t.myAppointments.myPackages} />
             <div className="mt-4 space-y-3">
               {myPackages.map((p) => {
                 const expired =
                   p.expiresAt && p.expiresAt.getTime() < Date.now();
                 const usable = p.remainingSessions > 0 && !expired;
                 return (
-                  <div
+                  <Card
                     key={p.id}
-                    className="card flex flex-wrap items-center justify-between gap-3 py-4"
+                    className="flex flex-wrap items-center justify-between gap-3 py-4"
                   >
-                    <div>
-                      <p className="font-medium text-slate-800">
+                    <div className="min-w-0">
+                      <p className="font-medium text-ink">
                         {p.package.name}{" "}
-                        <span className="text-slate-400">·</span>{" "}
+                        <span className="text-ink-muted">·</span>{" "}
                         {p.business.name}
                       </p>
-                      <p className="mt-0.5 text-sm text-slate-500">
+                      <p className="mt-1 text-sm text-ink-muted">
                         {p.package.service.name} ·{" "}
                         {formatCents(p.pricePaidCents, p.business.currency)}
                         {p.expiresAt
@@ -176,20 +225,14 @@ export default async function MyAppointmentsPage() {
                           : ""}
                       </p>
                     </div>
-                    <span
-                      className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                        usable
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
+                    <Badge tone={usable ? "success" : "neutral"}>
                       {expired
                         ? t.myAppointments.expired
                         : fmt(t.myAppointments.sessions, {
                             n: p.remainingSessions,
                           })}
-                    </span>
-                  </div>
+                    </Badge>
+                  </Card>
                 );
               })}
             </div>
@@ -197,25 +240,38 @@ export default async function MyAppointmentsPage() {
         )}
 
         <section className="mt-10">
-          <h2 className="text-lg font-semibold text-slate-900">
-            {t.myAppointments.history}
-          </h2>
+          <SectionHeader as="h2" title={t.myAppointments.history} />
           <div className="mt-4 space-y-3">
             {past.map((a) => (
-              <div
+              <Card
                 key={a.id}
-                className="card flex flex-wrap items-center justify-between gap-3 py-4"
+                className="flex flex-wrap items-start justify-between gap-3 py-4"
               >
-                <div>
-                  <p className="font-medium text-slate-800">
-                    {a.service.name}{" "}
-                    <span className="text-slate-400">·</span> {a.business.name}
-                  </p>
-                  <p className="mt-0.5 text-sm text-slate-500">
-                    {formatDate(a.startAt, a.business.timezone)}
-                  </p>
+                <div className="min-w-0">
+                  <p className="font-medium text-ink">{a.business.name}</p>
+                  <div className="mt-1.5 space-y-1 text-sm text-ink-soft">
+                    <p className="flex items-center gap-2">
+                      <Store
+                        className="h-4 w-4 shrink-0 text-ink-muted"
+                        aria-hidden
+                      />
+                      <span>{a.service.name}</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <CalendarDays
+                        className="h-4 w-4 shrink-0 text-ink-muted"
+                        aria-hidden
+                      />
+                      <span>
+                        {formatDate(a.startAt, a.business.timezone)}{" "}
+                        <span className="text-ink-muted">
+                          · {formatTime(a.startAt, a.business.timezone)}
+                        </span>
+                      </span>
+                    </p>
+                  </div>
                   {a.chargedCents > 0 && (
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="mt-1.5 text-xs text-ink-muted">
                       {fmt(t.myAppointments.chargedAmount, {
                         amount: formatCents(a.chargedCents, a.business.currency),
                       })}
@@ -223,12 +279,13 @@ export default async function MyAppointmentsPage() {
                   )}
                 </div>
                 <StatusBadge status={a.status} />
-              </div>
+              </Card>
             ))}
             {past.length === 0 && (
-              <p className="text-sm text-slate-500">
-                {t.myAppointments.noHistory}
-              </p>
+              <EmptyState
+                icon={CalendarDays}
+                title={t.myAppointments.noHistory}
+              />
             )}
           </div>
         </section>

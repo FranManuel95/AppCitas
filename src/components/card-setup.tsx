@@ -8,6 +8,9 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
+import { AlertCircle } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Guardado de tarjeta para poder cobrar automáticamente cancelaciones tardías.
 // Con Stripe configurado usa Payment Element (SetupIntent off-session); sin
@@ -41,9 +44,10 @@ function StripeSetupForm({ onSaved }: { onSaved: () => void }) {
     <form onSubmit={onSubmit} className="space-y-3">
       <PaymentElement />
       {error && (
-        <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {error}
-        </p>
+        <div className="flex items-start gap-2 rounded-lg bg-danger-soft p-3 text-sm text-danger-strong">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <p>{error}</p>
+        </div>
       )}
       <button type="submit" disabled={busy || !stripe} className="btn-primary">
         {busy ? "Guardando…" : "Guardar tarjeta"}
@@ -66,9 +70,11 @@ function StripeCardSetup({
     [publishableKey],
   );
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret, locale: "es" }}>
-      <StripeSetupForm onSaved={onSaved} />
-    </Elements>
+    <Card className="p-4">
+      <Elements stripe={stripePromise} options={{ clientSecret, locale: "es" }}>
+        <StripeSetupForm onSaved={onSaved} />
+      </Elements>
+    </Card>
   );
 }
 
@@ -100,13 +106,22 @@ export function CardSetup({ onSaved }: { onSaved: () => void }) {
 
   if (error) {
     return (
-      <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-        {error}
-      </p>
+      <div className="flex items-start gap-2 rounded-lg bg-danger-soft p-3 text-sm text-danger-strong">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        <p>{error}</p>
+      </div>
     );
   }
   if (!config) {
-    return <p className="text-sm text-slate-500">Preparando pago seguro…</p>;
+    return (
+      <Card className="p-4">
+        <p className="text-sm text-ink-muted">Preparando pago seguro…</p>
+        <div className="mt-3 space-y-2">
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-2/3" />
+        </div>
+      </Card>
+    );
   }
 
   if (config.provider === "stripe" && config.publishableKey) {
@@ -121,13 +136,13 @@ export function CardSetup({ onSaved }: { onSaved: () => void }) {
 
   // Proveedor simulado (desarrollo): el "guardado" solo marca el cliente
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 p-3">
-      <p className="text-sm text-slate-600">
+    <Card className="border-dashed border-border-strong p-4">
+      <p className="text-sm text-ink-soft">
         Pasarela en modo demostración (Stripe sin configurar): la tarjeta se
         guarda de forma simulada.
       </p>
       <button
-        className="btn-secondary mt-2"
+        className="btn-secondary mt-3"
         disabled={busy}
         onClick={async () => {
           setBusy(true);
@@ -137,6 +152,6 @@ export function CardSetup({ onSaved }: { onSaved: () => void }) {
       >
         {busy ? "…" : "Guardar tarjeta (demo)"}
       </button>
-    </div>
+    </Card>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { Field, Input } from "@/components/ui/field";
 
 // Formulario compartido por login/registro: envía JSON al endpoint indicado
 // y redirige según el rol devuelto (los dueños van directos a su panel).
@@ -71,33 +73,36 @@ export function AuthForm({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       {fields.map((f) => (
-        <div key={f.name}>
-          <label className="label" htmlFor={f.name}>
-            {f.label}
-          </label>
-          <input
+        <Field key={f.name} label={f.label} htmlFor={f.name}>
+          <Input
             id={f.name}
             name={f.name}
             type={f.type ?? "text"}
             required={f.required ?? true}
             autoComplete={f.autoComplete}
             placeholder={f.placeholder}
-            className="input"
           />
-        </div>
+        </Field>
       ))}
       {consent && (
-        <label className="flex items-start gap-2 text-sm text-slate-600">
-          <input type="checkbox" name="consent" required className="mt-0.5" />
+        <label className="flex items-start gap-2.5 text-sm text-ink-soft">
+          <input
+            type="checkbox"
+            name="consent"
+            required
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-border-strong accent-brand-600"
+          />
           <span>{consent}</span>
         </label>
       )}
       {error && (
-        <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {error}
-        </p>
+        <div className="flex items-start gap-2.5 rounded-lg bg-danger-soft px-3.5 py-2.5 text-sm text-danger-strong">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <p>{error}</p>
+        </div>
       )}
       <button type="submit" disabled={busy} className="btn-primary w-full">
+        {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
         {busy ? busyLabel : submitLabel}
       </button>
     </form>

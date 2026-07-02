@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Field, Input } from "@/components/ui/field";
 
 export interface ResetPasswordLabels {
   passwordLabel: string;
@@ -55,9 +57,10 @@ export function ResetPasswordForm({
   if (done) {
     return (
       <div className="space-y-4">
-        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {labels.done}
-        </p>
+        <div className="flex items-start gap-2.5 rounded-lg bg-success-soft px-3.5 py-3 text-sm text-success-strong">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <p>{labels.done}</p>
+        </div>
         <Link href="/login" className="btn-primary w-full">
           {labels.loginCta}
         </Link>
@@ -67,40 +70,34 @@ export function ResetPasswordForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label className="label" htmlFor="password">
-          {labels.passwordLabel}
-        </label>
-        <input
+      <Field label={labels.passwordLabel} htmlFor="password">
+        <Input
           id="password"
           name="password"
           type="password"
           required
           minLength={8}
           autoComplete="new-password"
-          className="input"
         />
-      </div>
-      <div>
-        <label className="label" htmlFor="confirm">
-          {labels.repeatLabel}
-        </label>
-        <input
+      </Field>
+      <Field label={labels.repeatLabel} htmlFor="confirm">
+        <Input
           id="confirm"
           name="confirm"
           type="password"
           required
           minLength={8}
           autoComplete="new-password"
-          className="input"
         />
-      </div>
+      </Field>
       {error && (
-        <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {error}
-        </p>
+        <div className="flex items-start gap-2.5 rounded-lg bg-danger-soft px-3.5 py-2.5 text-sm text-danger-strong">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <p>{error}</p>
+        </div>
       )}
       <button type="submit" disabled={busy} className="btn-primary w-full">
+        {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
         {busy ? labels.busy : labels.button}
       </button>
     </form>
