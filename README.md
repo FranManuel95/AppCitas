@@ -41,8 +41,24 @@ para establecer su contraseña.
 
 **Cuentas**: verificación de email al registrarse (banner con reenvío hasta
 confirmar), recuperación de contraseña por enlace de un solo uso con caducidad
-(30 min) y rate limiting en todos los endpoints de autenticación (fuerza
-bruta, enumeración y abuso de reenvíos).
+(30 min), rate limiting en todos los endpoints de autenticación, auditoría de
+accesos (login ok/fallido, restablecimientos, invitaciones… con IP visible en
+ajustes) y revocación de sesiones en todos los dispositivos (JWT versionado;
+el cambio de contraseña también revoca).
+
+**Promociones**: bonos/packs de sesiones prepagados (compra online con cargo
+automático si hay tarjeta, canje al reservar con cita a 0 €, la sesión vuelve
+al bono si se cancela en plazo) y cupones de descuento (% o importe fijo, con
+caducidad y usos máximos). Los ingresos por bonos se suman al dashboard.
+
+**Exportación y recibos**: CSV de citas (con los filtros activos) y de
+ingresos mensuales; recibo imprimible por cita con desglose de IVA
+configurable (NIF/CIF y % en ajustes).
+
+**Idiomas**: superficie pública en español e inglés (selector en la cabecera,
+cookie de preferencia); el panel de administración permanece en español con el
+patrón de diccionarios listo para extenderlo
+(`src/lib/i18n/shared.ts`).
 
 **Integraciones** (todas opcionales; sin configurar, la app funciona y lo
 simula/registra):
@@ -216,10 +232,11 @@ se persiste su hash SHA-256).
 
 ## Roadmap sugerido
 
-- Bonos/packs de sesiones y cupones.
-- Auditoría de accesos y revocación de sesiones activas (versionado de JWT).
-- Exportación de datos (CSV de citas/ingresos) y facturación.
-- i18n completo (textos hoy en español).
+- Traducir el panel de administración (el diccionario es/en ya cubre la
+  superficie pública; el patrón está en `src/lib/i18n/shared.ts`).
+- Facturas fiscales con numeración correlativa (hoy: recibos con IVA).
+- Multi-moneda por negocio en formatos de fecha/número del panel.
+- Webhooks salientes / API pública con tokens para integraciones.
 
 ## Tests
 
@@ -227,8 +244,9 @@ se persiste su hash SHA-256).
 npm test
 ```
 
-35 tests cubren el motor de disponibilidad (horarios, tramos, solapamientos,
+46 tests cubren el motor de disponibilidad (horarios, tramos, solapamientos,
 antelaciones, cierres, zona horaria), la agenda multi-empleado (horario
 propio/heredado, unión de huecos, asignación al menos cargado), la política
-de cancelación (límite exacto, porcentajes, redondeos) y el rate limiter
-(ventana deslizante, aislamiento por clave, tiempo de espera).
+de cancelación (límite exacto, porcentajes, redondeos), las promociones
+(descuentos de cupón, validez de bonos) y el rate limiter (ventana
+deslizante, aislamiento por clave, tiempo de espera).

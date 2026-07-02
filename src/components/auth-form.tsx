@@ -9,6 +9,8 @@ export function AuthForm({
   endpoint,
   fields,
   submitLabel,
+  busyLabel = "Un momento…",
+  errorFallback = "Algo ha ido mal, inténtalo de nuevo",
   adminRedirect = false,
 }: {
   endpoint: string;
@@ -21,6 +23,8 @@ export function AuthForm({
     placeholder?: string;
   }>;
   submitLabel: string;
+  busyLabel?: string;
+  errorFallback?: string;
   adminRedirect?: boolean;
 }) {
   const router = useRouter();
@@ -46,7 +50,7 @@ export function AuthForm({
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      setError(json.error ?? "Algo ha ido mal, inténtalo de nuevo");
+      setError(json.error ?? errorFallback);
       setBusy(false);
       return;
     }
@@ -83,7 +87,7 @@ export function AuthForm({
         </p>
       )}
       <button type="submit" disabled={busy} className="btn-primary w-full">
-        {busy ? "Un momento…" : submitLabel}
+        {busy ? busyLabel : submitLabel}
       </button>
     </form>
   );

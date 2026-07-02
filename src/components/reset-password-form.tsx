@@ -3,7 +3,24 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
-export function ResetPasswordForm({ token }: { token: string }) {
+export interface ResetPasswordLabels {
+  passwordLabel: string;
+  repeatLabel: string;
+  button: string;
+  busy: string;
+  done: string;
+  loginCta: string;
+  mismatch: string;
+  errorFallback: string;
+}
+
+export function ResetPasswordForm({
+  token,
+  labels,
+}: {
+  token: string;
+  labels: ResetPasswordLabels;
+}) {
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -16,7 +33,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
     const password = String(form.get("password") ?? "");
     const confirm = String(form.get("confirm") ?? "");
     if (password !== confirm) {
-      setError("Las contraseñas no coinciden");
+      setError(labels.mismatch);
       setBusy(false);
       return;
     }
@@ -29,7 +46,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
     const json = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) {
-      setError(json.error ?? "No se pudo restablecer la contraseña");
+      setError(json.error ?? labels.errorFallback);
       return;
     }
     setDone(true);
@@ -39,10 +56,10 @@ export function ResetPasswordForm({ token }: { token: string }) {
     return (
       <div className="space-y-4">
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          Contraseña guardada. Ya puedes iniciar sesión.
+          {labels.done}
         </p>
         <Link href="/login" className="btn-primary w-full">
-          Iniciar sesión
+          {labels.loginCta}
         </Link>
       </div>
     );
@@ -52,7 +69,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
         <label className="label" htmlFor="password">
-          Nueva contraseña (mínimo 8 caracteres)
+          {labels.passwordLabel}
         </label>
         <input
           id="password"
@@ -66,7 +83,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
       </div>
       <div>
         <label className="label" htmlFor="confirm">
-          Repite la contraseña
+          {labels.repeatLabel}
         </label>
         <input
           id="confirm"
@@ -84,7 +101,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
         </p>
       )}
       <button type="submit" disabled={busy} className="btn-primary w-full">
-        {busy ? "Guardando…" : "Guardar contraseña"}
+        {busy ? labels.busy : labels.button}
       </button>
     </form>
   );

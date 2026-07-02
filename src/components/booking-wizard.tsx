@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatCents } from "@/lib/money";
+import { intlLocale, type Dict, type Locale } from "@/lib/i18n/shared";
 import { CardSetup } from "./card-setup";
+
+type BookingDict = Dict["booking"];
 
 interface ServiceOption {
   id: string;
@@ -44,6 +47,8 @@ interface BookingWizardProps {
   initialServiceId?: string;
   isLoggedIn: boolean;
   userHasPhone: boolean;
+  locale: Locale;
+  t: BookingDict;
 }
 
 function todayISO(): string {
@@ -64,6 +69,8 @@ export function BookingWizard({
   initialServiceId,
   isLoggedIn,
   userHasPhone,
+  locale,
+  t,
 }: BookingWizardProps) {
   const [serviceId, setServiceId] = useState(
     initialServiceId && services.some((s) => s.id === initialServiceId)
@@ -159,11 +166,11 @@ export function BookingWizard({
         `/api/businesses/${business.slug}/availability?${params.toString()}`,
       );
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "No se pudo cargar la disponibilidad");
+      if (!res.ok) throw new Error(json.error ?? t.availabilityError);
       setSlots(json.slots);
     } catch (e) {
       setSlots([]);
-      setError(e instanceof Error ? e.message : "Error de red");
+      setError(e instanceof Error ? e.message : t.networkError);
     } finally {
       setLoadingSlots(false);
     }
@@ -199,7 +206,7 @@ export function BookingWizard({
         if (json.code === "SLOT_TAKEN" || json.code === "SLOT_UNAVAILABLE") {
           await loadSlots();
         }
-        throw new Error(json.error ?? "No se pudo crear la reserva");
+        throw new Error(json.error ?? t.bookingError);
       }
       setConfirmed({
         startAt: json.appointment.startAt,
@@ -208,13 +215,13 @@ export function BookingWizard({
         freeCancellationUntil: json.appointment.freeCancellationUntil,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error de red");
+      setError(e instanceof Error ? e.message : t.networkError);
     } finally {
       setSubmitting(false);
     }
   }
 
-  const dateFormatter = new Intl.DateTimeFormat("es-ES", {
+  const dateFormatter = new Intl.DateTimeFormat(intlLocale(locale), {
     dateStyle: "full",
     timeStyle: "short",
     timeZone: business.timezone,
@@ -227,28 +234,25 @@ export function BookingWizard({
           ✓
         </div>
         <h2 className="mt-4 text-xl font-semibold text-slate-900">
-          ¡Cita confirmada!
+          {t.confirmedTitle}
         </h2>
         <p className="mt-2 text-slate-600">
           {confirmed.service}
-          {confirmed.staff ? ` con ${confirmed.staff}` : ""} ·{" "}
+          {confirmed.staff ? t.confirmedWith(confirmed.staff) : ""} ·{" "}
           {dateFormatter.format(new Date(confirmed.startAt))}
         </p>
-        <p className="mt-2 text-sm text-slate-500">
-          Te hemos enviado la confirmación y recibirás un recordatorio antes de
-          la cita.
-        </p>
+        <p className="mt-2 text-sm text-slate-500">{t.confirmedNotice}</p>
         <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Puedes cancelar gratis hasta el{" "}
-          {dateFormatter.format(new Date(confirmed.freeCancellationUntil))}.
-          Después se aplicará el cargo por cancelación tardía.
+          {t.freeCancelUntil(
+            dateFormatter.format(new Date(confirmed.freeCancellationUntil)),
+          )}
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <Link href="/mis-citas" className="btn-primary">
-            Ver mis citas
+            {t.seeMyAppointments}
           </Link>
           <Link href={`/b/${business.slug}`} className="btn-secondary">
-            Volver al negocio
+            {t.backToBusiness}
           </Link>
         </div>
       </div>
@@ -265,7 +269,7 @@ export function BookingWizard({
         {/* Servicio */}
         <section className="card">
           <h2 className="font-semibold text-slate-900">
-            {step++}. Elige servicio
+            {step++}. {t.stepService}
           </h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {services.map((s) => (
@@ -299,7 +303,7 @@ export function BookingWizard({
         {hasStaff && (
           <section className="card">
             <h2 className="font-semibold text-slate-900">
-              {step++}. Elige profesional
+              {step++}. {t.stepStaff}
             </h2>
             <div className="mt-4 flex flex-wrap gap-2">
               <button
@@ -310,7 +314,7 @@ export function BookingWizard({
                     : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
                 }`}
               >
-                Cualquiera disponible
+                {t.anyStaff}
               </button>
               {qualifiedStaff.map((m) => (
                 <button
@@ -332,7 +336,7 @@ export function BookingWizard({
             </div>
             {qualifiedStaff.length === 0 && (
               <p className="mt-3 text-sm text-slate-500">
-                Ningún profesional realiza este servicio actualmente.
+                {t.noStaffForService}
               </p>
             )}
           </section>
@@ -341,11 +345,11 @@ export function BookingWizard({
         {/* Fecha y hora */}
         <section className="card">
           <h2 className="font-semibold text-slate-900">
-            {step++}. Elige fecha y hora
+            {step++}. {t.stepDate}
           </h2>
           <div className="mt-4">
             <label className="label" htmlFor="fecha">
-              Fecha
+              {t.date}
             </label>
             <input
               id="fecha"
@@ -359,11 +363,11 @@ export function BookingWizard({
           </div>
           <div className="mt-4">
             {loadingSlots && (
-              <p className="text-sm text-slate-500">Buscando huecos…</p>
+              <p className="text-sm text-slate-500">{t.searchingSlots}</p>
             )}
             {!loadingSlots && slots && slots.length === 0 && (
               <p className="text-sm text-slate-500">
-                No hay huecos disponibles ese día. Prueba con otra fecha.
+                {t.noSlots}
               </p>
             )}
             {!loadingSlots && slots && slots.length > 0 && (
@@ -388,12 +392,14 @@ export function BookingWizard({
 
         {/* Confirmación */}
         <section className="card">
-          <h2 className="font-semibold text-slate-900">{step++}. Confirma</h2>
+          <h2 className="font-semibold text-slate-900">
+            {step++}. {t.stepConfirm}
+          </h2>
 
           {isLoggedIn && !userHasPhone && (
             <div className="mt-4">
               <label className="label" htmlFor="telefono">
-                Teléfono para recordatorios por WhatsApp/SMS (opcional)
+                {t.phoneLabel}
               </label>
               <input
                 id="telefono"
@@ -417,14 +423,14 @@ export function BookingWizard({
                     setUsePackageId(e.target.checked ? myPackages[0].id : "")
                   }
                 />
-                Usar mi bono: {myPackages[0].name} (
-                {myPackages[0].remainingSessions} sesiones restantes)
+                {t.usePackage(
+                  myPackages[0].name,
+                  myPackages[0].remainingSessions,
+                )}
               </label>
               {usePackageId && (
                 <p className="mt-1 text-xs text-emerald-700">
-                  Esta cita se descuenta del bono: no se cobra nada. Si
-                  cancelas en plazo, la sesión vuelve a tu bono; si cancelas
-                  tarde, la sesión se pierde.
+                  {t.packageNote}
                 </p>
               )}
             </div>
@@ -433,12 +439,12 @@ export function BookingWizard({
           {isLoggedIn && !usePackageId && (
             <div className="mt-4">
               <label className="label" htmlFor="cupon">
-                ¿Tienes un cupón? (opcional)
+                {t.couponLabel}
               </label>
               <input
                 id="cupon"
                 className="input max-w-xs uppercase"
-                placeholder="CÓDIGO"
+                placeholder={t.couponPlaceholder}
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
               />
@@ -447,7 +453,7 @@ export function BookingWizard({
 
           <div className="mt-4">
             <label className="label" htmlFor="notas">
-              Notas para el negocio (opcional)
+              {t.notesLabel}
             </label>
             <textarea
               id="notas"
@@ -462,17 +468,15 @@ export function BookingWizard({
           {/* Tarjeta (solo si el negocio la exige) */}
           {isLoggedIn && business.requireCardToBook && (
             <div className="mt-4">
-              <p className="label">Tarjeta para posibles cargos</p>
+              <p className="label">{t.cardTitle}</p>
               <p className="mb-2 text-xs text-slate-500">
-                Este negocio requiere una tarjeta guardada. Solo se usa si
-                cancelas con menos de {business.cancellationWindowHours} h o no
-                te presentas.
+                {t.cardNote(business.cancellationWindowHours)}
               </p>
               {checkingCard ? (
-                <p className="text-sm text-slate-500">Comprobando tarjeta…</p>
+                <p className="text-sm text-slate-500">{t.cardChecking}</p>
               ) : cardSaved ? (
                 <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                  Tarjeta guardada ✓
+                  {t.cardSaved}
                 </p>
               ) : (
                 <CardSetup onSaved={() => setCardSaved(true)} />
@@ -492,14 +496,14 @@ export function BookingWizard({
               onClick={book}
             >
               {submitting
-                ? "Reservando…"
+                ? t.booking
                 : !selectedSlot
-                  ? "Elige un hueco para reservar"
+                  ? t.chooseSlot
                   : business.requireCardToBook && !cardSaved
-                    ? "Guarda una tarjeta para reservar"
+                    ? t.saveCardFirst
                     : service
-                      ? `Reservar ${service.name} · ${selectedSlot.label}`
-                      : "Reservar"}
+                      ? t.bookCta(service.name, selectedSlot.label)
+                      : t.stepConfirm}
             </button>
           ) : (
             <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
@@ -507,16 +511,16 @@ export function BookingWizard({
                 href={`/login?next=/b/${business.slug}/reservar${serviceId ? `?servicio=${serviceId}` : ""}`}
                 className="font-medium text-indigo-600"
               >
-                Inicia sesión
+                {t.loginPrompt1}
               </Link>{" "}
-              o{" "}
+              {t.loginPrompt2}{" "}
               <Link
                 href={`/register?next=/b/${business.slug}/reservar${serviceId ? `?servicio=${serviceId}` : ""}`}
                 className="font-medium text-indigo-600"
               >
-                crea una cuenta
+                {t.loginPrompt3}
               </Link>{" "}
-              para completar la reserva.
+              {t.loginPrompt4}
             </div>
           )}
         </section>
@@ -524,34 +528,34 @@ export function BookingWizard({
 
       <aside>
         <div className="card sticky top-6">
-          <h2 className="font-semibold text-slate-900">Resumen</h2>
+          <h2 className="font-semibold text-slate-900">{t.summary}</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-slate-500">Negocio</dt>
+              <dt className="text-slate-500">{t.business}</dt>
               <dd className="text-slate-800">{business.name}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-slate-500">Servicio</dt>
+              <dt className="text-slate-500">{t.service}</dt>
               <dd className="text-slate-800">{service?.name ?? "—"}</dd>
             </div>
             {hasStaff && (
               <div className="flex justify-between">
-                <dt className="text-slate-500">Profesional</dt>
+                <dt className="text-slate-500">{t.staff}</dt>
                 <dd className="text-slate-800">
                   {staffId
                     ? (qualifiedStaff.find((m) => m.id === staffId)?.name ?? "—")
-                    : "Cualquiera disponible"}
+                    : t.anyStaff}
                 </dd>
               </div>
             )}
             <div className="flex justify-between">
-              <dt className="text-slate-500">Duración</dt>
+              <dt className="text-slate-500">{t.duration}</dt>
               <dd className="text-slate-800">
                 {service ? `${service.durationMinutes} min` : "—"}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-slate-500">Fecha</dt>
+              <dt className="text-slate-500">{t.dateLabel}</dt>
               <dd className="text-right text-slate-800">
                 {selectedSlot
                   ? dateFormatter.format(new Date(selectedSlot.startAt))
@@ -559,7 +563,7 @@ export function BookingWizard({
               </dd>
             </div>
             <div className="flex justify-between border-t border-slate-100 pt-2">
-              <dt className="font-medium text-slate-700">Precio</dt>
+              <dt className="font-medium text-slate-700">{t.price}</dt>
               <dd className="font-semibold text-slate-900">
                 {usePackageId ? (
                   <>
@@ -568,7 +572,7 @@ export function BookingWizard({
                         ? formatCents(service.priceCents, business.currency)
                         : ""}
                     </span>
-                    Bono
+                    {t.packagePrice}
                   </>
                 ) : service ? (
                   formatCents(service.priceCents, business.currency)
@@ -579,14 +583,15 @@ export function BookingWizard({
             </div>
             {!usePackageId && couponCode.trim() && (
               <p className="text-xs text-slate-500">
-                Cupón {couponCode.trim()}: se validará al reservar.
+                {t.couponWillValidate(couponCode.trim())}
               </p>
             )}
           </dl>
           <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            Cancelación gratuita hasta {business.cancellationWindowHours} h
-            antes. Después se cobra el {business.lateCancellationFeePercent}%
-            del servicio.
+            {t.policyShort(
+              business.cancellationWindowHours,
+              business.lateCancellationFeePercent,
+            )}
           </p>
         </div>
       </aside>

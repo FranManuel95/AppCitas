@@ -3,7 +3,28 @@
 import { useState } from "react";
 
 // Aviso persistente hasta verificar el email, con reenvío del enlace.
-export function VerifyEmailBanner({ email }: { email: string }) {
+export interface VerifyBannerLabels {
+  text: string;
+  resend: string;
+  resending: string;
+  resent: string;
+  error: string;
+}
+
+export function VerifyEmailBanner({
+  email,
+  labels,
+}: {
+  email: string;
+  labels?: VerifyBannerLabels;
+}) {
+  const l: VerifyBannerLabels = labels ?? {
+    text: `Verifica tu email (${email}) para asegurar tu cuenta. Revisa tu bandeja de entrada.`,
+    resend: "Reenviar enlace",
+    resending: "Enviando…",
+    resent: "Enlace reenviado ✓",
+    error: "Error, reintentar",
+  };
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
@@ -16,12 +37,9 @@ export function VerifyEmailBanner({ email }: { email: string }) {
 
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-      <p>
-        Verifica tu email (<strong>{email}</strong>) para asegurar tu cuenta.
-        Revisa tu bandeja de entrada.
-      </p>
+      <p>{l.text}</p>
       {state === "sent" ? (
-        <span className="font-medium text-emerald-700">Enlace reenviado ✓</span>
+        <span className="font-medium text-emerald-700">{l.resent}</span>
       ) : (
         <button
           className="font-medium underline hover:text-amber-900 disabled:opacity-50"
@@ -29,10 +47,10 @@ export function VerifyEmailBanner({ email }: { email: string }) {
           onClick={resend}
         >
           {state === "sending"
-            ? "Enviando…"
+            ? l.resending
             : state === "error"
-              ? "Error, reintentar"
-              : "Reenviar enlace"}
+              ? l.error
+              : l.resend}
         </button>
       )}
     </div>

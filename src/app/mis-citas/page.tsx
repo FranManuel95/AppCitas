@@ -6,12 +6,14 @@ import { StatusBadge } from "@/components/status-badge";
 import { CancelAppointmentButton } from "@/components/cancel-appointment-button";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { formatCents } from "@/lib/money";
+import { getDict, intlLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Mis citas" };
 
 export default async function MyAppointmentsPage() {
   const user = await requireUser();
+  const { locale, t } = await getDict();
 
   const [account, myPackages] = await Promise.all([
     prisma.user.findUnique({
@@ -58,7 +60,7 @@ export default async function MyAppointmentsPage() {
   );
 
   function formatDate(date: Date, timezone: string) {
-    return new Intl.DateTimeFormat("es-ES", {
+    return new Intl.DateTimeFormat(intlLocale(locale), {
       dateStyle: "full",
       timeStyle: "short",
       timeZone: timezone,
@@ -70,12 +72,25 @@ export default async function MyAppointmentsPage() {
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
         {account && !account.emailVerifiedAt && (
-          <VerifyEmailBanner email={user.email} />
+          <VerifyEmailBanner
+            email={user.email}
+            labels={{
+              text: t.verify.bannerText(user.email),
+              resend: t.verify.resend,
+              resending: t.verify.resending,
+              resent: t.verify.resent,
+              error: t.verify.resendError,
+            }}
+          />
         )}
-        <h1 className="text-2xl font-bold text-slate-900">Mis citas</h1>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {t.myAppointments.title}
+        </h1>
 
         <section className="mt-8">
-          <h2 className="text-lg font-semibold text-slate-900">Próximas</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {t.myAppointments.upcoming}
+          </h2>
           <div className="mt-4 space-y-4">
             {upcoming.map((a) => (
               <div key={a.id} className="card">
@@ -94,7 +109,7 @@ export default async function MyAppointmentsPage() {
                     <p className="mt-1 text-sm text-slate-600">
                       {formatDate(a.startAt, a.business.timezone)} ·{" "}
                       {a.service.durationMinutes} min
-                      {a.staff ? ` · con ${a.staff.name}` : ""}
+                      {a.staff ? t.myAppointments.withStaff(a.staff.name) : ""}
                     </p>
                     <p className="mt-1 text-sm font-medium text-slate-700">
                       {formatCents(a.priceCents, a.business.currency)}
@@ -110,15 +125,16 @@ export default async function MyAppointmentsPage() {
                     feePercent={a.business.lateCancellationFeePercent}
                     priceCents={a.priceCents}
                     currency={a.business.currency}
+                    t={t.myAppointments}
                   />
                 </div>
               </div>
             ))}
             {upcoming.length === 0 && (
               <p className="text-sm text-slate-500">
-                No tienes citas próximas.{" "}
+                {t.myAppointments.noUpcoming}{" "}
                 <Link href="/" className="text-indigo-600">
-                  Reserva una
+                  {t.myAppointments.bookOne}
                 </Link>
                 .
               </p>
@@ -128,7 +144,9 @@ export default async function MyAppointmentsPage() {
 
         {myPackages.length > 0 && (
           <section className="mt-10">
-            <h2 className="text-lg font-semibold text-slate-900">Mis bonos</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t.myAppointments.myPackages}
+            </h2>
             <div className="mt-4 space-y-3">
               {myPackages.map((p) => {
                 const expired =
@@ -149,10 +167,10 @@ export default async function MyAppointmentsPage() {
                         {p.package.service.name} ·{" "}
                         {formatCents(p.pricePaidCents, p.business.currency)}
                         {p.expiresAt
-                          ? ` · caduca ${p.expiresAt.toLocaleDateString("es-ES")}`
+                          ? ` · ${t.myAppointments.expiresOn(p.expiresAt.toLocaleDateString(intlLocale(locale)))}`
                           : ""}
                         {p.paymentStatus === "UNCOLLECTED"
-                          ? " · pago pendiente en el negocio"
+                          ? ` · ${t.myAppointments.pendingPayment}`
                           : ""}
                       </p>
                     </div>
@@ -164,8 +182,8 @@ export default async function MyAppointmentsPage() {
                       }`}
                     >
                       {expired
-                        ? "Caducado"
-                        : `${p.remainingSessions} sesiones`}
+                        ? t.myAppointments.expired
+                        : t.myAppointments.sessions(p.remainingSessions)}
                     </span>
                   </div>
                 );
@@ -175,7 +193,9 @@ export default async function MyAppointmentsPage() {
         )}
 
         <section className="mt-10">
-          <h2 className="text-lg font-semibold text-slate-900">Historial</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {t.myAppointments.history}
+          </h2>
           <div className="mt-4 space-y-3">
             {past.map((a) => (
               <div
@@ -192,8 +212,9 @@ export default async function MyAppointmentsPage() {
                   </p>
                   {a.chargedCents > 0 && (
                     <p className="mt-0.5 text-xs text-slate-500">
-                      Importe cobrado:{" "}
-                      {formatCents(a.chargedCents, a.business.currency)}
+                      {t.myAppointments.chargedAmount(
+                        formatCents(a.chargedCents, a.business.currency),
+                      )}
                     </p>
                   )}
                 </div>
@@ -201,7 +222,9 @@ export default async function MyAppointmentsPage() {
               </div>
             ))}
             {past.length === 0 && (
-              <p className="text-sm text-slate-500">Aún no hay historial.</p>
+              <p className="text-sm text-slate-500">
+                {t.myAppointments.noHistory}
+              </p>
             )}
           </div>
         </section>

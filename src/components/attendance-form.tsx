@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatCents } from "@/lib/money";
+import type { Dict } from "@/lib/i18n/shared";
 
 // Respuesta al recordatorio: "¿Vas a asistir?" con un toque. El "no" aplica
 // la política de cancelación mostrando el cargo exacto antes de confirmar.
@@ -13,6 +14,8 @@ export function AttendanceForm({
   priceCents,
   currency,
   alreadyConfirmed,
+  t,
+  tMy,
 }: {
   token: string;
   startAt: string;
@@ -21,6 +24,8 @@ export function AttendanceForm({
   priceCents: number;
   currency: string;
   alreadyConfirmed: boolean;
+  t: Dict["confirmation"];
+  tMy: Dict["myAppointments"];
 }) {
   const [state, setState] = useState<
     | { step: "ask" }
@@ -48,7 +53,7 @@ export function AttendanceForm({
     const json = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) {
-      setError(json.error ?? "No se pudo registrar tu respuesta");
+      setError(json.error ?? t.respondError);
       return;
     }
     if (attending) {
@@ -66,9 +71,9 @@ export function AttendanceForm({
     return (
       <div className="rounded-lg bg-emerald-50 p-4 text-center">
         <p className="text-lg font-semibold text-emerald-800">
-          ¡Asistencia confirmada! 🎉
+          {t.confirmedTitle}
         </p>
-        <p className="mt-1 text-sm text-emerald-700">Te esperamos.</p>
+        <p className="mt-1 text-sm text-emerald-700">{t.confirmedText}</p>
       </div>
     );
   }
@@ -76,11 +81,13 @@ export function AttendanceForm({
   if (state.step === "done-no") {
     return (
       <div className="rounded-lg bg-slate-50 p-4 text-center">
-        <p className="text-lg font-semibold text-slate-800">Cita cancelada</p>
+        <p className="text-lg font-semibold text-slate-800">
+          {t.cancelledTitle}
+        </p>
         <p className="mt-1 text-sm text-slate-600">
           {state.chargedCents > 0
-            ? `Se ha aplicado el cargo por cancelación tardía: ${formatCents(state.chargedCents, currency)}.`
-            : "Cancelaste dentro de plazo: sin coste."}
+            ? t.cancelledCharged(formatCents(state.chargedCents, currency))
+            : t.cancelledFree}
         </p>
       </div>
     );
@@ -91,14 +98,10 @@ export function AttendanceForm({
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
         {isLate ? (
           <p className="text-sm text-amber-800">
-            El plazo de cancelación gratuita ({windowHours} h antes) ya pasó.
-            Si cancelas ahora se aplicará un cargo de{" "}
-            <strong>{formatCents(feeCents, currency)}</strong>.
+            {tMy.cancelLate(windowHours, formatCents(feeCents, currency))}
           </p>
         ) : (
-          <p className="text-sm text-slate-600">
-            Estás dentro de plazo: la cancelación es gratuita.
-          </p>
+          <p className="text-sm text-slate-600">{tMy.cancelFree}</p>
         )}
         {error && <p className="mt-2 text-sm text-rose-700">{error}</p>}
         <div className="mt-3 flex justify-center gap-2">
@@ -108,17 +111,17 @@ export function AttendanceForm({
             onClick={() => respond(false)}
           >
             {busy
-              ? "Cancelando…"
+              ? tMy.cancelling
               : isLate
-                ? "Cancelar y aceptar el cargo"
-                : "Confirmar cancelación"}
+                ? tMy.cancelConfirmLate
+                : tMy.cancelConfirmFree}
           </button>
           <button
             className="btn-secondary"
             disabled={busy}
             onClick={() => setState({ step: "ask" })}
           >
-            Volver
+            {tMy.goBack}
           </button>
         </div>
       </div>
@@ -129,10 +132,10 @@ export function AttendanceForm({
     <div className="text-center">
       {alreadyConfirmed && (
         <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          Ya confirmaste tu asistencia. Puedes cambiar tu respuesta:
+          {t.alreadyConfirmed}
         </p>
       )}
-      <p className="font-medium text-slate-800">¿Vas a asistir a tu cita?</p>
+      <p className="font-medium text-slate-800">{t.question}</p>
       {error && <p className="mt-2 text-sm text-rose-700">{error}</p>}
       <div className="mt-4 flex justify-center gap-3">
         <button
@@ -140,14 +143,14 @@ export function AttendanceForm({
           disabled={busy}
           onClick={() => respond(true)}
         >
-          {busy ? "…" : "Sí, asistiré ✓"}
+          {busy ? "…" : t.yes}
         </button>
         <button
           className="btn-secondary min-w-32"
           disabled={busy}
           onClick={() => setState({ step: "confirm-no" })}
         >
-          No podré asistir
+          {t.no}
         </button>
       </div>
     </div>

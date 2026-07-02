@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getDict } from "@/lib/i18n";
 import { SiteHeader } from "@/components/site-header";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const { t } = await getDict();
   const businesses = await prisma.business.findMany({
     where: { active: true },
     select: {
@@ -27,18 +29,17 @@ export default async function HomePage() {
         <section className="border-b border-slate-200 bg-white">
           <div className="mx-auto max-w-5xl px-4 py-16 text-center">
             <h1 className="text-4xl font-bold tracking-tight text-slate-900">
-              Reserva tu cita online, sin llamadas
+              {t.landing.heroTitle}
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
-              AppCitas conecta clientes y negocios de cualquier sector. Reserva
-              en segundos y cancela gratis dentro del plazo de cada negocio.
+              {t.landing.heroSubtitle}
             </p>
             <div className="mt-8 flex items-center justify-center gap-3">
               <a href="#negocios" className="btn-primary">
-                Buscar negocio
+                {t.landing.findBusiness}
               </a>
               <Link href="/register-business" className="btn-secondary">
-                Soy un negocio
+                {t.landing.imABusiness}
               </Link>
             </div>
           </div>
@@ -46,7 +47,7 @@ export default async function HomePage() {
 
         <section id="negocios" className="mx-auto w-full max-w-5xl px-4 py-12">
           <h2 className="text-xl font-semibold text-slate-900">
-            Negocios disponibles
+            {t.landing.businessesTitle}
           </h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {businesses.map((b) => (
@@ -67,16 +68,16 @@ export default async function HomePage() {
                   </p>
                 )}
                 <p className="mt-3 text-xs text-slate-400">
-                  {b._count.services} servicios
+                  {b._count.services} {t.landing.services}
                   {b.address ? ` · ${b.address}` : ""}
                 </p>
               </Link>
             ))}
             {businesses.length === 0 && (
               <p className="text-sm text-slate-500">
-                Aún no hay negocios registrados.{" "}
+                {t.landing.noBusinesses}{" "}
                 <Link href="/register-business" className="text-indigo-600">
-                  Sé el primero
+                  {t.landing.beFirst}
                 </Link>
                 .
               </p>
@@ -85,7 +86,7 @@ export default async function HomePage() {
         </section>
       </main>
       <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-400">
-        AppCitas — proyecto base multi-sector de agendación de citas
+        {t.landing.footer}
       </footer>
     </>
   );

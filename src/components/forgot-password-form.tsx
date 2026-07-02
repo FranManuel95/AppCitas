@@ -2,7 +2,15 @@
 
 import { useState, type FormEvent } from "react";
 
-export function ForgotPasswordForm() {
+export interface ForgotPasswordLabels {
+  emailLabel: string;
+  button: string;
+  busy: string;
+  sent: string;
+  errorFallback: string;
+}
+
+export function ForgotPasswordForm({ labels }: { labels: ForgotPasswordLabels }) {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,7 +28,7 @@ export function ForgotPasswordForm() {
     const json = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) {
-      setError(json.error ?? "No se pudo procesar la solicitud");
+      setError(json.error ?? labels.errorFallback);
       return;
     }
     setSent(true);
@@ -29,8 +37,7 @@ export function ForgotPasswordForm() {
   if (sent) {
     return (
       <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-        Si existe una cuenta con ese email, te hemos enviado un enlace para
-        restablecer la contraseña. Caduca en 30 minutos.
+        {labels.sent}
       </p>
     );
   }
@@ -39,7 +46,7 @@ export function ForgotPasswordForm() {
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
         <label className="label" htmlFor="email">
-          Email de tu cuenta
+          {labels.emailLabel}
         </label>
         <input
           id="email"
@@ -56,7 +63,7 @@ export function ForgotPasswordForm() {
         </p>
       )}
       <button type="submit" disabled={busy} className="btn-primary w-full">
-        {busy ? "Enviando…" : "Enviar enlace de restablecimiento"}
+        {busy ? labels.busy : labels.button}
       </button>
     </form>
   );

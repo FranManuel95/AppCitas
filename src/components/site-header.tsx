@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth/session";
+import { getDict } from "@/lib/i18n";
 import { ADMIN_ROLES } from "@/lib/domain/types";
 import { LogoutButton } from "./logout-button";
+import { LanguageSwitcher } from "./language-switcher";
 
 export async function SiteHeader() {
-  const user = await getSessionUser();
+  const [user, { locale, t }] = await Promise.all([getSessionUser(), getDict()]);
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role) && !!user.businessId;
   const isStaff = user?.role === "STAFF" && !!user.businessId;
 
@@ -15,6 +17,7 @@ export async function SiteHeader() {
           AppCitas
         </Link>
         <nav className="flex items-center gap-4 text-sm">
+          <LanguageSwitcher current={locale} />
           {user ? (
             <>
               {isAdmin ? (
@@ -22,27 +25,27 @@ export async function SiteHeader() {
                   href="/admin"
                   className="font-medium text-slate-600 hover:text-slate-900"
                 >
-                  Panel del negocio
+                  {t.header.adminPanel}
                 </Link>
               ) : isStaff ? (
                 <Link
                   href="/personal"
                   className="font-medium text-slate-600 hover:text-slate-900"
                 >
-                  Mi agenda
+                  {t.header.myAgenda}
                 </Link>
               ) : (
                 <Link
                   href="/mis-citas"
                   className="font-medium text-slate-600 hover:text-slate-900"
                 >
-                  Mis citas
+                  {t.header.myAppointments}
                 </Link>
               )}
               <span className="hidden text-slate-400 sm:inline">
                 {user.name}
               </span>
-              <LogoutButton />
+              <LogoutButton label={t.header.logout} />
             </>
           ) : (
             <>
@@ -50,10 +53,10 @@ export async function SiteHeader() {
                 href="/login"
                 className="font-medium text-slate-600 hover:text-slate-900"
               >
-                Entrar
+                {t.header.login}
               </Link>
               <Link href="/register" className="btn-primary">
-                Crear cuenta
+                {t.header.signup}
               </Link>
             </>
           )}

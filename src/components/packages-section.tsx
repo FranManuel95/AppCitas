@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatCents } from "@/lib/money";
+import type { Dict } from "@/lib/i18n/shared";
 
 interface PackageOffer {
   id: string;
@@ -21,11 +22,13 @@ export function PackagesSection({
   currency,
   isLoggedIn,
   slug,
+  t,
 }: {
   packages: PackageOffer[];
   currency: string;
   isLoggedIn: boolean;
   slug: string;
+  t: Dict["business"];
 }) {
   const router = useRouter();
   const [buying, setBuying] = useState<string | null>(null);
@@ -45,7 +48,7 @@ export function PackagesSection({
     const json = await res.json().catch(() => ({}));
     setBuying(null);
     if (!res.ok) {
-      setMessage({ kind: "error", text: json.error ?? "No se pudo comprar" });
+      setMessage({ kind: "error", text: json.error ?? t.purchaseError });
       return;
     }
     const paid =
@@ -54,8 +57,8 @@ export function PackagesSection({
     setMessage({
       kind: "ok",
       text: paid
-        ? `¡Bono comprado y pagado! Tienes ${json.purchase.remainingSessions} sesiones para usar al reservar.`
-        : `¡Bono reservado! Tienes ${json.purchase.remainingSessions} sesiones; el pago se gestiona en el negocio.`,
+        ? t.packageBoughtPaid(json.purchase.remainingSessions)
+        : t.packageBoughtPending(json.purchase.remainingSessions),
     });
     router.refresh();
   }
@@ -64,10 +67,8 @@ export function PackagesSection({
 
   return (
     <div className="card">
-      <h2 className="font-semibold text-slate-900">Bonos</h2>
-      <p className="text-xs text-slate-500">
-        Paquetes de sesiones a precio reducido.
-      </p>
+      <h2 className="font-semibold text-slate-900">{t.packagesTitle}</h2>
+      <p className="text-xs text-slate-500">{t.packagesSubtitle}</p>
       <ul className="mt-3 space-y-3">
         {packages.map((p) => {
           const saving = p.fullPriceCents - p.priceCents;
@@ -76,7 +77,7 @@ export function PackagesSection({
               <p className="font-medium text-slate-800">{p.name}</p>
               <p className="text-sm text-slate-500">
                 {p.sessions} × {p.serviceName}
-                {p.validityDays ? ` · válido ${p.validityDays} días` : ""}
+                {p.validityDays ? ` · ${t.validFor(p.validityDays)}` : ""}
               </p>
               <p className="mt-1 text-sm">
                 <span className="font-semibold text-slate-900">
@@ -84,7 +85,7 @@ export function PackagesSection({
                 </span>{" "}
                 {saving > 0 && (
                   <span className="text-emerald-600">
-                    (ahorras {formatCents(saving, currency)})
+                    {t.youSave(formatCents(saving, currency))}
                   </span>
                 )}
               </p>
@@ -94,14 +95,14 @@ export function PackagesSection({
                   disabled={buying === p.id}
                   onClick={() => buy(p)}
                 >
-                  {buying === p.id ? "Comprando…" : "Comprar bono"}
+                  {buying === p.id ? t.buying : t.buyPackage}
                 </button>
               ) : (
                 <Link
                   href={`/login?next=/b/${slug}`}
                   className="btn-secondary mt-2 w-full"
                 >
-                  Inicia sesión para comprar
+                  {t.loginToBuy}
                 </Link>
               )}
             </li>

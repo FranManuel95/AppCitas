@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth/session";
+import { getDict } from "@/lib/i18n";
 import { SiteHeader } from "@/components/site-header";
 import { BookingWizard } from "@/components/booking-wizard";
 
@@ -15,11 +16,8 @@ export default async function BookingPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ servicio?: string }>;
 }) {
-  const [{ slug }, { servicio }, sessionUser] = await Promise.all([
-    params,
-    searchParams,
-    getSessionUser(),
-  ]);
+  const [{ slug }, { servicio }, sessionUser, { locale, t }] =
+    await Promise.all([params, searchParams, getSessionUser(), getDict()]);
 
   const [business, user] = await Promise.all([
     prisma.business.findFirst({
@@ -51,9 +49,7 @@ export default async function BookingPage({
             ← {business.name}
           </Link>
         </p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">
-          Reservar cita
-        </h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t.booking.title}</h1>
         <div className="mt-6">
           <BookingWizard
             business={{
@@ -83,6 +79,8 @@ export default async function BookingPage({
             initialServiceId={servicio}
             isLoggedIn={!!sessionUser}
             userHasPhone={!!user?.phone}
+            locale={locale}
+            t={t.booking}
           />
         </div>
       </main>

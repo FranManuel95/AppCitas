@@ -1,54 +1,56 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { getDict } from "@/lib/i18n";
 import { SiteHeader } from "@/components/site-header";
 import { AuthForm } from "@/components/auth-form";
 
 export const metadata = { title: "Registrar negocio" };
 
-export default function RegisterBusinessPage() {
+export default async function RegisterBusinessPage() {
+  const { t } = await getDict();
   return (
     <>
       <SiteHeader />
       <main className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="card w-full max-w-md">
           <h1 className="text-xl font-semibold text-slate-900">
-            Da de alta tu negocio
+            {t.auth.businessTitle}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Cualquier sector: consultas, peluquerías, clínicas, talleres…
-            Configura servicios, horario y política de cancelación desde el
-            panel.
+            {t.auth.businessSubtitle}
           </p>
           <div className="mt-6">
             <Suspense>
               <AuthForm
                 endpoint="/api/auth/register-business"
-                submitLabel="Crear negocio"
+                submitLabel={t.auth.businessButton}
+                busyLabel={t.auth.submitBusy}
+                errorFallback={t.auth.genericError}
                 adminRedirect
                 fields={[
-                  { name: "businessName", label: "Nombre del negocio" },
+                  { name: "businessName", label: t.auth.businessName },
                   {
                     name: "category",
-                    label: "Sector (opcional)",
+                    label: t.auth.businessCategory,
                     required: false,
-                    placeholder: "general, belleza, salud…",
+                    placeholder: t.auth.businessCategoryPlaceholder,
                   },
-                  { name: "ownerName", label: "Tu nombre" },
+                  { name: "ownerName", label: t.auth.yourName },
                   {
                     name: "email",
-                    label: "Email",
+                    label: t.auth.email,
                     type: "email",
                     autoComplete: "email",
                   },
                   {
                     name: "password",
-                    label: "Contraseña (mínimo 8 caracteres)",
+                    label: t.auth.passwordNew,
                     type: "password",
                     autoComplete: "new-password",
                   },
                   {
                     name: "phone",
-                    label: "Teléfono (opcional)",
+                    label: t.auth.phoneOptional,
                     type: "tel",
                     required: false,
                   },
@@ -57,9 +59,9 @@ export default function RegisterBusinessPage() {
             </Suspense>
           </div>
           <p className="mt-4 text-sm text-slate-500">
-            ¿Buscas reservar una cita?{" "}
+            {t.auth.lookingToBook}{" "}
             <Link href="/register" className="text-indigo-600">
-              Crea una cuenta de cliente
+              {t.auth.createClientAccount}
             </Link>
             .
           </p>

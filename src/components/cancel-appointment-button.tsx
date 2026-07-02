@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatCents } from "@/lib/money";
+import type { Dict } from "@/lib/i18n/shared";
 
 // Botón de cancelación con confirmación explícita: si la cancelación es
 // tardía, el cliente ve el cargo exacto antes de confirmar.
@@ -13,6 +14,7 @@ export function CancelAppointmentButton({
   feePercent,
   priceCents,
   currency,
+  t,
 }: {
   appointmentId: string;
   startAt: string;
@@ -20,6 +22,7 @@ export function CancelAppointmentButton({
   feePercent: number;
   priceCents: number;
   currency: string;
+  t: Dict["myAppointments"];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -40,7 +43,7 @@ export function CancelAppointmentButton({
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setError(json.error ?? "No se pudo cancelar la cita");
+      setError(json.error ?? t.cancelError);
       setBusy(false);
       return;
     }
@@ -51,7 +54,7 @@ export function CancelAppointmentButton({
   if (!open) {
     return (
       <button className="btn-secondary" onClick={() => setOpen(true)}>
-        Cancelar cita
+        {t.cancelCta}
       </button>
     );
   }
@@ -60,30 +63,26 @@ export function CancelAppointmentButton({
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
       {isLate ? (
         <p className="text-amber-800">
-          El plazo de cancelación gratuita ({windowHours} h antes) ya ha
-          pasado. Si cancelas ahora se te cobrará{" "}
-          <strong>{formatCents(feeCents, currency)}</strong>.
+          {t.cancelLate(windowHours, formatCents(feeCents, currency))}
         </p>
       ) : (
-        <p className="text-slate-600">
-          Estás dentro del plazo: la cancelación es gratuita.
-        </p>
+        <p className="text-slate-600">{t.cancelFree}</p>
       )}
       {error && <p className="mt-2 text-rose-700">{error}</p>}
       <div className="mt-3 flex gap-2">
         <button className="btn-danger" disabled={busy} onClick={confirmCancel}>
           {busy
-            ? "Cancelando…"
+            ? t.cancelling
             : isLate
-              ? "Cancelar y aceptar el cargo"
-              : "Confirmar cancelación"}
+              ? t.cancelConfirmLate
+              : t.cancelConfirmFree}
         </button>
         <button
           className="btn-secondary"
           disabled={busy}
           onClick={() => setOpen(false)}
         >
-          Volver
+          {t.goBack}
         </button>
       </div>
     </div>
