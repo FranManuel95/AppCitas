@@ -13,17 +13,20 @@ import {
 } from "recharts";
 import { formatCents } from "@/lib/money";
 import { STATUS_LABELS } from "@/lib/domain/types";
+import {
+  CHROME,
+  INK,
+  SERIES_PRIMARY,
+  TONE_COLORS,
+} from "@/lib/design/tokens";
+import { APPOINTMENT_STATUS_UI } from "@/components/appointment-status";
 
-// Tokens de la guía de visualización (tema claro):
-// tinta de texto y cromo recesivo; los colores de estado significan bueno/malo.
-const INK = { primary: "#0b0b0b", secondary: "#52514e", muted: "#898781" };
-const CHROME = { grid: "#e1e0d9", axis: "#c3c2b7", surface: "#ffffff" };
-const SERIES_BLUE = "#2a78d6"; // serie única (magnitud)
+// Colores de estado compartidos con StatusBadge: mismo estado, mismo color.
 const STATUS_COLOR = {
-  completed: "#0ca30c", // bueno
-  cancelled: "#898781", // neutro (de-énfasis)
-  cancelledLate: "#ec835a", // serio
-  noShow: "#d03b3b", // crítico
+  completed: TONE_COLORS[APPOINTMENT_STATUS_UI.COMPLETED.tone].chart,
+  cancelled: TONE_COLORS[APPOINTMENT_STATUS_UI.CANCELLED.tone].chart,
+  cancelledLate: TONE_COLORS[APPOINTMENT_STATUS_UI.CANCELLED_LATE.tone].chart,
+  noShow: TONE_COLORS[APPOINTMENT_STATUS_UI.NO_SHOW.tone].chart,
 } as const;
 
 export interface MonthlyPointDTO {
@@ -188,13 +191,13 @@ export function RevenueChart({
               }
             />
             <Tooltip
-              cursor={{ fill: "rgba(11,11,11,0.04)" }}
+              cursor={{ fill: "rgba(22,22,29,0.04)" }}
               content={<ChartTooltip currency={currency} isMoney />}
             />
             <Bar
               dataKey="ingresos"
               name="Ingresos"
-              fill={SERIES_BLUE}
+              fill={SERIES_PRIMARY}
               barSize={18}
               radius={[4, 4, 0, 0]}
             />
@@ -246,7 +249,7 @@ export function StatusChart({ monthly }: { monthly: MonthlyPointDTO[] }) {
               width={36}
             />
             <Tooltip
-              cursor={{ fill: "rgba(11,11,11,0.04)" }}
+              cursor={{ fill: "rgba(22,22,29,0.04)" }}
               content={<ChartTooltip currency="EUR" />}
             />
             <Legend
@@ -353,7 +356,7 @@ export function TopServicesChart({
             <Bar
               dataKey="ingresos"
               name="Ingresos"
-              fill={SERIES_BLUE}
+              fill={SERIES_PRIMARY}
               barSize={18}
               radius={[0, 4, 4, 0]}
             >
