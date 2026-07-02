@@ -12,18 +12,18 @@
     `-strong` sobre fondo `-soft` ≥4.5:1, rellenos de gráfico ≥3:1.
 */
 @theme {
-  /* Escala de marca (violeta-índigo) */
-  --color-brand-50: #f3f1fd;
-  --color-brand-100: #e9e5fb;
-  --color-brand-200: #d6cef8;
-  --color-brand-300: #b9abf2;
-  --color-brand-400: #977fe9;
-  --color-brand-500: #7a5ce0;
-  --color-brand-600: #5b3fd6;
-  --color-brand-700: #4c32b8;
-  --color-brand-800: #3f2b96;
-  --color-brand-900: #352878;
-  --color-brand-950: #21174d;
+  /* Escala de marca (esmeralda — variante bienestar/salud) */
+  --color-brand-50: #f0fdf9;
+  --color-brand-100: #cdfaef;
+  --color-brand-200: #9cf2de;
+  --color-brand-300: #5fe2c8;
+  --color-brand-400: #2cc6ab;
+  --color-brand-500: #16a891;
+  --color-brand-600: #0d7d6c;
+  --color-brand-700: #0c6357;
+  --color-brand-800: #0d5048;
+  --color-brand-900: #0e423c;
+  --color-brand-950: #052b27;
 
   /* Neutrales semánticos (fríos, con un matiz violeta muy leve) */
   --color-surface: #ffffff;
@@ -49,10 +49,10 @@
   --color-info-soft: #e8f1fb;
   --color-info-strong: #1d5eb0;
 
-  /* Radios ligeramente más suaves que los de serie */
-  --radius-lg: 0.625rem;
-  --radius-xl: 0.875rem;
-  --radius-2xl: 1.125rem;
+  /* Radios extra suaves: personalidad cálida de la variante esmeralda */
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
 
   /* Sombras por capas: elevación real en vez de un borde difuso */
   --shadow-xs:
