@@ -77,6 +77,10 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
    todas las tablas (la API pública de Supabase no podrá leer tus datos; la
    app no se ve afectada) y deja el registro de migraciones coherente para
    futuros `prisma migrate deploy`.
+5. **Datos demo por el mismo camino** (opcional): pega después el contenido
+   de `scripts/supabase-seed.sql` (2 negocios, equipo, ~140 citas, un bono
+   y dos cupones — mismas credenciales que el seed local). Se regenera con
+   `npx tsx scripts/generate-supabase-seed.ts`.
 
 > ¿Y Airtable? No es apto como base de datos de esta app: sin transacciones
 > no se puede garantizar el anti doble-reserva, y su límite de 5 peticiones/s
