@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { ServicesManager } from "@/components/admin/services-manager";
+import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Servicios" };
@@ -20,13 +21,11 @@ export default async function ServicesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Servicios</h1>
-        <p className="text-sm text-slate-500">
-          Lo que tus clientes pueden reservar: duración, precio y color de
-          agenda.
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        title="Servicios"
+        description="Lo que tus clientes pueden reservar: duración, precio y color de agenda."
+      />
       <ServicesManager
         services={services.map((s) => ({
           id: s.id,

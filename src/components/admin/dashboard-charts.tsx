@@ -20,6 +20,7 @@ import {
   TONE_COLORS,
 } from "@/lib/design/tokens";
 import { APPOINTMENT_STATUS_UI } from "@/components/appointment-status";
+import { SectionHeader } from "@/components/ui/section-header";
 
 // Colores de estado compartidos con StatusBadge: mismo estado, mismo color.
 const STATUS_COLOR = {
@@ -78,7 +79,7 @@ function ChartTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
+    <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-md">
       <p className="font-medium" style={{ color: INK.primary }}>
         {label ? monthLabelLong(label) : ""}
       </p>
@@ -112,14 +113,14 @@ function TableView({
 }) {
   return (
     <details className="mt-3">
-      <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-700">
+      <summary className="cursor-pointer text-xs text-ink-muted transition-colors hover:text-ink-soft">
         Ver tabla de datos
       </summary>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full text-xs tabular-nums">
           <caption className="sr-only">{caption}</caption>
           <thead>
-            <tr className="border-b border-slate-200 text-left text-slate-500">
+            <tr className="border-b border-border text-left text-ink-muted">
               {headers.map((h) => (
                 <th key={h} className="py-1.5 pr-4 font-medium">
                   {h}
@@ -129,7 +130,7 @@ function TableView({
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={i} className="border-b border-slate-100 text-slate-700">
+              <tr key={i} className="border-b border-border text-ink-soft">
                 {row.map((cell, j) => (
                   <td key={j} className="py-1.5 pr-4">
                     {cell}
@@ -158,10 +159,11 @@ export function RevenueChart({
 
   return (
     <div className="card">
-      <h2 className="font-semibold text-slate-900">Ingresos mensuales</h2>
-      <p className="text-xs text-slate-500">
-        Últimos 12 meses · importes efectivamente cobrados
-      </p>
+      <SectionHeader
+        as="h2"
+        title="Ingresos mensuales"
+        description="Últimos 12 meses · importes efectivamente cobrados"
+      />
       <div className="mt-4 h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
@@ -227,10 +229,11 @@ export function StatusChart({ monthly }: { monthly: MonthlyPointDTO[] }) {
 
   return (
     <div className="card">
-      <h2 className="font-semibold text-slate-900">Citas por estado</h2>
-      <p className="text-xs text-slate-500">
-        Últimos 12 meses · el color indica el desenlace de la cita
-      </p>
+      <SectionHeader
+        as="h2"
+        title="Citas por estado"
+        description="Últimos 12 meses · el color indica el desenlace de la cita"
+      />
       <div className="mt-4 h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
@@ -333,10 +336,11 @@ export function TopServicesChart({
 
   return (
     <div className="card">
-      <h2 className="font-semibold text-slate-900">Top servicios</h2>
-      <p className="text-xs text-slate-500">
-        Por ingresos en los últimos 12 meses
-      </p>
+      <SectionHeader
+        as="h2"
+        title="Top servicios"
+        description="Por ingresos en los últimos 12 meses"
+      />
       <div className="mt-4" style={{ height: Math.max(160, data.length * 44) }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart

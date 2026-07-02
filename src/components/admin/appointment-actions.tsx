@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Check, RotateCcw, UserX, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // Acciones operativas del negocio sobre una cita. El cargo se recalcula en el
 // servidor según el estado (completada = precio íntegro, no-show = % de la
@@ -56,44 +58,54 @@ export function AppointmentActions({
     router.refresh();
   }
 
-  const buttonClass =
-    "rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50";
-
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {status === "CONFIRMED" && isPast && (
         <>
-          <button
-            className={buttonClass}
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={busy}
             onClick={() => setStatus("COMPLETED")}
           >
+            <Check className="h-3.5 w-3.5" aria-hidden />
             Completar
-          </button>
-          <button
-            className={buttonClass}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={busy}
             onClick={() => setStatus("NO_SHOW")}
           >
+            <UserX className="h-3.5 w-3.5" aria-hidden />
             No presentado
-          </button>
+          </Button>
         </>
       )}
       {status === "CONFIRMED" && !isPast && canCancel && (
-        <button className={buttonClass} disabled={busy} onClick={cancelByBusiness}>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="text-danger-strong hover:bg-danger-soft"
+          disabled={busy}
+          onClick={cancelByBusiness}
+        >
+          <X className="h-3.5 w-3.5" aria-hidden />
           Cancelar (sin cargo)
-        </button>
+        </Button>
       )}
       {(status === "COMPLETED" || status === "NO_SHOW") && (
-        <button
-          className={buttonClass}
+        <Button
+          variant="ghost"
+          size="sm"
           disabled={busy}
           onClick={() => setStatus("CONFIRMED")}
         >
+          <RotateCcw className="h-3.5 w-3.5" aria-hidden />
           Revertir
-        </button>
+        </Button>
       )}
-      {error && <span className="text-xs text-rose-600">{error}</span>}
+      {error && <span className="text-xs text-danger-strong">{error}</span>}
     </div>
   );
 }

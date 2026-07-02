@@ -1,8 +1,28 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
+import {
+  AlertCircle,
+  Info,
+  KeyRound,
+  Mail,
+  Pencil,
+  Phone,
+  Send,
+  UserCheck,
+  Users,
+  UserX,
+} from "lucide-react";
 import { WEEKDAYS_ES, WEEKDAY_ORDER } from "@/lib/weekdays";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Field, Input } from "@/components/ui/field";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/cn";
 
 interface HourRange {
   weekday: number;
@@ -38,6 +58,7 @@ function StaffForm({
   onDone: () => void;
   onCancel: () => void;
 }) {
+  const uid = useId();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ownHours, setOwnHours] = useState<HourRange[]>(initial?.hours ?? []);
@@ -87,60 +108,58 @@ function StaffForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="label">Nombre</label>
-          <input
+    <form onSubmit={onSubmit} className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Nombre" htmlFor={`${uid}-name`}>
+          <Input
+            id={`${uid}-name`}
             name="name"
             required
             minLength={2}
             defaultValue={initial?.name}
-            className="input"
           />
-        </div>
-        <div>
-          <label className="label">Color en la agenda</label>
+        </Field>
+        <Field label="Color en la agenda" htmlFor={`${uid}-color`}>
           <input
+            id={`${uid}-color`}
             name="color"
             type="color"
             defaultValue={initial?.color ?? "#0ea5e9"}
-            className="h-10 w-16 cursor-pointer rounded border border-slate-300"
+            className="h-10 w-16 cursor-pointer rounded-lg border border-border-strong bg-surface p-1"
           />
-        </div>
-        <div>
-          <label className="label">Email (opcional)</label>
-          <input
+        </Field>
+        <Field label="Email (opcional)" htmlFor={`${uid}-email`}>
+          <Input
+            id={`${uid}-email`}
             name="email"
             type="email"
             defaultValue={initial?.email ?? ""}
-            className="input"
           />
-        </div>
-        <div>
-          <label className="label">Teléfono (opcional)</label>
-          <input
+        </Field>
+        <Field label="Teléfono (opcional)" htmlFor={`${uid}-phone`}>
+          <Input
+            id={`${uid}-phone`}
             name="phone"
             defaultValue={initial?.phone ?? ""}
-            className="input"
           />
-        </div>
+        </Field>
       </div>
 
       <div>
         <p className="label">Servicios que realiza</p>
-        <p className="mb-2 text-xs text-slate-400">
+        <p className="mb-2 text-xs text-ink-muted">
           Sin marcar ninguno, realiza todos los servicios.
         </p>
         <div className="flex flex-wrap gap-2">
           {services.map((s) => (
             <label
               key={s.id}
-              className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm ${
+              className={cn(
+                "cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
                 serviceIds.includes(s.id)
-                  ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                  : "border-slate-300 bg-white text-slate-600"
-              }`}
+                  ? "border-brand-500 bg-brand-50 text-brand-700"
+                  : "border-border-strong bg-surface text-ink-soft hover:bg-surface-2",
+              )}
             >
               <input
                 type="checkbox"
@@ -155,23 +174,20 @@ function StaffForm({
       </div>
 
       <div>
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-          <input
-            type="checkbox"
-            checked={useOwnHours}
-            onChange={(e) => setUseOwnHours(e.target.checked)}
-          />
-          Horario propio (si no, hereda el horario del negocio)
-        </label>
+        <Switch
+          checked={useOwnHours}
+          onChange={(e) => setUseOwnHours(e.target.checked)}
+          label="Horario propio (si no, hereda el horario del negocio)"
+        />
         {useOwnHours && (
-          <div className="mt-3 space-y-2 rounded-lg border border-slate-200 p-3">
+          <div className="mt-3 space-y-2 rounded-lg border border-border bg-surface-3/50 p-3">
             {WEEKDAY_ORDER.map((weekday) => {
               const dayRanges = ownHours
                 .map((r, index) => ({ ...r, index }))
                 .filter((r) => r.weekday === weekday);
               return (
                 <div key={weekday} className="flex flex-wrap items-center gap-2">
-                  <span className="w-20 text-xs font-medium text-slate-600">
+                  <span className="w-20 text-xs font-medium text-ink-soft">
                     {WEEKDAYS_ES[weekday]}
                   </span>
                   {dayRanges.map((r) => (
@@ -188,9 +204,11 @@ function StaffForm({
                             ),
                           )
                         }
-                        className="input max-w-28 py-1"
+                        className="input max-w-28 py-1 tabular-nums"
                       />
-                      –
+                      <span className="text-ink-muted" aria-hidden>
+                        –
+                      </span>
                       <input
                         type="time"
                         value={r.closeTime}
@@ -203,11 +221,11 @@ function StaffForm({
                             ),
                           )
                         }
-                        className="input max-w-28 py-1"
+                        className="input max-w-28 py-1 tabular-nums"
                       />
                       <button
                         type="button"
-                        className="px-1 text-xs text-rose-600"
+                        className="rounded px-1 text-xs text-danger-strong transition-colors hover:bg-danger-soft"
                         onClick={() =>
                           setOwnHours((h) => h.filter((_, i) => i !== r.index))
                         }
@@ -218,7 +236,7 @@ function StaffForm({
                   ))}
                   <button
                     type="button"
-                    className="text-xs text-indigo-600 hover:underline"
+                    className="text-xs font-medium text-brand-700 hover:underline"
                     onClick={() =>
                       setOwnHours((h) => [
                         ...h,
@@ -236,17 +254,18 @@ function StaffForm({
       </div>
 
       {error && (
-        <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p className="flex items-start gap-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger-strong">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           {error}
         </p>
       )}
-      <div className="flex gap-2">
-        <button type="submit" disabled={busy} className="btn-primary">
+      <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+        <Button type="submit" disabled={busy}>
           {busy ? "Guardando…" : initial ? "Guardar cambios" : "Añadir al equipo"}
-        </button>
-        <button type="button" className="btn-secondary" onClick={onCancel}>
+        </Button>
+        <Button variant="secondary" onClick={onCancel}>
           Cancelar
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -306,29 +325,30 @@ export function StaffManager({
   return (
     <div className="space-y-4">
       {!creating && (
-        <button className="btn-primary" onClick={() => setCreating(true)}>
-          + Añadir empleado
-        </button>
+        <Button onClick={() => setCreating(true)}>+ Añadir empleado</Button>
       )}
       {inviteMessage && (
-        <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+        <p className="flex items-start gap-2 rounded-lg bg-info-soft px-3 py-2 text-sm text-info-strong">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           {inviteMessage}
         </p>
       )}
       {creating && (
-        <div className="card">
-          <h2 className="mb-4 font-semibold text-slate-900">Nuevo empleado</h2>
+        <Card>
+          <h2 className="mb-4 text-base font-semibold text-ink">
+            Nuevo empleado
+          </h2>
           <StaffForm
             services={services}
             onDone={refresh}
             onCancel={() => setCreating(false)}
           />
-        </div>
+        </Card>
       )}
 
       <div className="space-y-3">
         {staff.map((member) => (
-          <div key={member.id} className="card">
+          <Card key={member.id} className={cn(!member.active && "bg-surface-3/40")}>
             {editing === member.id ? (
               <StaffForm
                 initial={member}
@@ -338,67 +358,91 @@ export function StaffManager({
               />
             ) : (
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-white"
-                    style={{ background: member.color }}
-                    aria-hidden
-                  >
-                    {member.name.slice(0, 1).toUpperCase()}
-                  </span>
-                  <div>
-                    <p className="font-medium text-slate-900">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar name={member.name} />
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-2 font-medium text-ink">
                       {member.name}
                       {!member.active && (
-                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                          Inactivo
-                        </span>
+                        <Badge tone="neutral">Inactivo</Badge>
+                      )}
+                      {member.hasAccess && (
+                        <Badge tone="success" icon={KeyRound}>
+                          Portal activo
+                        </Badge>
                       )}
                     </p>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-ink-muted">
                       {serviceNames(member.serviceIds)}
                       {member.hours.length > 0
                         ? " · horario propio"
                         : " · horario del negocio"}
-                      {member.hasAccess && (
-                        <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                          Portal activo
-                        </span>
-                      )}
                     </p>
+                    {(member.email || member.phone) && (
+                      <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+                        {member.email && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                            {member.email}
+                          </span>
+                        )}
+                        {member.phone && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                            {member.phone}
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {!member.hasAccess && member.email && member.active && (
-                    <button
-                      className="btn-secondary"
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => invite(member)}
                     >
+                      <Send className="h-3.5 w-3.5" aria-hidden />
                       Dar acceso
-                    </button>
+                    </Button>
                   )}
-                  <button
-                    className="btn-secondary"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setEditing(member.id)}
                   >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden />
                     Editar
-                  </button>
-                  <button
-                    className="btn-secondary"
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className={
+                      member.active
+                        ? "text-danger-strong hover:bg-danger-soft"
+                        : undefined
+                    }
                     onClick={() => toggleActive(member)}
                   >
+                    {member.active ? (
+                      <UserX className="h-3.5 w-3.5" aria-hidden />
+                    ) : (
+                      <UserCheck className="h-3.5 w-3.5" aria-hidden />
+                    )}
                     {member.active ? "Desactivar" : "Activar"}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
-          </div>
+          </Card>
         ))}
         {staff.length === 0 && (
-          <p className="card text-sm text-slate-500">
-            Sin equipo definido, el negocio funciona con una única agenda
-            (capacidad 1). Añade empleados para atender varias citas a la vez.
-          </p>
+          <EmptyState
+            icon={Users}
+            title="Sin equipo definido, el negocio funciona con una única agenda (capacidad 1)."
+            description="Añade empleados para atender varias citas a la vez."
+          />
         )}
       </div>
     </div>

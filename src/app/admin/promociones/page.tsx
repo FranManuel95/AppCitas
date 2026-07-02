@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { PromosManager } from "@/components/admin/promos-manager";
+import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Promociones" };
@@ -33,12 +34,11 @@ export default async function PromosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Promociones</h1>
-        <p className="text-sm text-slate-500">
-          Bonos prepagados y cupones de descuento para tus clientes.
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        title="Promociones"
+        description="Bonos prepagados y cupones de descuento para tus clientes."
+      />
       <PromosManager
         packages={packages.map((p) => ({
           id: p.id,

@@ -9,7 +9,7 @@ export function LogoutButton({ label = "Salir" }: { label?: string }) {
 
   return (
     <button
-      className="text-sm text-slate-500 hover:text-slate-800"
+      className="text-sm text-ink-muted transition-colors hover:text-ink"
       disabled={busy}
       onClick={async () => {
         setBusy(true);

@@ -2,7 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import {
+  CalendarDays,
+  CircleAlert,
+  Hash,
+  Layers,
+  Ticket,
+  TicketPercent,
+} from "lucide-react";
 import { formatCents } from "@/lib/money";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Field, Input, Select } from "@/components/ui/field";
+import { SectionHeader } from "@/components/ui/section-header";
 
 interface PackageDTO {
   id: string;
@@ -124,234 +138,257 @@ export function PromosManager({
   return (
     <div className="space-y-8">
       {error && (
-        <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p className="flex items-start gap-2 rounded-lg bg-danger-soft px-3 py-2 text-sm font-medium text-danger-strong">
+          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           {error}
         </p>
       )}
 
       {/* Bonos */}
-      <section>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              Bonos de sesiones
-            </h2>
-            <p className="text-sm text-slate-500">
-              Packs prepagados de un servicio a precio cerrado.
-            </p>
-          </div>
-          {!creatingPackage && (
-            <button
-              className="btn-primary"
-              onClick={() => setCreatingPackage(true)}
-            >
-              + Nuevo bono
-            </button>
-          )}
-        </div>
+      <section className="space-y-4">
+        <SectionHeader
+          title="Bonos de sesiones"
+          description="Packs prepagados de un servicio a precio cerrado."
+          action={
+            !creatingPackage ? (
+              <Button onClick={() => setCreatingPackage(true)}>
+                + Nuevo bono
+              </Button>
+            ) : undefined
+          }
+        />
 
         {creatingPackage && (
-          <form onSubmit={submitPackage} className="card mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="label">Nombre</label>
-              <input name="name" required minLength={2} className="input" />
-            </div>
-            <div>
-              <label className="label">Servicio</label>
-              <select name="serviceId" required className="input">
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({formatCents(s.priceCents, currency)})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="label">Nº de sesiones</label>
-              <input
-                name="sessions"
-                type="number"
-                min={2}
-                max={100}
-                required
-                defaultValue={5}
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="label">Precio del bono (€)</label>
-              <input
-                name="price"
-                type="number"
-                min={0}
-                step="0.01"
-                required
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="label">Validez (días; vacío = sin caducidad)</label>
-              <input name="validityDays" type="number" min={0} className="input" />
-            </div>
-            <div className="flex gap-2 sm:col-span-2">
-              <button type="submit" className="btn-primary">
-                Crear bono
-              </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setCreatingPackage(false)}
+          <Card>
+            <form onSubmit={submitPackage} className="grid gap-4 sm:grid-cols-2">
+              <Field label="Nombre" htmlFor="pkg-name" className="sm:col-span-2">
+                <Input id="pkg-name" name="name" required minLength={2} />
+              </Field>
+              <Field label="Servicio" htmlFor="pkg-service">
+                <Select id="pkg-service" name="serviceId" required>
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({formatCents(s.priceCents, currency)})
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Nº de sesiones" htmlFor="pkg-sessions">
+                <Input
+                  id="pkg-sessions"
+                  name="sessions"
+                  type="number"
+                  min={2}
+                  max={100}
+                  required
+                  defaultValue={5}
+                />
+              </Field>
+              <Field label="Precio del bono (€)" htmlFor="pkg-price">
+                <Input
+                  id="pkg-price"
+                  name="price"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  required
+                />
+              </Field>
+              <Field
+                label="Validez (días; vacío = sin caducidad)"
+                htmlFor="pkg-validity"
               >
-                Cancelar
-              </button>
-            </div>
-          </form>
+                <Input id="pkg-validity" name="validityDays" type="number" min={0} />
+              </Field>
+              <div className="flex gap-2 sm:col-span-2">
+                <Button type="submit">Crear bono</Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setCreatingPackage(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Card>
         )}
 
-        <div className="mt-4 space-y-3">
+        <div className="space-y-3">
           {packages.map((p) => (
-            <div
+            <Card
               key={p.id}
-              className="card flex flex-wrap items-center justify-between gap-3"
+              className="flex flex-wrap items-center justify-between gap-4 p-4"
             >
-              <div>
-                <p className="font-medium text-slate-900">
-                  {p.name}
-                  {!p.active && (
-                    <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                      Inactivo
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                  <Ticket className="h-4 w-4" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-ink">{p.name}</p>
+                    {p.active ? (
+                      <Badge tone="success">Activo</Badge>
+                    ) : (
+                      <Badge tone="neutral">Inactivo</Badge>
+                    )}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-soft">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Layers
+                        className="h-3.5 w-3.5 shrink-0 text-ink-muted"
+                        aria-hidden
+                      />
+                      {p.sessions} × {p.serviceName}
                     </span>
-                  )}
-                </p>
-                <p className="text-sm text-slate-500">
-                  {p.sessions} × {p.serviceName} ·{" "}
-                  {formatCents(p.priceCents, currency)}{" "}
-                  <span className="text-slate-400">
-                    (suelto: {formatCents(p.sessions * p.servicePriceCents, currency)})
-                  </span>
-                  {p.validityDays ? ` · válido ${p.validityDays} días` : ""}
-                </p>
-                <p className="text-xs text-slate-400">
-                  {p.purchases} bonos vendidos
-                </p>
+                    <span className="font-semibold tabular-nums text-ink">
+                      {formatCents(p.priceCents, currency)}
+                    </span>
+                    <span className="tabular-nums text-ink-muted">
+                      (suelto: {formatCents(p.sessions * p.servicePriceCents, currency)})
+                    </span>
+                    {p.validityDays ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <CalendarDays
+                          className="h-3.5 w-3.5 shrink-0 text-ink-muted"
+                          aria-hidden
+                        />
+                        válido {p.validityDays} días
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-xs tabular-nums text-ink-muted">
+                    {p.purchases} bonos vendidos
+                  </p>
+                </div>
               </div>
-              <button className="btn-secondary" onClick={() => togglePackage(p)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => togglePackage(p)}
+              >
                 {p.active ? "Desactivar" : "Activar"}
-              </button>
-            </div>
+              </Button>
+            </Card>
           ))}
           {packages.length === 0 && (
-            <p className="card text-sm text-slate-500">
-              Sin bonos. Crea el primero para fidelizar a tus clientes.
-            </p>
+            <EmptyState
+              icon={Ticket}
+              title="Sin bonos."
+              description="Crea el primero para fidelizar a tus clientes."
+            />
           )}
         </div>
       </section>
 
       {/* Cupones */}
-      <section>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Cupones</h2>
-            <p className="text-sm text-slate-500">
-              Códigos de descuento que el cliente introduce al reservar.
-            </p>
-          </div>
-          {!creatingCoupon && (
-            <button className="btn-primary" onClick={() => setCreatingCoupon(true)}>
-              + Nuevo cupón
-            </button>
-          )}
-        </div>
+      <section className="space-y-4">
+        <SectionHeader
+          title="Cupones"
+          description="Códigos de descuento que el cliente introduce al reservar."
+          action={
+            !creatingCoupon ? (
+              <Button onClick={() => setCreatingCoupon(true)}>
+                + Nuevo cupón
+              </Button>
+            ) : undefined
+          }
+        />
 
         {creatingCoupon && (
-          <form onSubmit={submitCoupon} className="card mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="label">Código</label>
-              <input
-                name="code"
-                required
-                minLength={3}
-                maxLength={30}
-                placeholder="BIENVENIDA10"
-                className="input uppercase"
-              />
-            </div>
-            <div>
-              <label className="label">Tipo</label>
-              <select name="type" className="input">
-                <option value="PERCENT">Porcentaje (%)</option>
-                <option value="FIXED">Importe fijo (€)</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Valor (% o €)</label>
-              <input
-                name="value"
-                type="number"
-                min={1}
-                step="0.01"
-                required
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="label">Usos máximos (vacío = ilimitado)</label>
-              <input name="maxRedemptions" type="number" min={0} className="input" />
-            </div>
-            <div>
-              <label className="label">Caducidad (opcional)</label>
-              <input name="expiresAt" type="date" className="input" />
-            </div>
-            <div className="flex items-end gap-2">
-              <button type="submit" className="btn-primary">
-                Crear cupón
-              </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setCreatingCoupon(false)}
+          <Card>
+            <form onSubmit={submitCoupon} className="grid gap-4 sm:grid-cols-2">
+              <Field label="Código" htmlFor="coupon-code">
+                <Input
+                  id="coupon-code"
+                  name="code"
+                  required
+                  minLength={3}
+                  maxLength={30}
+                  placeholder="BIENVENIDA10"
+                  className="uppercase"
+                />
+              </Field>
+              <Field label="Tipo" htmlFor="coupon-type">
+                <Select id="coupon-type" name="type">
+                  <option value="PERCENT">Porcentaje (%)</option>
+                  <option value="FIXED">Importe fijo (€)</option>
+                </Select>
+              </Field>
+              <Field label="Valor (% o €)" htmlFor="coupon-value">
+                <Input
+                  id="coupon-value"
+                  name="value"
+                  type="number"
+                  min={1}
+                  step="0.01"
+                  required
+                />
+              </Field>
+              <Field
+                label="Usos máximos (vacío = ilimitado)"
+                htmlFor="coupon-max"
               >
-                Cancelar
-              </button>
-            </div>
-          </form>
+                <Input id="coupon-max" name="maxRedemptions" type="number" min={0} />
+              </Field>
+              <Field label="Caducidad (opcional)" htmlFor="coupon-expires">
+                <Input id="coupon-expires" name="expiresAt" type="date" />
+              </Field>
+              <div className="flex items-end gap-2">
+                <Button type="submit">Crear cupón</Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setCreatingCoupon(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Card>
         )}
 
-        <div className="mt-4 space-y-3">
+        <div className="space-y-3">
           {coupons.map((c) => (
-            <div
+            <Card
               key={c.id}
-              className="card flex flex-wrap items-center justify-between gap-3"
+              className="flex flex-wrap items-center justify-between gap-4 p-4"
             >
-              <div>
-                <p className="font-mono font-medium text-slate-900">
-                  {c.code}
-                  {!c.active && (
-                    <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 font-sans text-xs text-slate-500">
-                      Inactivo
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <code className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-sm font-medium text-ink">
+                    {c.code}
+                  </code>
+                  <Badge tone="brand" icon={TicketPercent}>
+                    {c.type === "PERCENT"
+                      ? `${c.value}% de descuento`
+                      : `${formatCents(c.value, currency)} de descuento`}
+                  </Badge>
+                  {!c.active && <Badge tone="neutral">Inactivo</Badge>}
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">
+                  <span className="inline-flex items-center gap-1.5 tabular-nums">
+                    <Hash className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    {c.timesRedeemed} usos
+                    {c.maxRedemptions ? ` de ${c.maxRedemptions}` : ""}
+                  </span>
+                  {c.expiresAt ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      caduca {new Date(c.expiresAt).toLocaleDateString("es-ES")}
                     </span>
-                  )}
-                </p>
-                <p className="text-sm text-slate-500">
-                  {c.type === "PERCENT"
-                    ? `${c.value}% de descuento`
-                    : `${formatCents(c.value, currency)} de descuento`}
-                  {" · "}
-                  {c.timesRedeemed} usos
-                  {c.maxRedemptions ? ` de ${c.maxRedemptions}` : ""}
-                  {c.expiresAt
-                    ? ` · caduca ${new Date(c.expiresAt).toLocaleDateString("es-ES")}`
-                    : ""}
-                </p>
+                  ) : null}
+                </div>
               </div>
-              <button className="btn-secondary" onClick={() => toggleCoupon(c)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => toggleCoupon(c)}
+              >
                 {c.active ? "Desactivar" : "Activar"}
-              </button>
-            </div>
+              </Button>
+            </Card>
           ))}
           {coupons.length === 0 && (
-            <p className="card text-sm text-slate-500">Sin cupones creados.</p>
+            <EmptyState icon={TicketPercent} title="Sin cupones creados." />
           )}
         </div>
       </section>

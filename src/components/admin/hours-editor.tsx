@@ -2,7 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AlertCircle, CheckCircle2, Plus, Trash2, X } from "lucide-react";
 import { WEEKDAYS_ES, WEEKDAY_ORDER } from "@/lib/weekdays";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Field, Input } from "@/components/ui/field";
+import { SectionHeader } from "@/components/ui/section-header";
 
 interface HourRange {
   weekday: number;
@@ -92,12 +97,12 @@ export function HoursEditor({
 
   return (
     <div className="space-y-6">
-      <div className="card">
-        <h2 className="font-semibold text-slate-900">Horario semanal</h2>
-        <p className="text-xs text-slate-500">
-          Varios tramos por día permitidos (p. ej. mañana y tarde).
-        </p>
-        <div className="mt-4 space-y-4">
+      <Card>
+        <SectionHeader
+          title="Horario semanal"
+          description="Varios tramos por día permitidos (p. ej. mañana y tarde)."
+        />
+        <div className="mt-5 space-y-4">
           {WEEKDAY_ORDER.map((weekday) => {
             const dayRanges = hours
               .map((r, index) => ({ ...r, index }))
@@ -105,131 +110,146 @@ export function HoursEditor({
             return (
               <div
                 key={weekday}
-                className="flex flex-wrap items-start gap-3 border-b border-slate-100 pb-3 last:border-0"
+                className="flex flex-wrap items-start gap-3 border-b border-border pb-4 last:border-0 last:pb-0"
               >
-                <span className="w-24 pt-2 text-sm font-medium text-slate-700">
+                <span className="w-24 pt-1.5 text-sm font-medium text-ink">
                   {WEEKDAYS_ES[weekday]}
                 </span>
                 <div className="flex flex-1 flex-col gap-2">
                   {dayRanges.map((r) => (
                     <div key={r.index} className="flex items-center gap-2">
-                      <input
+                      <Input
                         type="time"
                         value={r.openTime}
                         onChange={(e) =>
                           updateRange(r.index, { openTime: e.target.value })
                         }
-                        className="input max-w-32"
+                        className="max-w-32 py-1.5 tabular-nums"
                       />
-                      <span className="text-slate-400">–</span>
-                      <input
+                      <span className="text-ink-muted" aria-hidden>
+                        –
+                      </span>
+                      <Input
                         type="time"
                         value={r.closeTime}
                         onChange={(e) =>
                           updateRange(r.index, { closeTime: e.target.value })
                         }
-                        className="input max-w-32"
+                        className="max-w-32 py-1.5 tabular-nums"
                       />
-                      <button
-                        className="text-sm text-rose-600 hover:underline"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Quitar"
+                        title="Quitar"
                         onClick={() => removeRange(r.index)}
                       >
-                        Quitar
-                      </button>
+                        <X className="h-4 w-4" aria-hidden />
+                      </Button>
                     </div>
                   ))}
                   {dayRanges.length === 0 && (
-                    <p className="pt-2 text-sm text-slate-400">Cerrado</p>
+                    <p className="pt-1.5 text-sm text-ink-muted">Cerrado</p>
                   )}
                 </div>
-                <button
-                  className="btn-secondary"
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => addRange(weekday)}
                 >
-                  + Tramo
-                </button>
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  Tramo
+                </Button>
               </div>
             );
           })}
         </div>
         {message && (
           <p
-            className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+            className={`mt-4 flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${
               message.kind === "ok"
-                ? "bg-emerald-50 text-emerald-700"
-                : "bg-rose-50 text-rose-700"
+                ? "bg-success-soft text-success-strong"
+                : "bg-danger-soft text-danger-strong"
             }`}
           >
+            {message.kind === "ok" ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            ) : (
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            )}
             {message.text}
           </p>
         )}
-        <button className="btn-primary mt-4" disabled={saving} onClick={save}>
+        <Button className="mt-4" disabled={saving} onClick={save}>
           {saving ? "Guardando…" : "Guardar horario"}
-        </button>
-      </div>
+        </Button>
+      </Card>
 
-      <div className="card">
-        <h2 className="font-semibold text-slate-900">
-          Cierres puntuales y festivos
-        </h2>
-        <p className="text-xs text-slate-500">
-          Días concretos en los que no se aceptan reservas.
-        </p>
-        <form action={addClosure} className="mt-4 flex flex-wrap items-end gap-2">
-          <div>
-            <label className="label" htmlFor="closure-date">
-              Fecha
-            </label>
-            <input
+      <Card>
+        <SectionHeader
+          title="Cierres puntuales y festivos"
+          description="Días concretos en los que no se aceptan reservas."
+        />
+        <form
+          action={addClosure}
+          className="mt-5 flex flex-wrap items-end gap-2"
+        >
+          <Field label="Fecha" htmlFor="closure-date">
+            <Input
               id="closure-date"
               type="date"
               name="date"
               required
-              className="input"
+              className="tabular-nums"
             />
-          </div>
-          <div className="flex-1">
-            <label className="label" htmlFor="closure-reason">
-              Motivo (opcional)
-            </label>
-            <input
+          </Field>
+          <Field
+            label="Motivo (opcional)"
+            htmlFor="closure-reason"
+            className="min-w-40 flex-1"
+          >
+            <Input
               id="closure-reason"
               name="reason"
               placeholder="Festivo, vacaciones…"
-              className="input"
             />
-          </div>
-          <button type="submit" className="btn-secondary">
+          </Field>
+          <Button type="submit" variant="secondary">
             Añadir cierre
-          </button>
+          </Button>
         </form>
         <ul className="mt-4 space-y-2">
           {closures.map((c) => (
             <li
               key={c.id}
-              className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
+              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2 text-sm"
             >
-              <span className="text-slate-700">
-                {c.date}
+              <span className="min-w-0 text-ink-soft">
+                <span className="font-medium tabular-nums text-ink">
+                  {c.date}
+                </span>
                 {c.reason && (
-                  <span className="text-slate-400"> · {c.reason}</span>
+                  <span className="text-ink-muted"> · {c.reason}</span>
                 )}
               </span>
-              <button
-                className="text-rose-600 hover:underline"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 text-danger-strong hover:bg-danger-soft hover:text-danger-strong"
                 onClick={() => removeClosure(c.id)}
               >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
                 Eliminar
-              </button>
+              </Button>
             </li>
           ))}
           {closures.length === 0 && (
-            <li className="text-sm text-slate-400">
+            <li className="text-sm text-ink-muted">
               No hay cierres programados.
             </li>
           )}
         </ul>
-      </div>
+      </Card>
     </div>
   );
 }

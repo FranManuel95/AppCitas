@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Briefcase, CalendarDays, User } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireStaff } from "@/lib/auth/guards";
 import {
@@ -12,6 +13,10 @@ import { formatCents } from "@/lib/money";
 import { SiteHeader } from "@/components/site-header";
 import { StatusBadge } from "@/components/status-badge";
 import { AppointmentActions } from "@/components/admin/appointment-actions";
+import { buttonClasses } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Mi agenda" };
@@ -68,73 +73,92 @@ export default async function StaffPortalPage({
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-slate-500">
+        <SectionHeader
+          as="h1"
+          title="Mi agenda"
+          description={
+            <>
               {business.name} · {staff.staffName}
-            </p>
-            <h1 className="text-2xl font-bold text-slate-900">Mi agenda</h1>
-            <p className="text-sm capitalize text-slate-500">{dayLabel}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/personal?fecha=${addDaysISO(day, -1)}`}
-              className="btn-secondary"
-            >
-              ← Anterior
-            </Link>
-            {day !== today && (
-              <Link href="/personal" className="btn-secondary">
-                Hoy
+              <span className="mt-0.5 block capitalize text-ink-soft">
+                {dayLabel}
+              </span>
+            </>
+          }
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={`/personal?fecha=${addDaysISO(day, -1)}`}
+                className={buttonClasses({ variant: "secondary", size: "sm" })}
+              >
+                ← Anterior
               </Link>
-            )}
-            <Link
-              href={`/personal?fecha=${addDaysISO(day, 1)}`}
-              className="btn-secondary"
-            >
-              Siguiente →
-            </Link>
-          </div>
-        </div>
+              {day !== today && (
+                <Link
+                  href="/personal"
+                  className={buttonClasses({ variant: "secondary", size: "sm" })}
+                >
+                  Hoy
+                </Link>
+              )}
+              <Link
+                href={`/personal?fecha=${addDaysISO(day, 1)}`}
+                className={buttonClasses({ variant: "secondary", size: "sm" })}
+              >
+                Siguiente →
+              </Link>
+            </div>
+          }
+        />
 
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-3 flex items-center gap-2 text-sm text-ink-muted">
+          <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
           Tienes {upcomingCount} citas confirmadas próximamente.
         </p>
 
         <div className="mt-6 space-y-3">
           {agenda.map((a) => (
-            <div key={a.id} className="card">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex items-start gap-4">
-                  <div className="text-center">
-                    <p className="text-lg font-bold tabular-nums text-slate-900">
+            <Card key={a.id}>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-4">
+                  <div className="w-16 shrink-0 rounded-lg border border-border bg-surface-3 py-2 text-center">
+                    <p className="text-base font-semibold tabular-nums text-ink">
                       {toLocalTime(a.startAt, business.timezone)}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-[11px] text-ink-muted">
                       {a.service.durationMinutes} min
                     </p>
                   </div>
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      {a.client.name}
+                  <div className="min-w-0 space-y-1">
+                    <p className="flex items-center gap-2 text-sm font-medium text-ink">
+                      <User
+                        className="h-4 w-4 shrink-0 text-ink-muted"
+                        aria-hidden
+                      />
+                      <span className="truncate">{a.client.name}</span>
                     </p>
-                    <p className="text-sm text-slate-500">
-                      {a.service.name} ·{" "}
-                      {formatCents(a.priceCents, business.currency)}
+                    <p className="flex items-center gap-2 text-sm text-ink-soft">
+                      <Briefcase
+                        className="h-4 w-4 shrink-0 text-ink-muted"
+                        aria-hidden
+                      />
+                      <span className="min-w-0">
+                        {a.service.name} ·{" "}
+                        {formatCents(a.priceCents, business.currency)}
+                      </span>
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="pl-6 text-xs text-ink-muted">
                       {[a.client.email, a.client.phone]
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
                     {a.notes && (
-                      <p className="mt-1 rounded bg-slate-50 px-2 py-1 text-xs text-slate-600">
+                      <p className="ml-6 mt-1.5 rounded-md bg-surface-3 px-2.5 py-1.5 text-xs text-ink-soft">
                         {a.notes}
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex shrink-0 flex-col items-end gap-2">
                   <StatusBadge status={a.status} />
                   <AppointmentActions
                     appointmentId={a.id}
@@ -145,12 +169,13 @@ export default async function StaffPortalPage({
                   />
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
           {agenda.length === 0 && (
-            <p className="card text-sm text-slate-500">
-              No tienes citas este día.
-            </p>
+            <EmptyState
+              icon={CalendarDays}
+              title="No tienes citas este día."
+            />
           )}
         </div>
       </main>

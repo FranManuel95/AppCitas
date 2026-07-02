@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { StaffManager } from "@/components/admin/staff-manager";
+import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Equipo" };
@@ -25,13 +26,11 @@ export default async function StaffPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Equipo</h1>
-        <p className="text-sm text-slate-500">
-          Cada empleado tiene su propia agenda: varias citas pueden coincidir
-          en hora si las atienden personas distintas.
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        title="Equipo"
+        description="Cada empleado tiene su propia agenda: varias citas pueden coincidir en hora si las atienden personas distintas."
+      />
       <StaffManager
         staff={staff.map((m) => ({
           id: m.id,

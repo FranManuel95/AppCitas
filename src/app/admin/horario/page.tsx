@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { HoursEditor } from "@/components/admin/hours-editor";
+import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Horario" };
@@ -20,12 +21,11 @@ export default async function HoursPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Horario</h1>
-        <p className="text-sm text-slate-500">
-          Define cuándo se pueden reservar citas.
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        title="Horario"
+        description="Define cuándo se pueden reservar citas."
+      />
       <HoursEditor
         initialHours={hours.map((h) => ({
           weekday: h.weekday,

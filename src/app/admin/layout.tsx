@@ -1,19 +1,27 @@
 import Link from "next/link";
+import { CalendarDays, ExternalLink, LogOut } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { LogoutButton } from "@/components/logout-button";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
+import { Avatar } from "@/components/ui/avatar";
+import {
+  AdminNavLink,
+  type AdminNavIcon,
+} from "@/components/admin/admin-nav-link";
 
-const NAV = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/agenda", label: "Agenda" },
-  { href: "/admin/citas", label: "Citas" },
-  { href: "/admin/equipo", label: "Equipo" },
-  { href: "/admin/servicios", label: "Servicios" },
-  { href: "/admin/promociones", label: "Promos" },
-  { href: "/admin/horario", label: "Horario" },
-  { href: "/admin/notificaciones", label: "Notificaciones" },
-  { href: "/admin/ajustes", label: "Ajustes" },
+// El icono va como clave (no como componente): las funciones no pueden
+// cruzar la frontera server→client; AdminNavLink resuelve la clave.
+const NAV: Array<{ href: string; label: string; icon: AdminNavIcon }> = [
+  { href: "/admin", label: "Dashboard", icon: "dashboard" },
+  { href: "/admin/agenda", label: "Agenda", icon: "agenda" },
+  { href: "/admin/citas", label: "Citas", icon: "citas" },
+  { href: "/admin/equipo", label: "Equipo", icon: "equipo" },
+  { href: "/admin/servicios", label: "Servicios", icon: "servicios" },
+  { href: "/admin/promociones", label: "Promos", icon: "promociones" },
+  { href: "/admin/horario", label: "Horario", icon: "horario" },
+  { href: "/admin/notificaciones", label: "Notificaciones", icon: "notificaciones" },
+  { href: "/admin/ajustes", label: "Ajustes", icon: "ajustes" },
 ];
 
 export default async function AdminLayout({
@@ -34,55 +42,69 @@ export default async function AdminLayout({
   ]);
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-lg font-semibold text-indigo-600">
+    <div className="flex min-h-screen flex-col bg-surface-2 md:flex-row">
+      <aside className="flex shrink-0 flex-col border-b border-border bg-surface md:sticky md:top-0 md:h-screen md:w-60 md:border-b-0 md:border-r">
+        <div className="flex items-center gap-2.5 px-5 pb-3 pt-4 md:pb-4 md:pt-5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white shadow-xs">
+            <CalendarDays className="h-4 w-4" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <Link
+              href="/"
+              className="block text-sm font-semibold tracking-tight text-ink transition-colors hover:text-brand-700"
+            >
               AppCitas
             </Link>
-            <span className="text-slate-300">/</span>
-            <span className="text-sm font-medium text-slate-700">
-              {business.name}
-            </span>
-          </div>
-          <div className="flex items-center gap-4 text-sm">
-            <Link
-              href={`/b/${business.slug}`}
-              className="text-slate-500 hover:text-slate-800"
-            >
-              Ver página pública
-            </Link>
-            <span className="hidden text-slate-400 sm:inline">
-              {admin.name}
-            </span>
-            <LogoutButton />
+            <p className="truncate text-xs text-ink-muted">{business.name}</p>
           </div>
         </div>
-      </header>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-1 gap-8 px-4 py-8">
-        <nav className="w-44 shrink-0">
-          <ul className="space-y-1">
+        <nav className="min-h-0 md:flex-1 md:overflow-y-auto">
+          <ul className="flex items-center gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:items-stretch md:gap-0.5 md:overflow-x-visible md:py-1">
             {NAV.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-900"
-                >
+              <li key={item.href} className="shrink-0 md:shrink">
+                <AdminNavLink href={item.href} icon={item.icon}>
                   {item.label}
-                </Link>
+                </AdminNavLink>
               </li>
             ))}
           </ul>
         </nav>
-        <main className="min-w-0 flex-1">
+
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border px-3 py-2 md:block md:py-3">
+          <Link
+            href={`/b/${business.slug}`}
+            className="group flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm text-ink-soft transition-colors hover:bg-surface-3 hover:text-ink"
+          >
+            <ExternalLink
+              className="h-4 w-4 shrink-0 text-ink-muted group-hover:text-ink-soft"
+              aria-hidden
+            />
+            Ver página pública
+          </Link>
+          <div className="flex items-center gap-3 px-3 py-1 md:mt-1 md:justify-between md:py-2">
+            <span className="flex min-w-0 items-center gap-2">
+              <Avatar name={admin.name} size="sm" />
+              <span className="hidden max-w-28 truncate text-sm text-ink-muted sm:inline">
+                {admin.name}
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5">
+              <LogOut className="h-4 w-4 text-ink-muted" aria-hidden />
+              <LogoutButton />
+            </span>
+          </div>
+        </div>
+      </aside>
+
+      <main className="min-w-0 flex-1 bg-surface-2 px-4 py-6 md:px-8 md:py-8">
+        <div className="mx-auto w-full max-w-6xl">
           {account && !account.emailVerifiedAt && (
             <VerifyEmailBanner email={admin.email} />
           )}
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

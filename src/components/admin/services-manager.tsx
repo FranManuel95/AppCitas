@@ -2,7 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { AlertCircle, Clock, Plus, Tags } from "lucide-react";
 import { formatCents } from "@/lib/money";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Field, Input } from "@/components/ui/field";
 
 interface ServiceDTO {
   id: string;
@@ -58,28 +64,15 @@ function ServiceForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
-      <div className="sm:col-span-2">
-        <label className="label">Nombre</label>
-        <input
-          name="name"
-          required
-          minLength={2}
-          defaultValue={initial?.name}
-          className="input"
-        />
-      </div>
-      <div className="sm:col-span-2">
-        <label className="label">Descripción (opcional)</label>
-        <input
-          name="description"
-          defaultValue={initial?.description ?? ""}
-          className="input"
-        />
-      </div>
-      <div>
-        <label className="label">Duración (minutos)</label>
-        <input
+    <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
+      <Field label="Nombre" className="sm:col-span-2">
+        <Input name="name" required minLength={2} defaultValue={initial?.name} />
+      </Field>
+      <Field label="Descripción (opcional)" className="sm:col-span-2">
+        <Input name="description" defaultValue={initial?.description ?? ""} />
+      </Field>
+      <Field label="Duración (minutos)">
+        <Input
           name="durationMinutes"
           type="number"
           min={5}
@@ -87,43 +80,42 @@ function ServiceForm({
           step={5}
           required
           defaultValue={initial?.durationMinutes ?? 30}
-          className="input"
+          className="tabular-nums"
         />
-      </div>
-      <div>
-        <label className="label">Precio (€)</label>
-        <input
+      </Field>
+      <Field label="Precio (€)">
+        <Input
           name="price"
           type="number"
           min={0}
           step="0.01"
           required
           defaultValue={initial ? initial.priceCents / 100 : ""}
-          className="input"
+          className="tabular-nums"
         />
-      </div>
-      <div>
-        <label className="label">Color en la agenda</label>
+      </Field>
+      <Field label="Color en la agenda">
         <input
           name="color"
           type="color"
           defaultValue={initial?.color ?? "#6366f1"}
-          className="h-10 w-16 cursor-pointer rounded border border-slate-300"
+          className="h-10 w-16 cursor-pointer rounded-lg border border-border-strong bg-surface p-1 shadow-xs"
         />
-      </div>
+      </Field>
       {error && (
-        <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 sm:col-span-2">
+        <p className="flex items-start gap-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger-strong sm:col-span-2">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           {error}
         </p>
       )}
       <div className="flex gap-2 sm:col-span-2">
-        <button type="submit" disabled={busy} className="btn-primary">
+        <Button type="submit" disabled={busy}>
           {busy ? "Guardando…" : initial ? "Guardar cambios" : "Crear servicio"}
-        </button>
+        </Button>
         {onCancel && (
-          <button type="button" className="btn-secondary" onClick={onCancel}>
+          <Button type="button" variant="ghost" onClick={onCancel}>
             Cancelar
-          </button>
+          </Button>
         )}
       </div>
     </form>
@@ -159,20 +151,21 @@ export function ServicesManager({
   return (
     <div className="space-y-4">
       {!creating && (
-        <button className="btn-primary" onClick={() => setCreating(true)}>
-          + Nuevo servicio
-        </button>
+        <Button onClick={() => setCreating(true)}>
+          <Plus className="h-4 w-4" aria-hidden />
+          Nuevo servicio
+        </Button>
       )}
       {creating && (
-        <div className="card">
-          <h2 className="mb-4 font-semibold text-slate-900">Nuevo servicio</h2>
+        <Card>
+          <h2 className="mb-4 font-semibold text-ink">Nuevo servicio</h2>
           <ServiceForm onDone={refresh} onCancel={() => setCreating(false)} />
-        </div>
+        </Card>
       )}
 
       <div className="space-y-3">
         {services.map((s) => (
-          <div key={s.id} className="card">
+          <Card key={s.id}>
             {editing === s.id ? (
               <ServiceForm
                 initial={s}
@@ -180,52 +173,56 @@ export function ServicesManager({
                 onCancel={() => setEditing(null)}
               />
             ) : (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                   <span
-                    className="h-4 w-4 rounded-full"
+                    className="h-3.5 w-3.5 shrink-0 rounded-full ring-2 ring-border/60"
                     style={{ background: s.color }}
                     aria-hidden
                   />
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      {s.name}
-                      {!s.active && (
-                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                          Inactivo
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      {s.durationMinutes} min ·{" "}
-                      {formatCents(s.priceCents, currency)}
-                      {s.description ? ` · ${s.description}` : ""}
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-ink">{s.name}</p>
+                      {!s.active && <Badge tone="neutral">Inactivo</Badge>}
+                    </div>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-ink-muted">
+                      <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <span className="tabular-nums">
+                        {s.durationMinutes} min
+                      </span>
+                      {s.description ? <span>· {s.description}</span> : null}
                     </p>
                   </div>
                 </div>
+                <p className="text-right text-sm font-semibold tabular-nums text-ink">
+                  {formatCents(s.priceCents, currency)}
+                </p>
                 <div className="flex gap-2">
-                  <button
-                    className="btn-secondary"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setEditing(s.id)}
                   >
                     Editar
-                  </button>
-                  <button
-                    className="btn-secondary"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => toggleActive(s)}
                   >
                     {s.active ? "Desactivar" : "Activar"}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
-          </div>
+          </Card>
         ))}
         {services.length === 0 && (
-          <p className="text-sm text-slate-500">
-            Aún no hay servicios. Crea el primero para que tus clientes puedan
-            reservar.
-          </p>
+          <EmptyState
+            icon={Tags}
+            title="Aún no hay servicios."
+            description="Crea el primero para que tus clientes puedan reservar."
+          />
         )}
       </div>
     </div>

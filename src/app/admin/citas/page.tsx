@@ -1,10 +1,15 @@
 import Link from "next/link";
+import { Download, Receipt } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { formatCents } from "@/lib/money";
 import { APPOINTMENT_STATUSES, STATUS_LABELS, type AppointmentStatus } from "@/lib/domain/types";
 import { StatusBadge } from "@/components/status-badge";
 import { AppointmentActions } from "@/components/admin/appointment-actions";
+import { Button, buttonClasses } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Field, Input, Select } from "@/components/ui/field";
+import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Citas" };
@@ -106,126 +111,95 @@ export default async function AppointmentsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Citas</h1>
-          <p className="text-sm text-slate-500">
-            {total} resultados con los filtros actuales.
-          </p>
-        </div>
-        <a href={exportHref} className="btn-secondary" download>
-          Exportar CSV
-        </a>
-      </div>
+      <SectionHeader
+        as="h1"
+        title="Citas"
+        description={<>{total} resultados con los filtros actuales.</>}
+        action={
+          <a
+            href={exportHref}
+            className={buttonClasses({ variant: "secondary", size: "sm" })}
+            download
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Exportar CSV
+          </a>
+        }
+      />
 
       {/* Fila única de filtros (GET): comparten estado vía URL */}
       <form className="card grid gap-3 sm:grid-cols-2 lg:grid-cols-5" method="get">
-        <div>
-          <label className="label" htmlFor="estado">
-            Estado
-          </label>
-          <select
-            id="estado"
-            name="estado"
-            defaultValue={sp.estado ?? ""}
-            className="input"
-          >
+        <Field label="Estado" htmlFor="estado">
+          <Select id="estado" name="estado" defaultValue={sp.estado ?? ""}>
             <option value="">Todos</option>
             {APPOINTMENT_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {STATUS_LABELS[s]}
               </option>
             ))}
-          </select>
-        </div>
-        <div>
-          <label className="label" htmlFor="servicio">
-            Servicio
-          </label>
-          <select
-            id="servicio"
-            name="servicio"
-            defaultValue={sp.servicio ?? ""}
-            className="input"
-          >
+          </Select>
+        </Field>
+        <Field label="Servicio" htmlFor="servicio">
+          <Select id="servicio" name="servicio" defaultValue={sp.servicio ?? ""}>
             <option value="">Todos</option>
             {services.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
               </option>
             ))}
-          </select>
-        </div>
-        <div>
-          <label className="label" htmlFor="desde">
-            Desde
-          </label>
-          <input
-            id="desde"
-            type="date"
-            name="desde"
-            defaultValue={sp.desde ?? ""}
-            className="input"
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="hasta">
-            Hasta
-          </label>
-          <input
-            id="hasta"
-            type="date"
-            name="hasta"
-            defaultValue={sp.hasta ?? ""}
-            className="input"
-          />
-        </div>
+          </Select>
+        </Field>
+        <Field label="Desde" htmlFor="desde">
+          <Input id="desde" type="date" name="desde" defaultValue={sp.desde ?? ""} />
+        </Field>
+        <Field label="Hasta" htmlFor="hasta">
+          <Input id="hasta" type="date" name="hasta" defaultValue={sp.hasta ?? ""} />
+        </Field>
         <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <label className="label" htmlFor="q">
-              Cliente
-            </label>
-            <input
+          <Field label="Cliente" htmlFor="q" className="flex-1">
+            <Input
               id="q"
               name="q"
               defaultValue={sp.q ?? ""}
               placeholder="Nombre o email"
-              className="input"
             />
-          </div>
-          <button type="submit" className="btn-primary">
+          </Field>
+          <Button type="submit" variant="primary">
             Filtrar
-          </button>
+          </Button>
         </div>
       </form>
 
-      <div className="card overflow-x-auto p-0">
+      <Card className="overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-              <th className="px-4 py-3 font-medium">Fecha</th>
-              <th className="px-4 py-3 font-medium">Cliente</th>
-              <th className="px-4 py-3 font-medium">Servicio</th>
-              <th className="px-4 py-3 font-medium">Estado</th>
-              <th className="px-4 py-3 text-right font-medium">Precio</th>
-              <th className="px-4 py-3 text-right font-medium">Cobrado</th>
-              <th className="px-4 py-3 font-medium">Acciones</th>
+            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
+              <th className="px-4 py-2.5 font-medium">Fecha</th>
+              <th className="px-4 py-2.5 font-medium">Cliente</th>
+              <th className="px-4 py-2.5 font-medium">Servicio</th>
+              <th className="px-4 py-2.5 font-medium">Estado</th>
+              <th className="px-4 py-2.5 text-right font-medium">Precio</th>
+              <th className="px-4 py-2.5 text-right font-medium">Cobrado</th>
+              <th className="px-4 py-2.5 font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {appointments.map((a) => (
-              <tr key={a.id} className="border-b border-slate-100">
-                <td className="px-4 py-3 tabular-nums text-slate-700">
+              <tr
+                key={a.id}
+                className="border-b border-border transition-colors last:border-0 hover:bg-surface-3/60"
+              >
+                <td className="px-4 py-2.5 tabular-nums text-ink-soft">
                   {formatter.format(a.startAt)}
                 </td>
-                <td className="px-4 py-3">
-                  <p className="font-medium text-slate-800">{a.client.name}</p>
-                  <p className="text-xs text-slate-400">{a.client.email}</p>
+                <td className="px-4 py-2.5">
+                  <p className="font-medium text-ink">{a.client.name}</p>
+                  <p className="text-xs text-ink-muted">{a.client.email}</p>
                 </td>
-                <td className="px-4 py-3 text-slate-600">
+                <td className="px-4 py-2.5 text-ink-soft">
                   {a.service.name}
                   {a.staff && (
-                    <span className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400">
+                    <span className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-muted">
                       <span
                         className="inline-block h-2 w-2 rounded-full"
                         style={{ background: a.staff.color }}
@@ -234,18 +208,18 @@ export default async function AppointmentsPage({
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-2.5">
                   <StatusBadge status={a.status} />
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums text-slate-600">
+                <td className="px-4 py-2.5 text-right tabular-nums text-ink-soft">
                   {formatCents(a.priceCents, business.currency)}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums font-medium text-slate-800">
+                <td className="px-4 py-2.5 text-right tabular-nums font-medium text-ink">
                   {a.chargedCents > 0
                     ? formatCents(a.chargedCents, business.currency)
                     : "—"}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-2.5">
                   <AppointmentActions
                     appointmentId={a.id}
                     status={a.status}
@@ -254,8 +228,9 @@ export default async function AppointmentsPage({
                   {a.chargedCents > 0 && (
                     <Link
                       href={`/admin/recibo/${a.id}`}
-                      className="mt-1 inline-block text-xs text-indigo-600 hover:underline"
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline"
                     >
+                      <Receipt className="h-3.5 w-3.5" aria-hidden />
                       Recibo
                     </Link>
                   )}
@@ -264,28 +239,37 @@ export default async function AppointmentsPage({
             ))}
             {appointments.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                <td
+                  colSpan={7}
+                  className="px-4 py-10 text-center text-sm text-ink-muted"
+                >
                   No hay citas con estos filtros.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-500">
+          <span className="tabular-nums text-ink-muted">
             Página {page} de {totalPages}
           </span>
           <div className="flex gap-2">
             {page > 1 && (
-              <Link href={pageLink(page - 1)} className="btn-secondary">
+              <Link
+                href={pageLink(page - 1)}
+                className={buttonClasses({ variant: "secondary", size: "sm" })}
+              >
                 ← Anterior
               </Link>
             )}
             {page < totalPages && (
-              <Link href={pageLink(page + 1)} className="btn-secondary">
+              <Link
+                href={pageLink(page + 1)}
+                className={buttonClasses({ variant: "secondary", size: "sm" })}
+              >
                 Siguiente →
               </Link>
             )}

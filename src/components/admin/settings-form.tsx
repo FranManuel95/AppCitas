@@ -2,6 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Switch } from "@/components/ui/switch";
 
 interface BusinessSettings {
   name: string;
@@ -81,108 +87,106 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      <div className="card">
-        <h2 className="font-semibold text-slate-900">Datos del negocio</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="label">Nombre</label>
-            <input
+      <Card>
+        <SectionHeader as="h2" title="Datos del negocio" />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <Field label="Nombre" htmlFor="settings-name">
+            <Input
+              id="settings-name"
               name="name"
               required
               minLength={2}
               defaultValue={business.name}
-              className="input"
             />
-          </div>
-          <div>
-            <label className="label">Sector</label>
-            <input
+          </Field>
+          <Field label="Sector" htmlFor="settings-category">
+            <Input
+              id="settings-category"
               name="category"
               defaultValue={business.category}
               placeholder="general, belleza, salud…"
-              className="input"
             />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="label">Descripción</label>
-            <textarea
+          </Field>
+          <Field
+            label="Descripción"
+            htmlFor="settings-description"
+            className="sm:col-span-2"
+          >
+            <Textarea
+              id="settings-description"
               name="description"
               rows={2}
               defaultValue={business.description ?? ""}
-              className="input"
             />
-          </div>
-          <div>
-            <label className="label">Dirección</label>
-            <input
+          </Field>
+          <Field label="Dirección" htmlFor="settings-address">
+            <Input
+              id="settings-address"
               name="address"
               defaultValue={business.address ?? ""}
-              className="input"
             />
-          </div>
-          <div>
-            <label className="label">Teléfono</label>
-            <input
+          </Field>
+          <Field label="Teléfono" htmlFor="settings-phone">
+            <Input
+              id="settings-phone"
               name="phone"
               defaultValue={business.phone ?? ""}
-              className="input"
             />
-          </div>
-          <div>
-            <label className="label">Email de contacto</label>
-            <input
+          </Field>
+          <Field label="Email de contacto" htmlFor="settings-email">
+            <Input
+              id="settings-email"
               name="email"
               type="email"
               defaultValue={business.email ?? ""}
-              className="input"
             />
-          </div>
+          </Field>
         </div>
-      </div>
+      </Card>
 
-      <div className="card">
-        <h2 className="font-semibold text-slate-900">
-          Política de reservas y cancelación
-        </h2>
-        <p className="text-xs text-slate-500">
-          Estas reglas se aplican automáticamente a todas las reservas.
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="label">
-              Ventana de cancelación gratuita (horas)
-            </label>
-            <input
+      <Card>
+        <SectionHeader
+          as="h2"
+          title="Política de reservas y cancelación"
+          description="Estas reglas se aplican automáticamente a todas las reservas."
+        />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Ventana de cancelación gratuita (horas)"
+            htmlFor="settings-cancellation-window"
+            hint="Cancelar con menos antelación genera cargo. 24 = un día."
+          >
+            <Input
+              id="settings-cancellation-window"
               name="cancellationWindowHours"
               type="number"
               min={0}
               max={720}
               required
               defaultValue={business.cancellationWindowHours}
-              className="input"
             />
-            <p className="mt-1 text-xs text-slate-400">
-              Cancelar con menos antelación genera cargo. 24 = un día.
-            </p>
-          </div>
-          <div>
-            <label className="label">Cargo por cancelación tardía (%)</label>
-            <input
+          </Field>
+          <Field
+            label="Cargo por cancelación tardía (%)"
+            htmlFor="settings-late-fee"
+            hint="Porcentaje del precio del servicio. 100 = importe íntegro."
+          >
+            <Input
+              id="settings-late-fee"
               name="lateCancellationFeePercent"
               type="number"
               min={0}
               max={100}
               required
               defaultValue={business.lateCancellationFeePercent}
-              className="input"
             />
-            <p className="mt-1 text-xs text-slate-400">
-              Porcentaje del precio del servicio. 100 = importe íntegro.
-            </p>
-          </div>
-          <div>
-            <label className="label">Granularidad de huecos (minutos)</label>
-            <input
+          </Field>
+          <Field
+            label="Granularidad de huecos (minutos)"
+            htmlFor="settings-slot-granularity"
+          >
+            <Input
+              id="settings-slot-granularity"
               name="slotGranularityMinutes"
               type="number"
               min={5}
@@ -190,159 +194,165 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
               step={5}
               required
               defaultValue={business.slotGranularityMinutes}
-              className="input"
             />
-          </div>
-          <div>
-            <label className="label">Antelación mínima (minutos)</label>
-            <input
+          </Field>
+          <Field
+            label="Antelación mínima (minutos)"
+            htmlFor="settings-min-notice"
+          >
+            <Input
+              id="settings-min-notice"
               name="minNoticeMinutes"
               type="number"
               min={0}
               max={10080}
               required
               defaultValue={business.minNoticeMinutes}
-              className="input"
             />
-          </div>
-          <div>
-            <label className="label">Reserva máxima con antelación (días)</label>
-            <input
+          </Field>
+          <Field
+            label="Reserva máxima con antelación (días)"
+            htmlFor="settings-max-advance"
+          >
+            <Input
+              id="settings-max-advance"
               name="maxAdvanceBookingDays"
               type="number"
               min={1}
               max={365}
               required
               defaultValue={business.maxAdvanceBookingDays}
-              className="input"
             />
-          </div>
+          </Field>
         </div>
-      </div>
+      </Card>
 
-      <div className="card">
-        <h2 className="font-semibold text-slate-900">
-          Recordatorios y notificaciones
-        </h2>
-        <p className="text-xs text-slate-500">
-          Confirmación al reservar y recordatorio con enlace de asistencia
-          (&quot;¿vas a venir?&quot;) antes de cada cita.
-        </p>
-        <div className="mt-4 space-y-3">
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              name="remindersEnabled"
-              defaultChecked={business.remindersEnabled}
-            />
-            Enviar recordatorio antes de la cita
-          </label>
-          <div className="max-w-xs">
-            <label className="label">Horas de antelación del recordatorio</label>
-            <input
+      <Card>
+        <SectionHeader
+          as="h2"
+          title="Recordatorios y notificaciones"
+          description={
+            <>
+              Confirmación al reservar y recordatorio con enlace de asistencia
+              (&quot;¿vas a venir?&quot;) antes de cada cita.
+            </>
+          }
+        />
+        <div className="mt-5 space-y-4">
+          <Switch
+            name="remindersEnabled"
+            defaultChecked={business.remindersEnabled}
+            label="Enviar recordatorio antes de la cita"
+          />
+          <Field
+            label="Horas de antelación del recordatorio"
+            htmlFor="settings-reminder-hours"
+            hint="Consejo: mayor que la ventana de cancelación, para que el cliente aún pueda cancelar gratis desde el recordatorio."
+            className="max-w-xs"
+          >
+            <Input
+              id="settings-reminder-hours"
               name="reminderHoursBefore"
               type="number"
               min={1}
               max={336}
               required
               defaultValue={business.reminderHoursBefore}
-              className="input"
             />
-            <p className="mt-1 text-xs text-slate-400">
-              Consejo: mayor que la ventana de cancelación, para que el cliente
-              aún pueda cancelar gratis desde el recordatorio.
-            </p>
-          </div>
-          <p className="pt-1 text-sm font-medium text-slate-700">Canales</p>
-          <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
+          </Field>
+          <div className="border-t border-border pt-4">
+            <p className="text-sm font-medium text-ink-soft">Canales</p>
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-3">
+              <Switch
                 name="notifyByEmail"
                 defaultChecked={business.notifyByEmail}
+                label="Email"
               />
-              Email
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
+              <Switch
                 name="notifyBySms"
                 defaultChecked={business.notifyBySms}
+                label="SMS"
               />
-              SMS
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
+              <Switch
                 name="notifyByWhatsapp"
                 defaultChecked={business.notifyByWhatsapp}
+                label="WhatsApp"
               />
-              WhatsApp
-            </label>
+            </div>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-ink-muted">
             Cada canal requiere su proveedor configurado en el servidor (SMTP,
             Twilio, UltraMsg o Evolution API). Sin configurar, los mensajes
             quedan registrados pero no se envían.
           </p>
         </div>
-      </div>
+      </Card>
 
-      <div className="card">
-        <h2 className="font-semibold text-slate-900">Facturación (recibos)</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="label">NIF/CIF (aparece en los recibos)</label>
-            <input name="taxId" defaultValue={business.taxId ?? ""} className="input" />
-          </div>
-          <div>
-            <label className="label">% de IVA a desglosar (0 = sin desglose)</label>
-            <input
+      <Card>
+        <SectionHeader as="h2" title="Facturación (recibos)" />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <Field
+            label="NIF/CIF (aparece en los recibos)"
+            htmlFor="settings-tax-id"
+          >
+            <Input
+              id="settings-tax-id"
+              name="taxId"
+              defaultValue={business.taxId ?? ""}
+            />
+          </Field>
+          <Field
+            label="% de IVA a desglosar (0 = sin desglose)"
+            htmlFor="settings-tax-percent"
+          >
+            <Input
+              id="settings-tax-percent"
               name="taxPercent"
               type="number"
               min={0}
               max={50}
               required
               defaultValue={business.taxPercent}
-              className="input"
             />
-          </div>
+          </Field>
         </div>
-      </div>
+      </Card>
 
-      <div className="card">
-        <h2 className="font-semibold text-slate-900">Pagos</h2>
-        <div className="mt-4 space-y-2">
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              name="requireCardToBook"
-              defaultChecked={business.requireCardToBook}
-            />
-            Exigir tarjeta guardada para reservar
-          </label>
-          <p className="text-xs text-slate-400">
+      <Card>
+        <SectionHeader as="h2" title="Pagos" />
+        <div className="mt-5 space-y-3">
+          <Switch
+            name="requireCardToBook"
+            defaultChecked={business.requireCardToBook}
+            label="Exigir tarjeta guardada para reservar"
+          />
+          <p className="text-xs text-ink-muted">
             Permite cobrar automáticamente el cargo por cancelación tardía o
             no-show. Requiere Stripe configurado en el servidor; sin tarjeta
             guardada, el cargo queda registrado para cobrarlo en persona.
           </p>
         </div>
-      </div>
+      </Card>
 
       {message && (
         <p
-          className={`rounded-lg px-3 py-2 text-sm ${
+          className={`flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${
             message.kind === "ok"
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-rose-50 text-rose-700"
+              ? "bg-success-soft text-success-strong"
+              : "bg-danger-soft text-danger-strong"
           }`}
         >
+          {message.kind === "ok" ? (
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          ) : (
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          )}
           {message.text}
         </p>
       )}
-      <button type="submit" disabled={busy} className="btn-primary">
+      <Button type="submit" variant="primary" disabled={busy}>
         {busy ? "Guardando…" : "Guardar ajustes"}
-      </button>
+      </Button>
     </form>
   );
 }

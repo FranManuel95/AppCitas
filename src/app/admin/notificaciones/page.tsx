@@ -1,5 +1,16 @@
+import {
+  BellOff,
+  Mail,
+  MessageCircle,
+  MessageSquare,
+  type LucideIcon,
+} from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Notificaciones" };
@@ -10,17 +21,23 @@ const CHANNEL_LABELS: Record<string, string> = {
   WHATSAPP: "WhatsApp",
 };
 
+const CHANNEL_ICONS: Record<string, LucideIcon> = {
+  EMAIL: Mail,
+  SMS: MessageSquare,
+  WHATSAPP: MessageCircle,
+};
+
 const TEMPLATE_LABELS: Record<string, string> = {
   BOOKING_CONFIRMED: "Confirmación de reserva",
   REMINDER: "Recordatorio",
   CANCELLED: "Cancelación",
 };
 
-const STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-sky-100 text-sky-700",
-  SENT: "bg-emerald-100 text-emerald-700",
-  FAILED: "bg-rose-100 text-rose-700",
-  SKIPPED: "bg-slate-100 text-slate-600",
+const STATUS_TONES: Record<string, BadgeTone> = {
+  PENDING: "info",
+  SENT: "success",
+  FAILED: "danger",
+  SKIPPED: "neutral",
 };
 
 const STATUS_LABELS_N: Record<string, string> = {
@@ -57,67 +74,68 @@ export default async function NotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Notificaciones</h1>
-        <p className="text-sm text-slate-500">
-          Confirmaciones, recordatorios y avisos de cancelación enviados a tus
-          clientes. Los pendientes se despachan automáticamente a su hora.
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        title="Notificaciones"
+        description="Confirmaciones, recordatorios y avisos de cancelación enviados a tus clientes. Los pendientes se despachan automáticamente a su hora."
+      />
 
-      <div className="card overflow-x-auto p-0">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-              <th className="px-4 py-3 font-medium">Programada</th>
-              <th className="px-4 py-3 font-medium">Cliente</th>
-              <th className="px-4 py-3 font-medium">Tipo</th>
-              <th className="px-4 py-3 font-medium">Canal</th>
-              <th className="px-4 py-3 font-medium">Destinatario</th>
-              <th className="px-4 py-3 font-medium">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {notifications.map((n) => (
-              <tr key={n.id} className="border-b border-slate-100 align-top">
-                <td className="px-4 py-3 tabular-nums text-slate-600">
-                  {formatter.format(n.scheduledFor)}
-                </td>
-                <td className="px-4 py-3 text-slate-800">
-                  {n.appointment?.client.name ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {TEMPLATE_LABELS[n.template] ?? n.template}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {CHANNEL_LABELS[n.channel] ?? n.channel}
-                </td>
-                <td className="px-4 py-3 text-slate-500">{n.recipient}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[n.status] ?? "bg-slate-100 text-slate-600"}`}
-                  >
-                    {STATUS_LABELS_N[n.status] ?? n.status}
-                  </span>
-                  {n.lastError && (
-                    <p className="mt-1 max-w-48 text-xs text-slate-400">
-                      {n.lastError}
-                    </p>
-                  )}
-                </td>
+      {notifications.length === 0 ? (
+        <EmptyState
+          icon={BellOff}
+          title="Aún no hay notificaciones."
+          description="Se generan al crear o cancelar citas."
+        />
+      ) : (
+        <Card className="overflow-x-auto p-0">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
+                <th className="px-4 py-3 font-medium">Programada</th>
+                <th className="px-4 py-3 font-medium">Cliente</th>
+                <th className="px-4 py-3 font-medium">Tipo</th>
+                <th className="px-4 py-3 font-medium">Canal</th>
+                <th className="px-4 py-3 font-medium">Destinatario</th>
+                <th className="px-4 py-3 font-medium">Estado</th>
               </tr>
-            ))}
-            {notifications.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
-                  Aún no hay notificaciones. Se generan al crear o cancelar
-                  citas.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {notifications.map((n) => (
+                <tr
+                  key={n.id}
+                  className="border-b border-border align-top transition-colors last:border-0 hover:bg-surface-3/60"
+                >
+                  <td className="px-4 py-2.5 tabular-nums text-ink-soft">
+                    {formatter.format(n.scheduledFor)}
+                  </td>
+                  <td className="px-4 py-2.5 font-medium text-ink">
+                    {n.appointment?.client.name ?? "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-ink-soft">
+                    {TEMPLATE_LABELS[n.template] ?? n.template}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Badge tone="neutral" icon={CHANNEL_ICONS[n.channel]}>
+                      {CHANNEL_LABELS[n.channel] ?? n.channel}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2.5 text-ink-muted">{n.recipient}</td>
+                  <td className="px-4 py-2.5">
+                    <Badge tone={STATUS_TONES[n.status] ?? "neutral"}>
+                      {STATUS_LABELS_N[n.status] ?? n.status}
+                    </Badge>
+                    {n.lastError && (
+                      <p className="mt-1 max-w-48 text-xs text-ink-muted">
+                        {n.lastError}
+                      </p>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
     </div>
   );
 }
