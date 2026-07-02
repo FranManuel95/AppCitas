@@ -1,0 +1,137 @@
+// AppCitas — schema multi-tenant genérico para agendación de citas.
+// Nota de portabilidad: se usan String en lugar de enums nativos porque SQLite
+// (entorno de desarrollo) no los soporta. Los valores válidos están tipados en
+// src/lib/domain/types.ts. En PostgreSQL pueden migrarse a enums nativos.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String
+  name         String
+  phone        String?
+  // CLIENT | OWNER | STAFF | SUPER_ADMIN
+  role         String  @default("CLIENT")
+  businessId   String?
+  business     Business? @relation(fields: [businessId], references: [id])
+
+  appointments Appointment[] @relation("ClientAppointments")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+model Business {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  description String?
+  // Etiqueta libre de sector ("general", "peluquería", "clínica"...). El core
+  // no depende de ella: permite especializar el proyecto base sin refactor.
+  category    String  @default("general")
+  timezone    String  @default("Europe/Madrid")
+  currency    String  @default("EUR")
+  address     String?
+  phone       String?
+  email       String?
+
+  // Política de reservas y cancelación (configurable por negocio)
+  cancellationWindowHours    Int @default(24)
+  lateCancellationFeePercent Int @default(100)
+  slotGranularityMinutes     Int @default(15)
+  maxAdvanceBookingDays      Int @default(60)
+  minNoticeMinutes           Int @default(60)
+
+  active Boolean @default(true)
+
+  users        User[]
+  services     Service[]
+  hours        BusinessHour[]
+  closures     Closure[]
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Service {
+  id              String  @id @default(cuid())
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  durationMinutes Int
+  priceCents      Int
+  color           String  @default("#6366f1")
+  active          Boolean @default(true)
+
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, active])
+}
+
+model BusinessHour {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  // 0 = domingo … 6 = sábado (convención Date.getDay)
+  weekday    Int
+  // "HH:mm" en la zona horaria del negocio; varios tramos por día permitidos
+  openTime   String
+  closeTime  String
+
+  @@index([businessId, weekday])
+}
+
+model Closure {
+  id         String  @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  // "YYYY-MM-DD" en la zona horaria del negocio
+  date       String
+  reason     String?
+
+  @@unique([businessId, date])
+}
+
+model Appointment {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id])
+  clientId   String
+  client     User     @relation("ClientAppointments", fields: [clientId], references: [id])
+
+  startAt DateTime
+  endAt   DateTime
+
+  // CONFIRMED | COMPLETED | CANCELLED | CANCELLED_LATE | NO_SHOW
+  status String @default("CONFIRMED")
+
+  // Snapshot del precio al reservar: cambios futuros de tarifa no alteran citas pasadas
+  priceCents   Int
+  chargedCents Int     @default(0)
+  notes        String?
+  cancelledAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, startAt])
+  @@index([clientId, startAt])
+  @@index([businessId, status, startAt])
+}

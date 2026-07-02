@@ -1,0 +1,100 @@
+import { wallTimeToUtc, weekdayOfDateISO } from "./dates";
+
+// Motor de disponibilidad. Función pura: recibe todo su contexto como
+// argumentos (incluido `now`) para poder testearla de forma determinista.
+
+export interface HourRange {
+  weekday: number;
+  openTime: string; // "HH:mm"
+  closeTime: string; // "HH:mm"
+}
+
+export interface BusyInterval {
+  startAt: Date;
+  endAt: Date;
+}
+
+export interface SlotEngineInput {
+  dateISO: string; // "YYYY-MM-DD" en la zona horaria del negocio
+  timezone: string;
+  hours: HourRange[]; // tramos semanales del negocio
+  closedDates?: string[]; // festivos / cierres puntuales ("YYYY-MM-DD")
+  busy: BusyInterval[]; // citas que bloquean agenda ese día (UTC)
+  durationMinutes: number;
+  granularityMinutes: number;
+  minNoticeMinutes: number;
+  maxAdvanceBookingDays: number;
+  now: Date;
+}
+
+export interface Slot {
+  start: Date;
+  end: Date;
+}
+
+export function computeDaySlots(input: SlotEngineInput): Slot[] {
+  const {
+    dateISO,
+    timezone,
+    hours,
+    closedDates = [],
+    busy,
+    durationMinutes,
+    granularityMinutes,
+    minNoticeMinutes,
+    maxAdvanceBookingDays,
+    now,
+  } = input;
+
+  if (durationMinutes <= 0 || granularityMinutes <= 0) return [];
+  if (closedDates.includes(dateISO)) return [];
+
+  const weekday = weekdayOfDateISO(dateISO);
+  const dayRanges = hours.filter((h) => h.weekday === weekday);
+  if (dayRanges.length === 0) return [];
+
+  const earliestStart = new Date(now.getTime() + minNoticeMinutes * 60_000);
+  const latestStart = new Date(
+    now.getTime() + maxAdvanceBookingDays * 24 * 3_600_000,
+  );
+
+  const durationMs = durationMinutes * 60_000;
+  const stepMs = granularityMinutes * 60_000;
+
+  // Map por instante de inicio: deduplica huecos si hay tramos solapados.
+  const slots = new Map<number, Slot>();
+
+  for (const range of dayRanges) {
+    const open = wallTimeToUtc(dateISO, range.openTime, timezone);
+    const close = wallTimeToUtc(dateISO, range.closeTime, timezone);
+
+    for (
+      let start = open.getTime();
+      start + durationMs <= close.getTime();
+      start += stepMs
+    ) {
+      const end = start + durationMs;
+      if (start < earliestStart.getTime()) continue;
+      if (start > latestStart.getTime()) continue;
+
+      const overlaps = busy.some(
+        (b) => start < b.endAt.getTime() && end > b.startAt.getTime(),
+      );
+      if (overlaps) continue;
+
+      slots.set(start, { start: new Date(start), end: new Date(end) });
+    }
+  }
+
+  return [...slots.values()].sort(
+    (a, b) => a.start.getTime() - b.start.getTime(),
+  );
+}
+
+// Comprueba si un instante concreto coincide con un hueco ofertado.
+// Se usa al crear la cita para impedir reservas en horas arbitrarias.
+export function isOfferedSlot(input: SlotEngineInput, startAt: Date): boolean {
+  return computeDaySlots(input).some(
+    (s) => s.start.getTime() === startAt.getTime(),
+  );
+}
