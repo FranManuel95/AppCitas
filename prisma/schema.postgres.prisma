@@ -1,0 +1,379 @@
+// ⚠️ ARCHIVO GENERADO — no editar a mano.
+// Derivado de prisma/schema.prisma con: npm run db:sync-pg
+// AppCitas — schema multi-tenant genérico para agendación de citas.
+// Nota de portabilidad: se usan String en lugar de enums nativos porque SQLite
+// (entorno de desarrollo) no los soporta. Los valores válidos están tipados en
+// src/lib/domain/types.ts. En PostgreSQL pueden migrarse a enums nativos.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String
+  name         String
+  phone        String?
+  // CLIENT | OWNER | STAFF | SUPER_ADMIN
+  role         String  @default("CLIENT")
+  businessId   String?
+  business     Business? @relation(fields: [businessId], references: [id])
+
+  emailVerifiedAt DateTime?
+
+  // Incrementarlo invalida todas las sesiones emitidas (revocación de JWT)
+  sessionVersion Int @default(0)
+
+  // Cliente de la pasarela de pagos (Stripe) si guardó tarjeta
+  stripeCustomerId String?
+
+  appointments Appointment[] @relation("ClientAppointments")
+  authTokens   AuthToken[]
+  // Ficha de empleado vinculada (portal del empleado, rol STAFF)
+  staffProfile StaffMember?
+  packages     ClientPackage[]
+  auditLogs    AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+// Tokens de un solo uso para verificación de email, restablecimiento de
+// contraseña e invitaciones de empleados. Se guarda solo el hash SHA-256.
+model AuthToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  // EMAIL_VERIFY | PASSWORD_RESET
+  type      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, type])
+}
+
+model Business {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  description String?
+  // Etiqueta libre de sector ("general", "peluquería", "clínica"...). El core
+  // no depende de ella: permite especializar el proyecto base sin refactor.
+  category    String  @default("general")
+  timezone    String  @default("Europe/Madrid")
+  currency    String  @default("EUR")
+  address     String?
+  phone       String?
+  email       String?
+
+  // Política de reservas y cancelación (configurable por negocio)
+  cancellationWindowHours    Int @default(24)
+  lateCancellationFeePercent Int @default(100)
+  slotGranularityMinutes     Int @default(15)
+  maxAdvanceBookingDays      Int @default(60)
+  minNoticeMinutes           Int @default(60)
+
+  // Pagos: exigir tarjeta guardada para reservar (permite cobrar cancelaciones
+  // tardías automáticamente). Requiere pasarela configurada.
+  requireCardToBook Boolean @default(false)
+
+  // Recordatorios y canales de notificación
+  remindersEnabled    Boolean @default(true)
+  reminderHoursBefore Int     @default(26)
+  notifyByEmail       Boolean @default(true)
+  notifyBySms         Boolean @default(false)
+  notifyByWhatsapp    Boolean @default(true)
+
+  active Boolean @default(true)
+
+  // Facturación de recibos: NIF/CIF y % de IVA a desglosar (0 = sin desglose)
+  taxId      String?
+  taxPercent Int     @default(0)
+
+  users          User[]
+  services       Service[]
+  hours          BusinessHour[]
+  closures       Closure[]
+  appointments   Appointment[]
+  staff          StaffMember[]
+  notifications  Notification[]
+  coupons        Coupon[]
+  packages       Package[]
+  clientPackages ClientPackage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Cupón de descuento: porcentaje o importe fijo sobre el precio del servicio.
+model Coupon {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  code       String
+  // PERCENT (value = 1..100) | FIXED (value = céntimos)
+  type           String
+  value          Int
+  active         Boolean   @default(true)
+  maxRedemptions Int?
+  timesRedeemed  Int       @default(0)
+  expiresAt      DateTime?
+
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, code])
+}
+
+// Bono/pack: N sesiones de un servicio a precio cerrado.
+model Package {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id])
+  name       String
+  sessions   Int
+  priceCents Int
+  // Días de validez desde la compra (null = sin caducidad)
+  validityDays Int?
+  active       Boolean @default(true)
+
+  purchases ClientPackage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, active])
+}
+
+// Bono comprado por un cliente: saldo de sesiones canjeable al reservar.
+model ClientPackage {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  packageId  String
+  package    Package  @relation(fields: [packageId], references: [id])
+  clientId   String
+  client     User     @relation(fields: [clientId], references: [id])
+
+  remainingSessions Int
+  expiresAt         DateTime?
+  pricePaidCents    Int
+  // CHARGED | SIMULATED | UNCOLLECTED (pendiente de cobro en persona)
+  paymentStatus String  @default("UNCOLLECTED")
+  paymentRef    String?
+
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId, businessId])
+  @@index([businessId, createdAt])
+}
+
+// Registro de eventos de seguridad de cuentas (auditoría de accesos).
+model AuditLog {
+  id        String  @id @default(cuid())
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email     String?
+  // LOGIN_OK | LOGIN_FAILED | LOGOUT | REGISTER | PASSWORD_RESET_REQUESTED |
+  // PASSWORD_RESET_OK | EMAIL_VERIFIED | SESSIONS_REVOKED | STAFF_INVITED
+  event     String
+  ip        String?
+  userAgent String?
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([event, createdAt])
+}
+
+model StaffMember {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  email      String?
+  phone      String?
+  color      String   @default("#0ea5e9")
+  active     Boolean  @default(true)
+
+  // Cuenta de acceso al portal del empleado (rol STAFF), si se ha invitado
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  // Horario propio; si no tiene tramos, hereda el horario del negocio
+  hours        StaffHour[]
+  // Servicios que realiza; sin filas = realiza todos los servicios
+  services     StaffService[]
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, active])
+}
+
+model StaffHour {
+  id        String      @id @default(cuid())
+  staffId   String
+  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  weekday   Int
+  openTime  String
+  closeTime String
+
+  @@index([staffId, weekday])
+}
+
+model StaffService {
+  staffId   String
+  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([staffId, serviceId])
+}
+
+model Service {
+  id              String  @id @default(cuid())
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  durationMinutes Int
+  priceCents      Int
+  color           String  @default("#6366f1")
+  active          Boolean @default(true)
+
+  appointments Appointment[]
+  staff        StaffService[]
+  packages     Package[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, active])
+}
+
+model BusinessHour {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  // 0 = domingo … 6 = sábado (convención Date.getDay)
+  weekday    Int
+  // "HH:mm" en la zona horaria del negocio; varios tramos por día permitidos
+  openTime   String
+  closeTime  String
+
+  @@index([businessId, weekday])
+}
+
+model Closure {
+  id         String  @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  // "YYYY-MM-DD" en la zona horaria del negocio
+  date       String
+  reason     String?
+
+  @@unique([businessId, date])
+}
+
+model Appointment {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id])
+  clientId   String
+  client     User     @relation("ClientAppointments", fields: [clientId], references: [id])
+  staffId    String?
+  staff      StaffMember? @relation(fields: [staffId], references: [id])
+
+  startAt DateTime
+  endAt   DateTime
+
+  // CONFIRMED | COMPLETED | CANCELLED | CANCELLED_LATE | NO_SHOW
+  status String @default("CONFIRMED")
+
+  // Snapshot del precio al reservar: cambios futuros de tarifa no alteran citas pasadas.
+  // priceCents ya lleva el descuento aplicado; discountCents lo documenta.
+  priceCents    Int
+  discountCents Int     @default(0)
+  chargedCents  Int     @default(0)
+  notes         String?
+  cancelledAt   DateTime?
+
+  // Promoción aplicada al reservar (cupón o sesión de bono)
+  couponId        String?
+  coupon          Coupon?        @relation(fields: [couponId], references: [id])
+  clientPackageId String?
+  clientPackage   ClientPackage? @relation(fields: [clientPackageId], references: [id])
+
+  // Confirmación de asistencia desde el recordatorio (enlace público firmado)
+  confirmationToken     String    @unique @default(cuid())
+  attendanceConfirmedAt DateTime?
+
+  // Resultado del cobro del cargo (si lo hubo):
+  // NONE | CHARGED | SIMULATED | CHARGE_FAILED | UNCOLLECTED
+  paymentStatus String  @default("NONE")
+  paymentRef    String?
+
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, startAt])
+  @@index([clientId, startAt])
+  @@index([businessId, status, startAt])
+  @@index([staffId, startAt])
+}
+
+// Outbox de notificaciones: cada mensaje se persiste y un worker/cron lo
+// despacha cuando vence (scheduledFor). Reintentos con backoff simple.
+model Notification {
+  id            String       @id @default(cuid())
+  businessId    String
+  business      Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  // EMAIL | SMS | WHATSAPP
+  channel String
+  // BOOKING_CONFIRMED | REMINDER | CANCELLED
+  template String
+  recipient String
+  subject   String?
+  body      String
+
+  // PENDING | SENT | FAILED | SKIPPED
+  status       String    @default("PENDING")
+  scheduledFor DateTime
+  attempts     Int       @default(0)
+  lastError    String?
+  providerRef  String?
+  sentAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledFor])
+  @@index([businessId, createdAt])
+  @@index([appointmentId])
+}

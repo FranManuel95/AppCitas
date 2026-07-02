@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { CancelAppointmentButton } from "@/components/cancel-appointment-button";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { formatCents } from "@/lib/money";
-import { getDict, intlLocale } from "@/lib/i18n";
+import { fmt, getDict, intlLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Mis citas" };
@@ -75,7 +75,7 @@ export default async function MyAppointmentsPage() {
           <VerifyEmailBanner
             email={user.email}
             labels={{
-              text: t.verify.bannerText(user.email),
+              text: fmt(t.verify.bannerText, { email: user.email }),
               resend: t.verify.resend,
               resending: t.verify.resending,
               resent: t.verify.resent,
@@ -109,7 +109,9 @@ export default async function MyAppointmentsPage() {
                     <p className="mt-1 text-sm text-slate-600">
                       {formatDate(a.startAt, a.business.timezone)} ·{" "}
                       {a.service.durationMinutes} min
-                      {a.staff ? t.myAppointments.withStaff(a.staff.name) : ""}
+                      {a.staff
+                        ? fmt(t.myAppointments.withStaff, { name: a.staff.name })
+                        : ""}
                     </p>
                     <p className="mt-1 text-sm font-medium text-slate-700">
                       {formatCents(a.priceCents, a.business.currency)}
@@ -167,7 +169,7 @@ export default async function MyAppointmentsPage() {
                         {p.package.service.name} ·{" "}
                         {formatCents(p.pricePaidCents, p.business.currency)}
                         {p.expiresAt
-                          ? ` · ${t.myAppointments.expiresOn(p.expiresAt.toLocaleDateString(intlLocale(locale)))}`
+                          ? ` · ${fmt(t.myAppointments.expiresOn, { date: p.expiresAt.toLocaleDateString(intlLocale(locale)) })}`
                           : ""}
                         {p.paymentStatus === "UNCOLLECTED"
                           ? ` · ${t.myAppointments.pendingPayment}`
@@ -183,7 +185,9 @@ export default async function MyAppointmentsPage() {
                     >
                       {expired
                         ? t.myAppointments.expired
-                        : t.myAppointments.sessions(p.remainingSessions)}
+                        : fmt(t.myAppointments.sessions, {
+                            n: p.remainingSessions,
+                          })}
                     </span>
                   </div>
                 );
@@ -212,9 +216,9 @@ export default async function MyAppointmentsPage() {
                   </p>
                   {a.chargedCents > 0 && (
                     <p className="mt-0.5 text-xs text-slate-500">
-                      {t.myAppointments.chargedAmount(
-                        formatCents(a.chargedCents, a.business.currency),
-                      )}
+                      {fmt(t.myAppointments.chargedAmount, {
+                        amount: formatCents(a.chargedCents, a.business.currency),
+                      })}
                     </p>
                   )}
                 </div>

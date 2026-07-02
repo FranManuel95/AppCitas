@@ -12,6 +12,7 @@ export function AuthForm({
   busyLabel = "Un momento…",
   errorFallback = "Algo ha ido mal, inténtalo de nuevo",
   adminRedirect = false,
+  consent,
 }: {
   endpoint: string;
   fields: Array<{
@@ -26,6 +27,8 @@ export function AuthForm({
   busyLabel?: string;
   errorFallback?: string;
   adminRedirect?: boolean;
+  // Aceptación de privacidad/términos (obligatoria en los registros)
+  consent?: React.ReactNode;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,7 +42,9 @@ export function AuthForm({
 
     const formData = new FormData(event.currentTarget);
     const body = Object.fromEntries(
-      [...formData.entries()].filter(([, v]) => String(v).trim() !== ""),
+      [...formData.entries()].filter(
+        ([k, v]) => k !== "consent" && String(v).trim() !== "",
+      ),
     );
 
     const res = await fetch(endpoint, {
@@ -81,6 +86,12 @@ export function AuthForm({
           />
         </div>
       ))}
+      {consent && (
+        <label className="flex items-start gap-2 text-sm text-slate-600">
+          <input type="checkbox" name="consent" required className="mt-0.5" />
+          <span>{consent}</span>
+        </label>
+      )}
       {error && (
         <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
           {error}

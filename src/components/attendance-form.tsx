@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatCents } from "@/lib/money";
-import type { Dict } from "@/lib/i18n/shared";
+import { fmt, type Dict } from "@/lib/i18n/shared";
 
 // Respuesta al recordatorio: "¿Vas a asistir?" con un toque. El "no" aplica
 // la política de cancelación mostrando el cargo exacto antes de confirmar.
@@ -86,7 +86,9 @@ export function AttendanceForm({
         </p>
         <p className="mt-1 text-sm text-slate-600">
           {state.chargedCents > 0
-            ? t.cancelledCharged(formatCents(state.chargedCents, currency))
+            ? fmt(t.cancelledCharged, {
+                amount: formatCents(state.chargedCents, currency),
+              })
             : t.cancelledFree}
         </p>
       </div>
@@ -98,7 +100,10 @@ export function AttendanceForm({
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
         {isLate ? (
           <p className="text-sm text-amber-800">
-            {tMy.cancelLate(windowHours, formatCents(feeCents, currency))}
+            {fmt(tMy.cancelLate, {
+              hours: windowHours,
+              amount: formatCents(feeCents, currency),
+            })}
           </p>
         ) : (
           <p className="text-sm text-slate-600">{tMy.cancelFree}</p>

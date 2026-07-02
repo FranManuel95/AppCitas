@@ -26,6 +26,26 @@ export default async function RegisterPage() {
                 submitLabel={t.auth.registerButton}
                 busyLabel={t.auth.submitBusy}
                 errorFallback={t.auth.genericError}
+                consent={
+                  <>
+                    {t.auth.consentPrefix}{" "}
+                    <Link
+                      href="/legal/privacidad"
+                      className="text-indigo-600 underline"
+                      target="_blank"
+                    >
+                      {t.auth.privacyPolicy}
+                    </Link>{" "}
+                    {t.auth.consentAnd}{" "}
+                    <Link
+                      href="/legal/terminos"
+                      className="text-indigo-600 underline"
+                      target="_blank"
+                    >
+                      {t.auth.termsOfUse}
+                    </Link>
+                  </>
+                }
                 fields={[
                   { name: "name", label: t.auth.fullName },
                   {

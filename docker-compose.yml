@@ -1,0 +1,55 @@
+# Despliegue autoalojado: app + worker de notificaciones + PostgreSQL.
+#   cp .env.example .env   (rellenar AUTH_SECRET, APP_BASE_URL, proveedores…)
+#   docker compose up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: appcitas
+      POSTGRES_USER: appcitas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appcitas"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://appcitas:${POSTGRES_PASSWORD}@db:5432/appcitas
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Despacha confirmaciones y recordatorios del outbox cada 30 segundos
+  worker:
+    build: .
+    restart: unless-stopped
+    command: ["npm", "run", "worker"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://appcitas:${POSTGRES_PASSWORD}@db:5432/appcitas
+    depends_on:
+      app:
+        condition: service_started
+
+volumes:
+  pgdata:

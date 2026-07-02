@@ -85,8 +85,19 @@ export default async function HomePage() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-400">
-        {t.landing.footer}
+      <footer className="space-y-2 border-t border-slate-200 py-6 text-center text-xs text-slate-400">
+        <p>{t.landing.footer}</p>
+        <p className="space-x-3">
+          <Link href="/legal/privacidad" className="hover:text-slate-600">
+            {t.landing.legalPrivacy}
+          </Link>
+          <Link href="/legal/terminos" className="hover:text-slate-600">
+            {t.landing.legalTerms}
+          </Link>
+          <Link href="/legal/aviso" className="hover:text-slate-600">
+            {t.landing.legalNotice}
+          </Link>
+        </p>
       </footer>
     </>
   );

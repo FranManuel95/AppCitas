@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { processDueNotifications } from "@/lib/notifications/service";
 
-// POST /api/jobs/notifications — despacha los mensajes vencidos del outbox.
-// Pensado para invocarse cada minuto desde un cron externo (Vercel Cron,
-// GitHub Actions, crontab…) o desde el worker local (npm run worker).
+// /api/jobs/notifications — despacha los mensajes vencidos del outbox.
+// Pensado para invocarse cada minuto desde un cron externo (Vercel Cron usa
+// GET, otros crons pueden usar POST) o desde el worker local (npm run worker).
 // Protegido con CRON_SECRET para que nadie pueda dispararlo desde fuera.
-export async function POST(request: Request) {
+async function handleCron(request: Request) {
   const secret = process.env.CRON_SECRET;
   const provided =
     request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
@@ -24,3 +24,6 @@ export async function POST(request: Request) {
   const result = await processDueNotifications();
   return NextResponse.json(result);
 }
+
+export const POST = handleCron;
+export const GET = handleCron;

@@ -7,6 +7,16 @@ export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "es";
 export const LOCALE_COOKIE = "appcitas_locale";
 
+// Los textos con parámetros usan plantillas "{placeholder}" interpoladas con
+// fmt(): los diccionarios son datos serializables y pueden cruzar la frontera
+// servidor → cliente como props sin restricciones.
+export function fmt(
+  template: string,
+  params: Record<string, string | number>,
+): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(params[key] ?? ""));
+}
+
 const es = {
   header: {
     myAppointments: "Mis citas",
@@ -27,6 +37,9 @@ const es = {
     noBusinesses: "Aún no hay negocios registrados.",
     beFirst: "Sé el primero",
     footer: "AppCitas — proyecto base multi-sector de agendación de citas",
+    legalPrivacy: "Privacidad",
+    legalTerms: "Términos",
+    legalNotice: "Aviso legal",
   },
   auth: {
     loginTitle: "Iniciar sesión",
@@ -74,6 +87,10 @@ const es = {
     requestNew: "Solicita uno nuevo",
     submitBusy: "Un momento…",
     genericError: "Algo ha ido mal, inténtalo de nuevo",
+    consentPrefix: "He leído y acepto la",
+    privacyPolicy: "política de privacidad",
+    consentAnd: "y los",
+    termsOfUse: "términos de uso",
   },
   business: {
     bookAppointment: "Reservar cita",
@@ -86,19 +103,19 @@ const es = {
     minutes: "min",
     packagesTitle: "Bonos",
     packagesSubtitle: "Paquetes de sesiones a precio reducido.",
-    validFor: (days: number) => `válido ${days} días`,
-    youSave: (amount: string) => `(ahorras ${amount})`,
+    validFor: "válido {days} días",
+    youSave: "(ahorras {amount})",
     buyPackage: "Comprar bono",
     buying: "Comprando…",
     loginToBuy: "Inicia sesión para comprar",
-    packageBoughtPaid: (n: number) =>
-      `¡Bono comprado y pagado! Tienes ${n} sesiones para usar al reservar.`,
-    packageBoughtPending: (n: number) =>
-      `¡Bono reservado! Tienes ${n} sesiones; el pago se gestiona en el negocio.`,
+    packageBoughtPaid:
+      "¡Bono comprado y pagado! Tienes {n} sesiones para usar al reservar.",
+    packageBoughtPending:
+      "¡Bono reservado! Tienes {n} sesiones; el pago se gestiona en el negocio.",
     purchaseError: "No se pudo comprar",
     policyTitle: "Política de cancelación",
-    policyText: (hours: number, percent: number) =>
-      `Cancelación gratuita hasta ${hours} horas antes de la cita. Pasado ese plazo se cobrará el ${percent}% del precio del servicio.`,
+    policyText:
+      "Cancelación gratuita hasta {hours} horas antes de la cita. Pasado ese plazo se cobrará el {percent}% del precio del servicio.",
   },
   booking: {
     back: "←",
@@ -112,25 +129,23 @@ const es = {
     date: "Fecha",
     searchingSlots: "Buscando huecos…",
     noSlots: "No hay huecos disponibles ese día. Prueba con otra fecha.",
-    usePackage: (name: string, n: number) =>
-      `Usar mi bono: ${name} (${n} sesiones restantes)`,
+    usePackage: "Usar mi bono: {name} ({n} sesiones restantes)",
     packageNote:
       "Esta cita se descuenta del bono: no se cobra nada. Si cancelas en plazo, la sesión vuelve a tu bono; si cancelas tarde, la sesión se pierde.",
     couponLabel: "¿Tienes un cupón? (opcional)",
     couponPlaceholder: "CÓDIGO",
-    couponWillValidate: (code: string) =>
-      `Cupón ${code}: se validará al reservar.`,
+    couponWillValidate: "Cupón {code}: se validará al reservar.",
     phoneLabel: "Teléfono para recordatorios por WhatsApp/SMS (opcional)",
     notesLabel: "Notas para el negocio (opcional)",
     cardTitle: "Tarjeta para posibles cargos",
-    cardNote: (hours: number) =>
-      `Este negocio requiere una tarjeta guardada. Solo se usa si cancelas con menos de ${hours} h o no te presentas.`,
+    cardNote:
+      "Este negocio requiere una tarjeta guardada. Solo se usa si cancelas con menos de {hours} h o no te presentas.",
     cardChecking: "Comprobando tarjeta…",
     cardSaved: "Tarjeta guardada ✓",
     booking: "Reservando…",
     chooseSlot: "Elige un hueco para reservar",
     saveCardFirst: "Guarda una tarjeta para reservar",
-    bookCta: (service: string, slot: string) => `Reservar ${service} · ${slot}`,
+    bookCta: "Reservar {service} · {slot}",
     loginPrompt1: "Inicia sesión",
     loginPrompt2: "o",
     loginPrompt3: "crea una cuenta",
@@ -143,14 +158,14 @@ const es = {
     dateLabel: "Fecha",
     price: "Precio",
     packagePrice: "Bono",
-    policyShort: (hours: number, percent: number) =>
-      `Cancelación gratuita hasta ${hours} h antes. Después se cobra el ${percent}% del servicio.`,
+    policyShort:
+      "Cancelación gratuita hasta {hours} h antes. Después se cobra el {percent}% del servicio.",
     confirmedTitle: "¡Cita confirmada!",
-    confirmedWith: (staff: string) => ` con ${staff}`,
+    confirmedWith: " con {staff}",
     confirmedNotice:
       "Te hemos enviado la confirmación y recibirás un recordatorio antes de la cita.",
-    freeCancelUntil: (deadline: string) =>
-      `Puedes cancelar gratis hasta el ${deadline}. Después se aplicará el cargo por cancelación tardía.`,
+    freeCancelUntil:
+      "Puedes cancelar gratis hasta el {deadline}. Después se aplicará el cargo por cancelación tardía.",
     seeMyAppointments: "Ver mis citas",
     backToBusiness: "Volver al negocio",
     networkError: "Error de red",
@@ -165,16 +180,16 @@ const es = {
     history: "Historial",
     noHistory: "Aún no hay historial.",
     myPackages: "Mis bonos",
-    sessions: (n: number) => `${n} sesiones`,
+    sessions: "{n} sesiones",
     expired: "Caducado",
-    expiresOn: (date: string) => `caduca ${date}`,
+    expiresOn: "caduca {date}",
     pendingPayment: "pago pendiente en el negocio",
-    chargedAmount: (amount: string) => `Importe cobrado: ${amount}`,
-    withStaff: (name: string) => ` · con ${name}`,
+    chargedAmount: "Importe cobrado: {amount}",
+    withStaff: " · con {name}",
     cancelCta: "Cancelar cita",
     cancelFree: "Estás dentro del plazo: la cancelación es gratuita.",
-    cancelLate: (hours: number, amount: string) =>
-      `El plazo de cancelación gratuita (${hours} h antes) ya ha pasado. Si cancelas ahora se te cobrará ${amount}.`,
+    cancelLate:
+      "El plazo de cancelación gratuita ({hours} h antes) ya ha pasado. Si cancelas ahora se te cobrará {amount}.",
     cancelConfirmFree: "Confirmar cancelación",
     cancelConfirmLate: "Cancelar y aceptar el cargo",
     cancelling: "Cancelando…",
@@ -182,8 +197,8 @@ const es = {
     cancelError: "No se pudo cancelar la cita",
   },
   confirmation: {
-    hello: (name: string) => `Hola ${name} 👋`,
-    yourAppointment: (business: string) => `Tu cita en ${business}`,
+    hello: "Hola {name} 👋",
+    yourAppointment: "Tu cita en {business}",
     service: "Servicio",
     staff: "Profesional",
     date: "Fecha",
@@ -197,8 +212,8 @@ const es = {
     confirmedText: "Te esperamos.",
     cancelledTitle: "Cita cancelada",
     cancelledFree: "Cancelaste dentro de plazo: sin coste.",
-    cancelledCharged: (amount: string) =>
-      `Se ha aplicado el cargo por cancelación tardía: ${amount}.`,
+    cancelledCharged:
+      "Se ha aplicado el cargo por cancelación tardía: {amount}.",
     invalidLink: "Enlace no válido",
     invalidLinkText: "Este enlace de confirmación no existe o ha caducado.",
     goToApp: "Ir a AppCitas",
@@ -207,8 +222,8 @@ const es = {
     respondError: "No se pudo registrar tu respuesta",
   },
   verify: {
-    bannerText: (email: string) =>
-      `Verifica tu email (${email}) para asegurar tu cuenta. Revisa tu bandeja de entrada.`,
+    bannerText:
+      "Verifica tu email ({email}) para asegurar tu cuenta. Revisa tu bandeja de entrada.",
     resend: "Reenviar enlace",
     resending: "Enviando…",
     resent: "Enlace reenviado ✓",
@@ -238,6 +253,9 @@ const en: Dict = {
     noBusinesses: "No businesses registered yet.",
     beFirst: "Be the first",
     footer: "AppCitas — multi-sector appointment scheduling base project",
+    legalPrivacy: "Privacy",
+    legalTerms: "Terms",
+    legalNotice: "Legal notice",
   },
   auth: {
     loginTitle: "Log in",
@@ -285,6 +303,10 @@ const en: Dict = {
     requestNew: "Request a new one",
     submitBusy: "One moment…",
     genericError: "Something went wrong, please try again",
+    consentPrefix: "I have read and accept the",
+    privacyPolicy: "privacy policy",
+    consentAnd: "and the",
+    termsOfUse: "terms of use",
   },
   business: {
     bookAppointment: "Book appointment",
@@ -297,19 +319,19 @@ const en: Dict = {
     minutes: "min",
     packagesTitle: "Session packs",
     packagesSubtitle: "Bundles of sessions at a reduced price.",
-    validFor: (days: number) => `valid for ${days} days`,
-    youSave: (amount: string) => `(you save ${amount})`,
+    validFor: "valid for {days} days",
+    youSave: "(you save {amount})",
     buyPackage: "Buy pack",
     buying: "Buying…",
     loginToBuy: "Log in to buy",
-    packageBoughtPaid: (n: number) =>
-      `Pack purchased and paid! You have ${n} sessions to use when booking.`,
-    packageBoughtPending: (n: number) =>
-      `Pack reserved! You have ${n} sessions; payment is handled at the business.`,
+    packageBoughtPaid:
+      "Pack purchased and paid! You have {n} sessions to use when booking.",
+    packageBoughtPending:
+      "Pack reserved! You have {n} sessions; payment is handled at the business.",
     purchaseError: "Purchase failed",
     policyTitle: "Cancellation policy",
-    policyText: (hours: number, percent: number) =>
-      `Free cancellation up to ${hours} hours before the appointment. After that, ${percent}% of the service price is charged.`,
+    policyText:
+      "Free cancellation up to {hours} hours before the appointment. After that, {percent}% of the service price is charged.",
   },
   booking: {
     back: "←",
@@ -323,25 +345,23 @@ const en: Dict = {
     date: "Date",
     searchingSlots: "Searching for slots…",
     noSlots: "No slots available that day. Try another date.",
-    usePackage: (name: string, n: number) =>
-      `Use my pack: ${name} (${n} sessions left)`,
+    usePackage: "Use my pack: {name} ({n} sessions left)",
     packageNote:
       "This appointment is deducted from your pack: nothing is charged. If you cancel in time, the session returns to your pack; if you cancel late, the session is lost.",
     couponLabel: "Have a coupon? (optional)",
     couponPlaceholder: "CODE",
-    couponWillValidate: (code: string) =>
-      `Coupon ${code}: it will be validated when booking.`,
+    couponWillValidate: "Coupon {code}: it will be validated when booking.",
     phoneLabel: "Phone for WhatsApp/SMS reminders (optional)",
     notesLabel: "Notes for the business (optional)",
     cardTitle: "Card for possible charges",
-    cardNote: (hours: number) =>
-      `This business requires a saved card. It's only used if you cancel with less than ${hours} h notice or don't show up.`,
+    cardNote:
+      "This business requires a saved card. It's only used if you cancel with less than {hours} h notice or don't show up.",
     cardChecking: "Checking card…",
     cardSaved: "Card saved ✓",
     booking: "Booking…",
     chooseSlot: "Choose a slot to book",
     saveCardFirst: "Save a card to book",
-    bookCta: (service: string, slot: string) => `Book ${service} · ${slot}`,
+    bookCta: "Book {service} · {slot}",
     loginPrompt1: "Log in",
     loginPrompt2: "or",
     loginPrompt3: "create an account",
@@ -354,14 +374,14 @@ const en: Dict = {
     dateLabel: "Date",
     price: "Price",
     packagePrice: "Pack",
-    policyShort: (hours: number, percent: number) =>
-      `Free cancellation up to ${hours} h before. After that, ${percent}% of the service is charged.`,
+    policyShort:
+      "Free cancellation up to {hours} h before. After that, {percent}% of the service is charged.",
     confirmedTitle: "Appointment confirmed!",
-    confirmedWith: (staff: string) => ` with ${staff}`,
+    confirmedWith: " with {staff}",
     confirmedNotice:
       "We've sent you the confirmation and you'll receive a reminder before your appointment.",
-    freeCancelUntil: (deadline: string) =>
-      `You can cancel free until ${deadline}. After that, the late cancellation charge applies.`,
+    freeCancelUntil:
+      "You can cancel free until {deadline}. After that, the late cancellation charge applies.",
     seeMyAppointments: "See my appointments",
     backToBusiness: "Back to the business",
     networkError: "Network error",
@@ -376,16 +396,16 @@ const en: Dict = {
     history: "History",
     noHistory: "No history yet.",
     myPackages: "My packs",
-    sessions: (n: number) => `${n} sessions`,
+    sessions: "{n} sessions",
     expired: "Expired",
-    expiresOn: (date: string) => `expires ${date}`,
+    expiresOn: "expires {date}",
     pendingPayment: "payment pending at the business",
-    chargedAmount: (amount: string) => `Amount charged: ${amount}`,
-    withStaff: (name: string) => ` · with ${name}`,
+    chargedAmount: "Amount charged: {amount}",
+    withStaff: " · with {name}",
     cancelCta: "Cancel appointment",
     cancelFree: "You're within the window: cancellation is free.",
-    cancelLate: (hours: number, amount: string) =>
-      `The free cancellation window (${hours} h before) has passed. If you cancel now you'll be charged ${amount}.`,
+    cancelLate:
+      "The free cancellation window ({hours} h before) has passed. If you cancel now you'll be charged {amount}.",
     cancelConfirmFree: "Confirm cancellation",
     cancelConfirmLate: "Cancel and accept the charge",
     cancelling: "Cancelling…",
@@ -393,8 +413,8 @@ const en: Dict = {
     cancelError: "Could not cancel the appointment",
   },
   confirmation: {
-    hello: (name: string) => `Hi ${name} 👋`,
-    yourAppointment: (business: string) => `Your appointment at ${business}`,
+    hello: "Hi {name} 👋",
+    yourAppointment: "Your appointment at {business}",
     service: "Service",
     staff: "Professional",
     date: "Date",
@@ -408,8 +428,7 @@ const en: Dict = {
     confirmedText: "See you soon.",
     cancelledTitle: "Appointment cancelled",
     cancelledFree: "You cancelled within the window: no cost.",
-    cancelledCharged: (amount: string) =>
-      `The late cancellation charge has been applied: ${amount}.`,
+    cancelledCharged: "The late cancellation charge has been applied: {amount}.",
     invalidLink: "Invalid link",
     invalidLinkText: "This confirmation link doesn't exist or has expired.",
     goToApp: "Go to AppCitas",
@@ -418,8 +437,8 @@ const en: Dict = {
     respondError: "Could not register your answer",
   },
   verify: {
-    bannerText: (email: string) =>
-      `Verify your email (${email}) to secure your account. Check your inbox.`,
+    bannerText:
+      "Verify your email ({email}) to secure your account. Check your inbox.",
     resend: "Resend link",
     resending: "Sending…",
     resent: "Link resent ✓",

@@ -90,6 +90,14 @@ API oficial sin tocar el resto del sistema (interfaz `Channel`).
 | Gráficas | Recharts |
 | Tests | Vitest |
 
+## Despliegue a producción
+
+Guía completa en **[DEPLOY.md](DEPLOY.md)**: Vercel + Postgres gestionado o
+VPS con Docker Compose (app + worker + PostgreSQL incluidos), configuración de
+Stripe/SMTP/Twilio/WhatsApp, cron de notificaciones, páginas legales y
+checklist post-despliegue. La app elige PostgreSQL automáticamente cuando
+DATABASE_URL empieza por postgres; en local sigue bastando SQLite.
+
 ## Puesta en marcha
 
 ```bash

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatCents } from "@/lib/money";
-import type { Dict } from "@/lib/i18n/shared";
+import { fmt, type Dict } from "@/lib/i18n/shared";
 
 // Botón de cancelación con confirmación explícita: si la cancelación es
 // tardía, el cliente ve el cargo exacto antes de confirmar.
@@ -63,7 +63,10 @@ export function CancelAppointmentButton({
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
       {isLate ? (
         <p className="text-amber-800">
-          {t.cancelLate(windowHours, formatCents(feeCents, currency))}
+          {fmt(t.cancelLate, {
+            hours: windowHours,
+            amount: formatCents(feeCents, currency),
+          })}
         </p>
       ) : (
         <p className="text-slate-600">{t.cancelFree}</p>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth/session";
-import { getDict } from "@/lib/i18n";
+import { fmt, getDict } from "@/lib/i18n";
 import { SiteHeader } from "@/components/site-header";
 import { PackagesSection } from "@/components/packages-section";
 import { formatCents } from "@/lib/money";
@@ -179,10 +179,10 @@ export default async function BusinessPage({
                 {t.business.policyTitle}
               </h2>
               <p className="mt-2 text-sm text-amber-800">
-                {t.business.policyText(
-                  business.cancellationWindowHours,
-                  business.lateCancellationFeePercent,
-                )}
+                {fmt(t.business.policyText, {
+                  hours: business.cancellationWindowHours,
+                  percent: business.lateCancellationFeePercent,
+                })}
               </p>
             </div>
           </aside>

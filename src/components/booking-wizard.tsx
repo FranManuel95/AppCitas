@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatCents } from "@/lib/money";
-import { intlLocale, type Dict, type Locale } from "@/lib/i18n/shared";
+import { fmt, intlLocale, type Dict, type Locale } from "@/lib/i18n/shared";
 import { CardSetup } from "./card-setup";
 
 type BookingDict = Dict["booking"];
@@ -238,14 +238,16 @@ export function BookingWizard({
         </h2>
         <p className="mt-2 text-slate-600">
           {confirmed.service}
-          {confirmed.staff ? t.confirmedWith(confirmed.staff) : ""} ·{" "}
+          {confirmed.staff ? fmt(t.confirmedWith, { staff: confirmed.staff }) : ""} ·{" "}
           {dateFormatter.format(new Date(confirmed.startAt))}
         </p>
         <p className="mt-2 text-sm text-slate-500">{t.confirmedNotice}</p>
         <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          {t.freeCancelUntil(
-            dateFormatter.format(new Date(confirmed.freeCancellationUntil)),
-          )}
+          {fmt(t.freeCancelUntil, {
+            deadline: dateFormatter.format(
+              new Date(confirmed.freeCancellationUntil),
+            ),
+          })}
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <Link href="/mis-citas" className="btn-primary">
@@ -423,10 +425,10 @@ export function BookingWizard({
                     setUsePackageId(e.target.checked ? myPackages[0].id : "")
                   }
                 />
-                {t.usePackage(
-                  myPackages[0].name,
-                  myPackages[0].remainingSessions,
-                )}
+                {fmt(t.usePackage, {
+                  name: myPackages[0].name,
+                  n: myPackages[0].remainingSessions,
+                })}
               </label>
               {usePackageId && (
                 <p className="mt-1 text-xs text-emerald-700">
@@ -470,7 +472,7 @@ export function BookingWizard({
             <div className="mt-4">
               <p className="label">{t.cardTitle}</p>
               <p className="mb-2 text-xs text-slate-500">
-                {t.cardNote(business.cancellationWindowHours)}
+                {fmt(t.cardNote, { hours: business.cancellationWindowHours })}
               </p>
               {checkingCard ? (
                 <p className="text-sm text-slate-500">{t.cardChecking}</p>
@@ -502,7 +504,10 @@ export function BookingWizard({
                   : business.requireCardToBook && !cardSaved
                     ? t.saveCardFirst
                     : service
-                      ? t.bookCta(service.name, selectedSlot.label)
+                      ? fmt(t.bookCta, {
+                          service: service.name,
+                          slot: selectedSlot.label,
+                        })
                       : t.stepConfirm}
             </button>
           ) : (
@@ -583,15 +588,15 @@ export function BookingWizard({
             </div>
             {!usePackageId && couponCode.trim() && (
               <p className="text-xs text-slate-500">
-                {t.couponWillValidate(couponCode.trim())}
+                {fmt(t.couponWillValidate, { code: couponCode.trim() })}
               </p>
             )}
           </dl>
           <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            {t.policyShort(
-              business.cancellationWindowHours,
-              business.lateCancellationFeePercent,
-            )}
+            {fmt(t.policyShort, {
+              hours: business.cancellationWindowHours,
+              percent: business.lateCancellationFeePercent,
+            })}
           </p>
         </div>
       </aside>

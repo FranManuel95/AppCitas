@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+*.db
+*.db-journal
+.env
+.env.*
+!.env.example
+src/generated
+README.md
+DEPLOY.md

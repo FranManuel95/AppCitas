@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatCents } from "@/lib/money";
-import type { Dict } from "@/lib/i18n/shared";
+import { fmt, type Dict } from "@/lib/i18n/shared";
 
 interface PackageOffer {
   id: string;
@@ -57,8 +57,8 @@ export function PackagesSection({
     setMessage({
       kind: "ok",
       text: paid
-        ? t.packageBoughtPaid(json.purchase.remainingSessions)
-        : t.packageBoughtPending(json.purchase.remainingSessions),
+        ? fmt(t.packageBoughtPaid, { n: json.purchase.remainingSessions })
+        : fmt(t.packageBoughtPending, { n: json.purchase.remainingSessions }),
     });
     router.refresh();
   }
@@ -77,7 +77,7 @@ export function PackagesSection({
               <p className="font-medium text-slate-800">{p.name}</p>
               <p className="text-sm text-slate-500">
                 {p.sessions} × {p.serviceName}
-                {p.validityDays ? ` · ${t.validFor(p.validityDays)}` : ""}
+                {p.validityDays ? ` · ${fmt(t.validFor, { days: p.validityDays })}` : ""}
               </p>
               <p className="mt-1 text-sm">
                 <span className="font-semibold text-slate-900">
@@ -85,7 +85,7 @@ export function PackagesSection({
                 </span>{" "}
                 {saving > 0 && (
                   <span className="text-emerald-600">
-                    {t.youSave(formatCents(saving, currency))}
+                    {fmt(t.youSave, { amount: formatCents(saving, currency) })}
                   </span>
                 )}
               </p>

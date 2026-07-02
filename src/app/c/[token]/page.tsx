@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatCents } from "@/lib/money";
 import { StatusBadge } from "@/components/status-badge";
-import { getDict, intlLocale } from "@/lib/i18n";
+import { fmt, getDict, intlLocale } from "@/lib/i18n";
 import { AttendanceForm } from "@/components/attendance-form";
 
 export const dynamic = "force-dynamic";
@@ -68,10 +68,12 @@ export default async function ConfirmationPage({
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
       <div className="card w-full max-w-md">
         <p className="text-sm text-slate-500">
-          {t.confirmation.hello(appointment.client.name)}
+          {fmt(t.confirmation.hello, { name: appointment.client.name })}
         </p>
         <h1 className="mt-1 text-xl font-bold text-slate-900">
-          {t.confirmation.yourAppointment(appointment.business.name)}
+          {fmt(t.confirmation.yourAppointment, {
+            business: appointment.business.name,
+          })}
         </h1>
 
         <dl className="mt-4 space-y-2 rounded-lg bg-slate-50 p-4 text-sm">
