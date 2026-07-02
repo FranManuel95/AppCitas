@@ -58,6 +58,24 @@ cuando `DATABASE_URL` empieza por `postgres`.
 5. Conecta tu dominio en *Settings → Domains* y actualiza `APP_BASE_URL`.
 6. Verifica: `https://TU-DOMINIO/api/health` debe devolver `{"ok":true}`.
 
+### Supabase como base de datos (recomendado si quieres panel visual)
+
+Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
+
+1. Crea el proyecto en supabase.com y ve a *Settings → Database*.
+2. Supabase ofrece varias cadenas de conexión; usa la adecuada:
+   - **Vercel/serverless** → la del *Transaction pooler* (puerto 6543).
+   - **VPS/Docker (procesos persistentes)** → la del *Session pooler* o la
+     conexión directa (puerto 5432).
+   - **Migraciones y seed** (`prisma migrate deploy`, `db:seed`) → siempre la
+     conexión **directa** (5432).
+3. Ventaja añadida: el *Table Editor* de Supabase te deja inspeccionar citas,
+   clientes e ingresos visualmente, y los backups vienen incluidos.
+
+> ¿Y Airtable? No es apto como base de datos de esta app: sin transacciones
+> no se puede garantizar el anti doble-reserva, y su límite de 5 peticiones/s
+> no soporta tráfico real. Como PostgreSQL gestionado usa Supabase/Neon.
+
 ## Opción B — VPS con Docker Compose
 
 1. Instala Docker + Docker Compose en el servidor.
