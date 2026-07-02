@@ -6,6 +6,7 @@ import { verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { DomainError } from "@/lib/domain/errors";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { audit } from "@/lib/audit";
 import type { Role } from "@/lib/domain/types";
 
 const schema = z.object({
@@ -22,16 +23,21 @@ export const POST = apiHandler(async (request: Request) => {
   const user = await prisma.user.findUnique({ where: { email } });
   // Mismo error para email inexistente y contraseña errónea: no revela cuentas
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    await audit("LOGIN_FAILED", { email, userId: user?.id, request });
     throw new DomainError("Credenciales incorrectas", "BAD_CREDENTIALS", 401);
   }
 
-  await createSession({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role as Role,
-    businessId: user.businessId,
-  });
+  await createSession(
+    {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role as Role,
+      businessId: user.businessId,
+    },
+    user.sessionVersion,
+  );
+  await audit("LOGIN_OK", { userId: user.id, email, request });
 
   return NextResponse.json({
     user: {

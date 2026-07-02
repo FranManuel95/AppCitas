@@ -7,6 +7,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { createAuthToken } from "@/lib/auth/tokens";
 import { sendStaffInviteEmail } from "@/lib/auth/mailer";
 import { DomainError } from "@/lib/domain/errors";
+import { audit } from "@/lib/audit";
 
 // POST /api/admin/staff/[id]/access — invita al empleado a su portal:
 // crea su cuenta (rol STAFF) con contraseña aleatoria y le envía un enlace
@@ -74,6 +75,11 @@ export const POST = apiHandler(
       name: user.name,
       businessName: member.business.name,
       token,
+    });
+    await audit("STAFF_INVITED", {
+      userId: admin.id,
+      email: user.email,
+      detail: `empleado: ${member.name}`,
     });
 
     return NextResponse.json({ invited: true, email: user.email }, { status: 201 });

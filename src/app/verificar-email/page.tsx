@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { consumeAuthToken } from "@/lib/auth/tokens";
+import { audit } from "@/lib/audit";
 import { SiteHeader } from "@/components/site-header";
 
 export const dynamic = "force-dynamic";
@@ -19,10 +20,12 @@ export default async function VerifyEmailPage({
   if (token) {
     const userId = await consumeAuthToken(token, "EMAIL_VERIFY");
     if (userId) {
-      await prisma.user.update({
+      const user = await prisma.user.update({
         where: { id: userId },
         data: { emailVerifiedAt: new Date() },
+        select: { id: true, email: true },
       });
+      await audit("EMAIL_VERIFIED", { userId: user.id, email: user.email });
       verified = true;
     }
   }

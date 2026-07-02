@@ -17,6 +17,11 @@ import {
   wallTimeToUtc,
 } from "./dates";
 import { BLOCKING_STATUSES, type AppointmentStatus } from "./types";
+import {
+  couponDiscountCents,
+  couponRejection,
+  packageRejection,
+} from "./promotions";
 import { collectAppointmentCharge } from "@/lib/payments/collect";
 import {
   enqueueBookingNotifications,
@@ -188,10 +193,28 @@ export async function createAppointment(params: {
   startAt: Date;
   staffId?: string;
   notes?: string;
+  couponCode?: string;
+  clientPackageId?: string;
   now?: Date;
 }) {
   const now = params.now ?? new Date();
-  const { businessId, serviceId, clientId, startAt, staffId, notes } = params;
+  const {
+    businessId,
+    serviceId,
+    clientId,
+    startAt,
+    staffId,
+    notes,
+    couponCode,
+    clientPackageId,
+  } = params;
+
+  if (couponCode && clientPackageId) {
+    throw new DomainError(
+      "No se puede combinar un cupón con un bono",
+      "PROMO_CONFLICT",
+    );
+  }
 
   const businessRow = await prisma.business.findFirst({
     where: { id: businessId, active: true },
@@ -241,7 +264,8 @@ export async function createAppointment(params: {
   );
 
   // Transacción: re-comprueba el solapamiento justo antes de insertar para
-  // cerrar la carrera entre dos reservas simultáneas del mismo hueco.
+  // cerrar la carrera entre dos reservas simultáneas del mismo hueco, y
+  // consume la promoción (cupón/bono) de forma atómica con la reserva.
   const appointment = await prisma.$transaction(async (tx) => {
     const conflict = await tx.appointment.findFirst({
       where: {
@@ -265,6 +289,55 @@ export async function createAppointment(params: {
       );
     }
 
+    let priceCents = ctx.service.priceCents;
+    let discountCents = 0;
+    let couponId: string | null = null;
+    let usedPackageId: string | null = null;
+
+    if (clientPackageId) {
+      const pkg = await tx.clientPackage.findFirst({
+        where: { id: clientPackageId, clientId, businessId },
+        include: { package: { select: { serviceId: true } } },
+      });
+      const rejection = packageRejection(
+        pkg
+          ? {
+              remainingSessions: pkg.remainingSessions,
+              expiresAt: pkg.expiresAt,
+              packageServiceId: pkg.package.serviceId,
+            }
+          : null,
+        serviceId,
+        now,
+      );
+      if (rejection) throw new DomainError(rejection, "PACKAGE_INVALID", 409);
+
+      await tx.clientPackage.update({
+        where: { id: clientPackageId },
+        data: { remainingSessions: { decrement: 1 } },
+      });
+      // La sesión ya está pagada en el bono: la cita queda a 0
+      discountCents = priceCents;
+      priceCents = 0;
+      usedPackageId = clientPackageId;
+    } else if (couponCode) {
+      const coupon = await tx.coupon.findUnique({
+        where: {
+          businessId_code: { businessId, code: couponCode.trim().toUpperCase() },
+        },
+      });
+      const rejection = couponRejection(coupon, now);
+      if (rejection) throw new DomainError(rejection, "COUPON_INVALID", 409);
+
+      discountCents = couponDiscountCents(coupon!, priceCents);
+      priceCents -= discountCents;
+      couponId = coupon!.id;
+      await tx.coupon.update({
+        where: { id: coupon!.id },
+        data: { timesRedeemed: { increment: 1 } },
+      });
+    }
+
     return tx.appointment.create({
       data: {
         businessId,
@@ -274,7 +347,10 @@ export async function createAppointment(params: {
         startAt,
         endAt,
         status: "CONFIRMED",
-        priceCents: ctx.service.priceCents,
+        priceCents,
+        discountCents,
+        couponId,
+        clientPackageId: usedPackageId,
         notes: notes?.trim() || null,
       },
       include: {
@@ -352,17 +428,33 @@ export async function cancelAppointment(params: {
     description: `Cancelación tardía · ${appointment.service.name} · ${appointment.business.name}`,
   });
 
-  const updated = await prisma.appointment.update({
-    where: { id: appointmentId },
-    data: {
-      status: outcome.status,
-      chargedCents: outcome.chargedCents,
-      cancelledAt: now,
-      paymentStatus: collection.paymentStatus,
-      paymentRef: collection.paymentRef,
-    },
-    include: { service: true, business: true },
-  });
+  // Cita pagada con bono: si la cancelación es en plazo (o cancela el
+  // negocio) se devuelve la sesión; si es tardía, la sesión se pierde —
+  // esa es la penalización, no hay cargo adicional (priceCents ya es 0).
+  const restorePackageSession =
+    !!appointment.clientPackageId && !outcome.late;
+
+  const [updated] = await prisma.$transaction([
+    prisma.appointment.update({
+      where: { id: appointmentId },
+      data: {
+        status: outcome.status,
+        chargedCents: outcome.chargedCents,
+        cancelledAt: now,
+        paymentStatus: collection.paymentStatus,
+        paymentRef: collection.paymentRef,
+      },
+      include: { service: true, business: true },
+    }),
+    ...(restorePackageSession
+      ? [
+          prisma.clientPackage.update({
+            where: { id: appointment.clientPackageId! },
+            data: { remainingSessions: { increment: 1 } },
+          }),
+        ]
+      : []),
+  ]);
 
   await enqueueCancellationNotifications(
     appointmentId,

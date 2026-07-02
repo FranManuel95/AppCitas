@@ -13,10 +13,21 @@ export const metadata = { title: "Mis citas" };
 export default async function MyAppointmentsPage() {
   const user = await requireUser();
 
-  const account = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { emailVerifiedAt: true },
-  });
+  const [account, myPackages] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { emailVerifiedAt: true },
+    }),
+    prisma.clientPackage.findMany({
+      where: { clientId: user.id },
+      include: {
+        package: { select: { name: true, service: { select: { name: true } } } },
+        business: { select: { name: true, slug: true, currency: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+  ]);
 
   const appointments = await prisma.appointment.findMany({
     where: { clientId: user.id },
@@ -114,6 +125,54 @@ export default async function MyAppointmentsPage() {
             )}
           </div>
         </section>
+
+        {myPackages.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-lg font-semibold text-slate-900">Mis bonos</h2>
+            <div className="mt-4 space-y-3">
+              {myPackages.map((p) => {
+                const expired =
+                  p.expiresAt && p.expiresAt.getTime() < Date.now();
+                const usable = p.remainingSessions > 0 && !expired;
+                return (
+                  <div
+                    key={p.id}
+                    className="card flex flex-wrap items-center justify-between gap-3 py-4"
+                  >
+                    <div>
+                      <p className="font-medium text-slate-800">
+                        {p.package.name}{" "}
+                        <span className="text-slate-400">·</span>{" "}
+                        {p.business.name}
+                      </p>
+                      <p className="mt-0.5 text-sm text-slate-500">
+                        {p.package.service.name} ·{" "}
+                        {formatCents(p.pricePaidCents, p.business.currency)}
+                        {p.expiresAt
+                          ? ` · caduca ${p.expiresAt.toLocaleDateString("es-ES")}`
+                          : ""}
+                        {p.paymentStatus === "UNCOLLECTED"
+                          ? " · pago pendiente en el negocio"
+                          : ""}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-sm font-semibold ${
+                        usable
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {expired
+                        ? "Caducado"
+                        : `${p.remainingSessions} sesiones`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="mt-10">
           <h2 className="text-lg font-semibold text-slate-900">Historial</h2>

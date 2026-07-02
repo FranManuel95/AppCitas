@@ -6,6 +6,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { consumeAuthToken } from "@/lib/auth/tokens";
 import { DomainError } from "@/lib/domain/errors";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { audit } from "@/lib/audit";
 
 const schema = z.object({
   token: z.string().min(10),
@@ -30,13 +31,22 @@ export const POST = apiHandler(async (request: Request) => {
     );
   }
 
-  await prisma.user.update({
+  const user = await prisma.user.update({
     where: { id: userId },
     data: {
       passwordHash: await hashPassword(password),
       // Llegar al email demuestra su propiedad: cuenta como verificación
       emailVerifiedAt: new Date(),
+      // Revoca todas las sesiones activas: si alguien tenía acceso a la
+      // cuenta, el cambio de contraseña lo expulsa de inmediato
+      sessionVersion: { increment: 1 },
     },
+    select: { id: true, email: true },
+  });
+  await audit("PASSWORD_RESET_OK", {
+    userId: user.id,
+    email: user.email,
+    request,
   });
 
   return NextResponse.json({ ok: true });

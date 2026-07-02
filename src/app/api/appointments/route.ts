@@ -14,6 +14,9 @@ const createSchema = z.object({
   notes: z.string().trim().max(500).optional(),
   // Teléfono para recordatorios por SMS/WhatsApp (se guarda en el perfil)
   phone: z.string().trim().min(6).max(30).optional(),
+  // Promoción: cupón o bono del cliente (excluyentes)
+  couponCode: z.string().trim().max(30).optional(),
+  clientPackageId: z.string().optional(),
 });
 
 // POST /api/appointments — reservar (cliente autenticado)
@@ -35,6 +38,8 @@ export const POST = apiHandler(async (request: Request) => {
     startAt: new Date(data.startAt),
     staffId: data.staffId,
     notes: data.notes,
+    couponCode: data.couponCode,
+    clientPackageId: data.clientPackageId,
   });
 
   return NextResponse.json(
@@ -45,6 +50,7 @@ export const POST = apiHandler(async (request: Request) => {
         endAt: appointment.endAt.toISOString(),
         status: appointment.status,
         priceCents: appointment.priceCents,
+        discountCents: appointment.discountCents,
         service: appointment.service.name,
         business: appointment.business.name,
         staff: appointment.staff?.name ?? null,

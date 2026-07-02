@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getSessionUser } from "@/lib/auth/session";
 import { SiteHeader } from "@/components/site-header";
+import { PackagesSection } from "@/components/packages-section";
 import { formatCents } from "@/lib/money";
 import { WEEKDAYS_ES, WEEKDAY_ORDER } from "@/lib/weekdays";
 
@@ -13,18 +15,26 @@ export default async function BusinessPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const business = await prisma.business.findFirst({
-    where: { slug, active: true },
-    include: {
-      services: { where: { active: true }, orderBy: { priceCents: "asc" } },
-      hours: { orderBy: { openTime: "asc" } },
-      staff: {
-        where: { active: true },
-        select: { id: true, name: true, color: true },
-        orderBy: { name: "asc" },
+  const [business, user] = await Promise.all([
+    prisma.business.findFirst({
+      where: { slug, active: true },
+      include: {
+        services: { where: { active: true }, orderBy: { priceCents: "asc" } },
+        hours: { orderBy: { openTime: "asc" } },
+        staff: {
+          where: { active: true },
+          select: { id: true, name: true, color: true },
+          orderBy: { name: "asc" },
+        },
+        packages: {
+          where: { active: true, service: { active: true } },
+          include: { service: { select: { name: true, priceCents: true } } },
+          orderBy: { priceCents: "asc" },
+        },
       },
-    },
-  });
+    }),
+    getSessionUser(),
+  ]);
   if (!business) notFound();
 
   const hoursByDay = WEEKDAY_ORDER.map((weekday) => ({
@@ -100,6 +110,21 @@ export default async function BusinessPage({
           </section>
 
           <aside className="space-y-6">
+            <PackagesSection
+              packages={business.packages.map((p) => ({
+                id: p.id,
+                name: p.name,
+                serviceName: p.service.name,
+                sessions: p.sessions,
+                priceCents: p.priceCents,
+                fullPriceCents: p.sessions * p.service.priceCents,
+                validityDays: p.validityDays,
+              }))}
+              currency={business.currency}
+              isLoggedIn={!!user}
+              slug={business.slug}
+            />
+
             {business.staff.length > 0 && (
               <div className="card">
                 <h2 className="font-semibold text-slate-900">Equipo</h2>

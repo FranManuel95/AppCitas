@@ -78,6 +78,11 @@ export function BookingWizard({
   const [selectedSlot, setSelectedSlot] = useState<SlotOption | null>(null);
   const [notes, setNotes] = useState("");
   const [phone, setPhone] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [myPackages, setMyPackages] = useState<
+    Array<{ id: string; name: string; remainingSessions: number }>
+  >([]);
+  const [usePackageId, setUsePackageId] = useState("");
   const [cardSaved, setCardSaved] = useState(!business.requireCardToBook);
   const [checkingCard, setCheckingCard] = useState(
     business.requireCardToBook && isLoggedIn,
@@ -123,6 +128,25 @@ export function BookingWizard({
     };
   }, [business.requireCardToBook, isLoggedIn]);
 
+  // Bonos canjeables del cliente para el servicio elegido
+  useEffect(() => {
+    if (!isLoggedIn || !serviceId) return;
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(
+        `/api/me/packages?businessId=${encodeURIComponent(business.id)}&serviceId=${encodeURIComponent(serviceId)}`,
+      );
+      const json = await res.json().catch(() => ({ packages: [] }));
+      if (!cancelled) {
+        setMyPackages(res.ok ? json.packages : []);
+        setUsePackageId("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, serviceId, business.id]);
+
   const loadSlots = useCallback(async () => {
     if (!serviceId || !dateISO) return;
     setLoadingSlots(true);
@@ -164,6 +188,9 @@ export function BookingWizard({
           staffId: staffId || undefined,
           notes: notes.trim() || undefined,
           phone: phone.trim() || undefined,
+          clientPackageId: usePackageId || undefined,
+          couponCode:
+            !usePackageId && couponCode.trim() ? couponCode.trim() : undefined,
         }),
       });
       const json = await res.json();
@@ -379,6 +406,45 @@ export function BookingWizard({
             </div>
           )}
 
+          {/* Promoción: bono del cliente o cupón (excluyentes) */}
+          {isLoggedIn && myPackages.length > 0 && (
+            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <label className="flex items-center gap-2 text-sm font-medium text-emerald-800">
+                <input
+                  type="checkbox"
+                  checked={!!usePackageId}
+                  onChange={(e) =>
+                    setUsePackageId(e.target.checked ? myPackages[0].id : "")
+                  }
+                />
+                Usar mi bono: {myPackages[0].name} (
+                {myPackages[0].remainingSessions} sesiones restantes)
+              </label>
+              {usePackageId && (
+                <p className="mt-1 text-xs text-emerald-700">
+                  Esta cita se descuenta del bono: no se cobra nada. Si
+                  cancelas en plazo, la sesión vuelve a tu bono; si cancelas
+                  tarde, la sesión se pierde.
+                </p>
+              )}
+            </div>
+          )}
+
+          {isLoggedIn && !usePackageId && (
+            <div className="mt-4">
+              <label className="label" htmlFor="cupon">
+                ¿Tienes un cupón? (opcional)
+              </label>
+              <input
+                id="cupon"
+                className="input max-w-xs uppercase"
+                placeholder="CÓDIGO"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+              />
+            </div>
+          )}
+
           <div className="mt-4">
             <label className="label" htmlFor="notas">
               Notas para el negocio (opcional)
@@ -495,11 +561,27 @@ export function BookingWizard({
             <div className="flex justify-between border-t border-slate-100 pt-2">
               <dt className="font-medium text-slate-700">Precio</dt>
               <dd className="font-semibold text-slate-900">
-                {service
-                  ? formatCents(service.priceCents, business.currency)
-                  : "—"}
+                {usePackageId ? (
+                  <>
+                    <span className="mr-1 text-slate-400 line-through">
+                      {service
+                        ? formatCents(service.priceCents, business.currency)
+                        : ""}
+                    </span>
+                    Bono
+                  </>
+                ) : service ? (
+                  formatCents(service.priceCents, business.currency)
+                ) : (
+                  "—"
+                )}
               </dd>
             </div>
+            {!usePackageId && couponCode.trim() && (
+              <p className="text-xs text-slate-500">
+                Cupón {couponCode.trim()}: se validará al reservar.
+              </p>
+            )}
           </dl>
           <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
             Cancelación gratuita hasta {business.cancellationWindowHours} h

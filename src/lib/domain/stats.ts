@@ -9,7 +9,9 @@ import { BLOCKING_STATUSES, type AppointmentStatus } from "./types";
 
 export interface MonthlyPoint {
   month: string; // "YYYY-MM"
+  // Total cobrado: citas y cargos + venta de bonos del mes
   revenueCents: number;
+  packageRevenueCents: number;
   completed: number;
   cancelled: number;
   cancelledLate: number;
@@ -76,19 +78,25 @@ export async function getDashboardStats(
   }
   const windowStart = wallTimeToUtc(`${months[0]}-01`, "00:00", tz);
 
-  const appointments = await prisma.appointment.findMany({
-    where: { businessId, startAt: { gte: windowStart } },
-    select: {
-      startAt: true,
-      endAt: true,
-      status: true,
-      chargedCents: true,
-      clientId: true,
-      serviceId: true,
-      service: { select: { name: true, color: true } },
-    },
-    orderBy: { startAt: "asc" },
-  });
+  const [appointments, packageSales] = await Promise.all([
+    prisma.appointment.findMany({
+      where: { businessId, startAt: { gte: windowStart } },
+      select: {
+        startAt: true,
+        endAt: true,
+        status: true,
+        chargedCents: true,
+        clientId: true,
+        serviceId: true,
+        service: { select: { name: true, color: true } },
+      },
+      orderBy: { startAt: "asc" },
+    }),
+    prisma.clientPackage.findMany({
+      where: { businessId, createdAt: { gte: windowStart } },
+      select: { createdAt: true, pricePaidCents: true },
+    }),
+  ]);
 
   const byMonth = new Map<string, MonthlyPoint>(
     months.map((m) => [
@@ -96,6 +104,7 @@ export async function getDashboardStats(
       {
         month: m,
         revenueCents: 0,
+        packageRevenueCents: 0,
         completed: 0,
         cancelled: 0,
         cancelledLate: 0,
@@ -157,6 +166,19 @@ export async function getDashboardStats(
 
     if (status === "CONFIRMED" && a.startAt.getTime() > now.getTime()) {
       upcomingConfirmed += 1;
+    }
+  }
+
+  // Venta de bonos: ingreso del mes en que se compran
+  for (const sale of packageSales) {
+    const month = monthOf(sale.createdAt, tz);
+    const point = byMonth.get(month);
+    if (point) {
+      point.packageRevenueCents += sale.pricePaidCents;
+      point.revenueCents += sale.pricePaidCents;
+    }
+    if (month === currentMonth) {
+      monthRevenueCents += sale.pricePaidCents;
     }
   }
 

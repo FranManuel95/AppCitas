@@ -16,6 +16,10 @@ export interface SessionUser {
   businessId: string | null;
 }
 
+// El token lleva la versión de sesión del usuario al emitirse (claim "sv").
+// Incrementarla (restablecer contraseña, "cerrar sesión en todos los
+// dispositivos") invalida todos los JWT anteriores.
+
 function getSecret(): Uint8Array {
   const secret = process.env.AUTH_SECRET;
   if (!secret) {
@@ -27,12 +31,16 @@ function getSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-export async function createSession(user: SessionUser): Promise<void> {
+export async function createSession(
+  user: SessionUser,
+  sessionVersion = 0,
+): Promise<void> {
   const token = await new SignJWT({
     email: user.email,
     name: user.name,
     role: user.role,
     businessId: user.businessId,
+    sv: sessionVersion,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(user.id)
@@ -57,6 +65,17 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     const { payload } = await jwtVerify(token, getSecret());
     const role = payload.role as string;
     if (!payload.sub || !ROLES.includes(role as Role)) return null;
+
+    // Comprobación de revocación: la versión del token debe coincidir con la
+    // del usuario (consulta por clave primaria; coste mínimo por petición).
+    const tokenVersion = Number(payload.sv ?? 0);
+    const { prisma } = await import("@/lib/prisma");
+    const account = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { sessionVersion: true },
+    });
+    if (!account || account.sessionVersion !== tokenVersion) return null;
+
     return {
       id: payload.sub,
       email: String(payload.email ?? ""),

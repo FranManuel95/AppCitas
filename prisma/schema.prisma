@@ -25,6 +25,9 @@ model User {
 
   emailVerifiedAt DateTime?
 
+  // Incrementarlo invalida todas las sesiones emitidas (revocación de JWT)
+  sessionVersion Int @default(0)
+
   // Cliente de la pasarela de pagos (Stripe) si guardó tarjeta
   stripeCustomerId String?
 
@@ -32,6 +35,8 @@ model User {
   authTokens   AuthToken[]
   // Ficha de empleado vinculada (portal del empleado, rol STAFF)
   staffProfile StaffMember?
+  packages     ClientPackage[]
+  auditLogs    AuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -89,16 +94,111 @@ model Business {
 
   active Boolean @default(true)
 
-  users         User[]
-  services      Service[]
-  hours         BusinessHour[]
-  closures      Closure[]
-  appointments  Appointment[]
-  staff         StaffMember[]
-  notifications Notification[]
+  // Facturación de recibos: NIF/CIF y % de IVA a desglosar (0 = sin desglose)
+  taxId      String?
+  taxPercent Int     @default(0)
+
+  users          User[]
+  services       Service[]
+  hours          BusinessHour[]
+  closures       Closure[]
+  appointments   Appointment[]
+  staff          StaffMember[]
+  notifications  Notification[]
+  coupons        Coupon[]
+  packages       Package[]
+  clientPackages ClientPackage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Cupón de descuento: porcentaje o importe fijo sobre el precio del servicio.
+model Coupon {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  code       String
+  // PERCENT (value = 1..100) | FIXED (value = céntimos)
+  type           String
+  value          Int
+  active         Boolean   @default(true)
+  maxRedemptions Int?
+  timesRedeemed  Int       @default(0)
+  expiresAt      DateTime?
+
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, code])
+}
+
+// Bono/pack: N sesiones de un servicio a precio cerrado.
+model Package {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id])
+  name       String
+  sessions   Int
+  priceCents Int
+  // Días de validez desde la compra (null = sin caducidad)
+  validityDays Int?
+  active       Boolean @default(true)
+
+  purchases ClientPackage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, active])
+}
+
+// Bono comprado por un cliente: saldo de sesiones canjeable al reservar.
+model ClientPackage {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  packageId  String
+  package    Package  @relation(fields: [packageId], references: [id])
+  clientId   String
+  client     User     @relation(fields: [clientId], references: [id])
+
+  remainingSessions Int
+  expiresAt         DateTime?
+  pricePaidCents    Int
+  // CHARGED | SIMULATED | UNCOLLECTED (pendiente de cobro en persona)
+  paymentStatus String  @default("UNCOLLECTED")
+  paymentRef    String?
+
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId, businessId])
+  @@index([businessId, createdAt])
+}
+
+// Registro de eventos de seguridad de cuentas (auditoría de accesos).
+model AuditLog {
+  id        String  @id @default(cuid())
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email     String?
+  // LOGIN_OK | LOGIN_FAILED | LOGOUT | REGISTER | PASSWORD_RESET_REQUESTED |
+  // PASSWORD_RESET_OK | EMAIL_VERIFIED | SESSIONS_REVOKED | STAFF_INVITED
+  event     String
+  ip        String?
+  userAgent String?
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([event, createdAt])
 }
 
 model StaffMember {
@@ -160,6 +260,7 @@ model Service {
 
   appointments Appointment[]
   staff        StaffService[]
+  packages     Package[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -208,11 +309,19 @@ model Appointment {
   // CONFIRMED | COMPLETED | CANCELLED | CANCELLED_LATE | NO_SHOW
   status String @default("CONFIRMED")
 
-  // Snapshot del precio al reservar: cambios futuros de tarifa no alteran citas pasadas
-  priceCents   Int
-  chargedCents Int     @default(0)
-  notes        String?
-  cancelledAt  DateTime?
+  // Snapshot del precio al reservar: cambios futuros de tarifa no alteran citas pasadas.
+  // priceCents ya lleva el descuento aplicado; discountCents lo documenta.
+  priceCents    Int
+  discountCents Int     @default(0)
+  chargedCents  Int     @default(0)
+  notes         String?
+  cancelledAt   DateTime?
+
+  // Promoción aplicada al reservar (cupón o sesión de bono)
+  couponId        String?
+  coupon          Coupon?        @relation(fields: [couponId], references: [id])
+  clientPackageId String?
+  clientPackage   ClientPackage? @relation(fields: [clientPackageId], references: [id])
 
   // Confirmación de asistencia desde el recordatorio (enlace público firmado)
   confirmationToken     String    @unique @default(cuid())

@@ -86,24 +86,36 @@ export default async function AppointmentsPage({
     timeZone: business.timezone,
   });
 
-  function pageLink(p: number) {
+  function filterParams() {
     const params = new URLSearchParams();
     if (sp.estado) params.set("estado", sp.estado);
     if (sp.servicio) params.set("servicio", sp.servicio);
     if (sp.q) params.set("q", sp.q);
     if (sp.desde) params.set("desde", sp.desde);
     if (sp.hasta) params.set("hasta", sp.hasta);
+    return params;
+  }
+
+  function pageLink(p: number) {
+    const params = filterParams();
     params.set("pagina", String(p));
     return `/admin/citas?${params.toString()}`;
   }
 
+  const exportHref = `/api/admin/export/appointments?${filterParams().toString()}`;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Citas</h1>
-        <p className="text-sm text-slate-500">
-          {total} resultados con los filtros actuales.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Citas</h1>
+          <p className="text-sm text-slate-500">
+            {total} resultados con los filtros actuales.
+          </p>
+        </div>
+        <a href={exportHref} className="btn-secondary" download>
+          Exportar CSV
+        </a>
       </div>
 
       {/* Fila única de filtros (GET): comparten estado vía URL */}
@@ -239,6 +251,14 @@ export default async function AppointmentsPage({
                     status={a.status}
                     isPast={a.startAt.getTime() < now}
                   />
+                  {a.chargedCents > 0 && (
+                    <Link
+                      href={`/admin/recibo/${a.id}`}
+                      className="mt-1 inline-block text-xs text-indigo-600 hover:underline"
+                    >
+                      Recibo
+                    </Link>
+                  )}
                 </td>
               </tr>
             ))}

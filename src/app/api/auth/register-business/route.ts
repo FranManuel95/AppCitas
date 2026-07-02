@@ -8,6 +8,7 @@ import { createAuthToken } from "@/lib/auth/tokens";
 import { sendVerificationEmail } from "@/lib/auth/mailer";
 import { DomainError } from "@/lib/domain/errors";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { audit } from "@/lib/audit";
 
 const schema = z.object({
   ownerName: z.string().trim().min(2).max(100),
@@ -90,6 +91,13 @@ export const POST = apiHandler(async (request: Request) => {
     name: user.name,
     role: "OWNER",
     businessId: business.id,
+  });
+
+  await audit("REGISTER", {
+    userId: user.id,
+    email: user.email,
+    request,
+    detail: `negocio: ${business.slug}`,
   });
 
   // Verificación de email: el fallo de envío no bloquea el registro

@@ -21,6 +21,8 @@ interface BusinessSettings {
   notifyByEmail: boolean;
   notifyBySms: boolean;
   notifyByWhatsapp: boolean;
+  taxId: string | null;
+  taxPercent: number;
 }
 
 export function SettingsForm({ business }: { business: BusinessSettings }) {
@@ -63,6 +65,8 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
         notifyByEmail: bool("notifyByEmail"),
         notifyBySms: bool("notifyBySms"),
         notifyByWhatsapp: bool("notifyByWhatsapp"),
+        taxId: str("taxId") || null,
+        taxPercent: num("taxPercent"),
       }),
     });
     const json = await res.json().catch(() => ({}));
@@ -281,6 +285,28 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
             Twilio, UltraMsg o Evolution API). Sin configurar, los mensajes
             quedan registrados pero no se envían.
           </p>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 className="font-semibold text-slate-900">Facturación (recibos)</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label">NIF/CIF (aparece en los recibos)</label>
+            <input name="taxId" defaultValue={business.taxId ?? ""} className="input" />
+          </div>
+          <div>
+            <label className="label">% de IVA a desglosar (0 = sin desglose)</label>
+            <input
+              name="taxPercent"
+              type="number"
+              min={0}
+              max={50}
+              required
+              defaultValue={business.taxPercent}
+              className="input"
+            />
+          </div>
         </div>
       </div>
 

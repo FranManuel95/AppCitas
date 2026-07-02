@@ -45,11 +45,16 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-sm text-slate-500">
-          Resumen del mes en curso y evolución anual.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-sm text-slate-500">
+            Resumen del mes en curso y evolución anual.
+          </p>
+        </div>
+        <a href="/api/admin/export/revenue" className="btn-secondary" download>
+          Ingresos (CSV)
+        </a>
       </div>
 
       {/* KPIs del mes */}

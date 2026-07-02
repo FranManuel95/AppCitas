@@ -5,6 +5,7 @@ import { apiHandler } from "@/lib/api";
 import { createAuthToken } from "@/lib/auth/tokens";
 import { sendPasswordResetEmail } from "@/lib/auth/mailer";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { audit } from "@/lib/audit";
 
 const schema = z.object({ email: z.email().toLowerCase() });
 
@@ -28,6 +29,11 @@ export const POST = apiHandler(async (request: Request) => {
     try {
       const token = await createAuthToken(user.id, "PASSWORD_RESET", 30);
       await sendPasswordResetEmail({ to: user.email, name: user.name, token });
+      await audit("PASSWORD_RESET_REQUESTED", {
+        userId: user.id,
+        email,
+        request,
+      });
     } catch (error) {
       console.error("[forgot-password] error enviando email:", error);
     }

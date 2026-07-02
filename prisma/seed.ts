@@ -223,6 +223,35 @@ async function main() {
     }),
   ]);
 
+  console.log("Creando promociones…");
+  const bono5 = await prisma.package.create({
+    data: {
+      businessId: aurora.id,
+      serviceId: sesionEstandar.id,
+      name: "Bono 5 sesiones",
+      sessions: 5,
+      priceCents: 20000, // frente a 22500 sueltas
+      validityDays: 90,
+    },
+  });
+  await prisma.coupon.create({
+    data: {
+      businessId: aurora.id,
+      code: "BIENVENIDA10",
+      type: "PERCENT",
+      value: 10,
+    },
+  });
+  await prisma.coupon.create({
+    data: {
+      businessId: barberia.id,
+      code: "CORTE5",
+      type: "FIXED",
+      value: 500,
+      maxRedemptions: 50,
+    },
+  });
+
   console.log("Creando usuarios…");
   const now0 = new Date();
   const [ownerHash, clientHash] = await Promise.all([
@@ -275,6 +304,19 @@ async function main() {
       phone: "+34 600 111 222",
       role: "CLIENT",
       emailVerifiedAt: now0,
+    },
+  });
+
+  // El cliente demo tiene un bono comprado con sesiones disponibles
+  await prisma.clientPackage.create({
+    data: {
+      businessId: aurora.id,
+      packageId: bono5.id,
+      clientId: demoClient.id,
+      remainingSessions: 3,
+      expiresAt: new Date(now0.getTime() + 60 * 24 * 3_600_000),
+      pricePaidCents: 20000,
+      paymentStatus: "UNCOLLECTED",
     },
   });
 
