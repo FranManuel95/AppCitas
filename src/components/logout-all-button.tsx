@@ -19,7 +19,7 @@ export function LogoutAllButton() {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm text-slate-600">
+      <span className="text-sm text-ink-soft">
         Se cerrarán todas tus sesiones, incluida esta. ¿Continuar?
       </span>
       <button

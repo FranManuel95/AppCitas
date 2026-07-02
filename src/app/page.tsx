@@ -74,7 +74,7 @@ export default async function HomePage() {
                   <Avatar name={b.name} size="md" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="truncate font-semibold text-ink group-hover:text-brand-700">
+                      <h3 className="truncate font-semibold text-ink group-hover:text-brand-300">
                         {b.name}
                       </h3>
                       <Badge tone="brand" className="shrink-0">
@@ -107,7 +107,7 @@ export default async function HomePage() {
                 {t.landing.noBusinesses}{" "}
                 <Link
                   href="/register-business"
-                  className="font-medium text-brand-600 hover:text-brand-700"
+                  className="font-medium text-brand-400 hover:text-brand-300"
                 >
                   {t.landing.beFirst}
                 </Link>

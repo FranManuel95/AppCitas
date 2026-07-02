@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 
 const PALETTE = [
-  "bg-brand-100 text-brand-700",
+  "bg-brand-100 text-brand-300",
   "bg-info-soft text-info-strong",
   "bg-success-soft text-success-strong",
   "bg-warning-soft text-warning-strong",

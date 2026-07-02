@@ -8,7 +8,7 @@ const ICON_TONES: Record<BadgeTone, string> = {
   danger: "bg-danger-soft text-danger-strong",
   info: "bg-info-soft text-info-strong",
   neutral: "bg-surface-3 text-ink-soft",
-  brand: "bg-brand-100 text-brand-700",
+  brand: "bg-brand-100 text-brand-300",
 };
 
 /** KPI: icono en chip de color + valor grande + etiqueta y nota opcional. */

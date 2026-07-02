@@ -55,7 +55,7 @@ export default async function LoginPage() {
             <p className="mt-4 text-center text-sm">
               <Link
                 href="/recuperar"
-                className="font-medium text-brand-700 hover:underline"
+                className="font-medium text-brand-300 hover:underline"
               >
                 {t.auth.forgotPassword}
               </Link>
@@ -65,14 +65,14 @@ export default async function LoginPage() {
             {t.auth.noAccount}{" "}
             <Link
               href="/register"
-              className="font-medium text-brand-700 hover:underline"
+              className="font-medium text-brand-300 hover:underline"
             >
               {t.auth.registerLink}
             </Link>{" "}
             {t.auth.orText}{" "}
             <Link
               href="/register-business"
-              className="font-medium text-brand-700 hover:underline"
+              className="font-medium text-brand-300 hover:underline"
             >
               {t.auth.registerBusinessLink}
             </Link>

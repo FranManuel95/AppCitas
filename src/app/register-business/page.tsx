@@ -41,7 +41,7 @@ export default async function RegisterBusinessPage() {
                     {t.auth.consentPrefix}{" "}
                     <Link
                       href="/legal/privacidad"
-                      className="font-medium text-brand-700 underline hover:text-brand-800"
+                      className="font-medium text-brand-300 underline hover:text-brand-200"
                       target="_blank"
                     >
                       {t.auth.privacyPolicy}
@@ -49,7 +49,7 @@ export default async function RegisterBusinessPage() {
                     {t.auth.consentAnd}{" "}
                     <Link
                       href="/legal/terminos"
-                      className="font-medium text-brand-700 underline hover:text-brand-800"
+                      className="font-medium text-brand-300 underline hover:text-brand-200"
                       target="_blank"
                     >
                       {t.auth.termsOfUse}
@@ -92,7 +92,7 @@ export default async function RegisterBusinessPage() {
             {t.auth.lookingToBook}{" "}
             <Link
               href="/register"
-              className="font-medium text-brand-700 hover:underline"
+              className="font-medium text-brand-300 hover:underline"
             >
               {t.auth.createClientAccount}
             </Link>

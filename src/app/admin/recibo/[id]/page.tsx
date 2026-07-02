@@ -50,7 +50,7 @@ export default async function ReceiptPage({
       <div className="mb-4 flex items-center justify-between print:hidden">
         <Link
           href="/admin/citas"
-          className="text-sm font-medium text-brand-700 transition-colors hover:text-brand-800"
+          className="text-sm font-medium text-brand-300 transition-colors hover:text-brand-200"
         >
           ← Volver a citas
         </Link>

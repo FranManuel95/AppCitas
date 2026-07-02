@@ -349,7 +349,7 @@ export function BookingWizard({
                   className={cn(
                     "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
                     staffId === ""
-                      ? "border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600"
+                      ? "border-brand-600 bg-brand-50 text-brand-300 ring-1 ring-brand-600"
                       : "border-border bg-surface text-ink-soft hover:border-brand-300",
                   )}
                 >
@@ -362,7 +362,7 @@ export function BookingWizard({
                     className={cn(
                       "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
                       staffId === m.id
-                        ? "border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600"
+                        ? "border-brand-600 bg-brand-50 text-brand-300 ring-1 ring-brand-600"
                         : "border-border bg-surface text-ink-soft hover:border-brand-300",
                     )}
                   >
@@ -420,7 +420,7 @@ export function BookingWizard({
                       className={cn(
                         "rounded-lg border px-2 py-2 text-sm font-medium tabular-nums transition-colors",
                         selectedSlot?.startAt === slot.startAt
-                          ? "border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600"
+                          ? "border-brand-600 bg-brand-50 text-brand-300 ring-1 ring-brand-600"
                           : "border-border bg-surface text-ink-soft hover:border-brand-300",
                       )}
                     >
@@ -640,14 +640,14 @@ export function BookingWizard({
               <div className="mt-4 rounded-lg bg-surface-3 p-3 text-sm text-ink-soft">
                 <Link
                   href={`/login?next=/b/${business.slug}/reservar${serviceId ? `?servicio=${serviceId}` : ""}`}
-                  className="font-medium text-brand-700 hover:text-brand-800"
+                  className="font-medium text-brand-300 hover:text-brand-200"
                 >
                   {t.loginPrompt1}
                 </Link>{" "}
                 {t.loginPrompt2}{" "}
                 <Link
                   href={`/register?next=/b/${business.slug}/reservar${serviceId ? `?servicio=${serviceId}` : ""}`}
-                  className="font-medium text-brand-700 hover:text-brand-800"
+                  className="font-medium text-brand-300 hover:text-brand-200"
                 >
                   {t.loginPrompt3}
                 </Link>{" "}

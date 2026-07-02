@@ -107,7 +107,7 @@ export default async function AdminDashboardPage() {
             action={
               <Link
                 href="/admin/agenda"
-                className="text-sm font-medium text-brand-700 hover:text-brand-800 hover:underline"
+                className="text-sm font-medium text-brand-300 hover:text-brand-200 hover:underline"
               >
                 Ver agenda completa
               </Link>

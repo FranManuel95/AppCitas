@@ -42,7 +42,7 @@ export default async function ForgotPasswordPage() {
           <p className="mt-6 text-center text-sm">
             <Link
               href="/login"
-              className="font-medium text-brand-700 hover:underline"
+              className="font-medium text-brand-300 hover:underline"
             >
               {t.auth.backToLogin}
             </Link>

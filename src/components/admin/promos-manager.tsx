@@ -220,7 +220,7 @@ export function PromosManager({
               className="flex flex-wrap items-center justify-between gap-4 p-4"
             >
               <div className="flex min-w-0 items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-300">
                   <Ticket className="h-4 w-4" aria-hidden />
                 </span>
                 <div className="min-w-0">

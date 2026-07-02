@@ -193,7 +193,7 @@ export function RevenueChart({
               }
             />
             <Tooltip
-              cursor={{ fill: "rgba(22,22,29,0.04)" }}
+              cursor={{ fill: "rgba(255,255,255,0.06)" }}
               content={<ChartTooltip currency={currency} isMoney />}
             />
             <Bar
@@ -252,7 +252,7 @@ export function StatusChart({ monthly }: { monthly: MonthlyPointDTO[] }) {
               width={36}
             />
             <Tooltip
-              cursor={{ fill: "rgba(22,22,29,0.04)" }}
+              cursor={{ fill: "rgba(255,255,255,0.06)" }}
               content={<ChartTooltip currency="EUR" />}
             />
             <Legend

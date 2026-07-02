@@ -51,7 +51,7 @@ export default async function AdminLayout({
           <div className="min-w-0">
             <Link
               href="/"
-              className="block text-sm font-semibold tracking-tight text-ink transition-colors hover:text-brand-700"
+              className="block text-sm font-semibold tracking-tight text-ink transition-colors hover:text-brand-300"
             >
               AppCitas
             </Link>

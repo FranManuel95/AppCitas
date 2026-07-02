@@ -157,7 +157,7 @@ function StaffForm({
               className={cn(
                 "cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
                 serviceIds.includes(s.id)
-                  ? "border-brand-500 bg-brand-50 text-brand-700"
+                  ? "border-brand-500 bg-brand-50 text-brand-300"
                   : "border-border-strong bg-surface text-ink-soft hover:bg-surface-2",
               )}
             >
@@ -236,7 +236,7 @@ function StaffForm({
                   ))}
                   <button
                     type="button"
-                    className="text-xs font-medium text-brand-700 hover:underline"
+                    className="text-xs font-medium text-brand-300 hover:underline"
                     onClick={() =>
                       setOwnHours((h) => [
                         ...h,

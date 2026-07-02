@@ -11,37 +11,37 @@
  * sobre blanco.
  */
 
-/** Escala de marca. Cambiar el hue aquí + globals.css re-tiñe toda la app. */
+/** Escala de marca (nocturno: 50-200 tintes oscuros, 300+ acentos claros). */
 export const BRAND = {
-  50: "#f3f1fd",
-  100: "#e9e5fb",
-  200: "#d6cef8",
-  300: "#b9abf2",
-  400: "#977fe9",
-  500: "#7a5ce0",
-  600: "#5b3fd6",
-  700: "#4c32b8",
-  800: "#3f2b96",
-  900: "#352878",
-  950: "#21174d",
+  50: "#1c1638",
+  100: "#251d4a",
+  200: "#3b2f75",
+  300: "#a595ff",
+  400: "#8b76ff",
+  500: "#7a68ff",
+  600: "#6d5bff",
+  700: "#5b48f0",
+  800: "#4c3ac9",
+  900: "#38299a",
+  950: "#16112e",
 } as const;
 
-/** Tinta de texto para gráficos (idéntica a --color-ink*). */
+/** Tinta de texto para gráficos (idéntica a --color-ink*, clara). */
 export const INK = {
-  primary: "#16161d",
-  secondary: "#4b4b57",
-  muted: "#6e6e7a",
+  primary: "#eef0f6",
+  secondary: "#b8bdcb",
+  muted: "#8b92a3",
 } as const;
 
-/** Cromo recesivo de gráficos: rejilla, ejes y superficie. */
+/** Cromo recesivo de gráficos sobre tarjeta oscura. */
 export const CHROME = {
-  grid: "#e7e7ef",
-  axis: "#c9c9d6",
-  surface: "#ffffff",
+  grid: "#232b3a",
+  axis: "#3a4356",
+  surface: "#151a24",
 } as const;
 
-/** Serie única de magnitud (ingresos, totales): el color de marca. */
-export const SERIES_PRIMARY = BRAND[600];
+/** Serie única de magnitud: violeta claro, 5.09:1 sobre la tarjeta. */
+export const SERIES_PRIMARY = BRAND[400];
 
 export type Tone = "success" | "warning" | "danger" | "info" | "neutral";
 
@@ -53,9 +53,9 @@ export const TONE_COLORS: Record<
   Tone,
   { chart: string; soft: string; strong: string }
 > = {
-  success: { chart: "#0ca30c", soft: "#e7f6e7", strong: "#0a7a0a" },
-  warning: { chart: "#d4682a", soft: "#fdeee4", strong: "#9a4112" },
-  danger: { chart: "#d03b3b", soft: "#fdebeb", strong: "#b02a2a" },
-  info: { chart: "#2a78d6", soft: "#e8f1fb", strong: "#1d5eb0" },
-  neutral: { chart: "#8b8b98", soft: "#eef0f4", strong: "#475569" },
+  success: { chart: "#34c46a", soft: "#10281a", strong: "#7fe0a0" },
+  warning: { chart: "#e08a4e", soft: "#2d1c10", strong: "#f0a875" },
+  danger: { chart: "#e05252", soft: "#2e1414", strong: "#f08c8c" },
+  info: { chart: "#4a90e0", soft: "#12222f", strong: "#85b8f0" },
+  neutral: { chart: "#7a8194", soft: "#232936", strong: "#aab1c0" },
 };

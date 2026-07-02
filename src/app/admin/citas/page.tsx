@@ -228,7 +228,7 @@ export default async function AppointmentsPage({
                   {a.chargedCents > 0 && (
                     <Link
                       href={`/admin/recibo/${a.id}`}
-                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline"
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-300 hover:underline"
                     >
                       <Receipt className="h-3.5 w-3.5" aria-hidden />
                       Recibo

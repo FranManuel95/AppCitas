@@ -1,68 +1,68 @@
 @import "tailwindcss";
 
 /*
-  Capa de tokens de AppCitas (tema claro).
+  Capa de tokens de AppCitas — MODELO NOCTURNO (oscuro, técnico, audaz).
 
-  - La escala `brand` es el único punto de personalización de marca: cambiar
-    el hue aquí (y en src/lib/design/tokens.ts, que duplica los hex para los
-    gráficos) re-tiñe toda la app.
-  - Los semánticos success/warning/danger/info los comparten badges y
-    gráficos, de modo que un estado se ve siempre del mismo color.
-  - Contrastes verificados (WCAG AA): blanco sobre brand-600 6.72:1, texto
-    `-strong` sobre fondo `-soft` ≥4.5:1, rellenos de gráfico ≥3:1.
+  - Lienzo azul-noche con tarjetas elevadas por luz (bordes y brillos, no
+    sombras grises), violeta eléctrico como marca.
+  - En oscuro los stops de la escala de marca cambian de rol: 50-200 son
+    tintes oscuros de fondo/selección, 300-400 son texto/acento claro y
+    600-800 los sólidos de botón (texto blanco AA).
+  - Contrastes verificados (WCAG AA): blanco sobre brand-600 4.57:1, tinta
+    clara sobre fondo 16.8:1, texto -strong sobre -soft ≥7:1, rellenos de
+    gráfica ≥3:1 sobre la superficie de tarjeta (ver src/lib/design/tokens.ts).
 */
 @theme {
-  /* Escala de marca (violeta-índigo) */
-  --color-brand-50: #f3f1fd;
-  --color-brand-100: #e9e5fb;
-  --color-brand-200: #d6cef8;
-  --color-brand-300: #b9abf2;
-  --color-brand-400: #977fe9;
-  --color-brand-500: #7a5ce0;
-  --color-brand-600: #5b3fd6;
-  --color-brand-700: #4c32b8;
-  --color-brand-800: #3f2b96;
-  --color-brand-900: #352878;
-  --color-brand-950: #21174d;
+  /* Escala de marca (violeta eléctrico, remapeada para fondo oscuro) */
+  --color-brand-50: #1c1638;
+  --color-brand-100: #251d4a;
+  --color-brand-200: #3b2f75;
+  --color-brand-300: #a595ff;
+  --color-brand-400: #8b76ff;
+  --color-brand-500: #7a68ff;
+  --color-brand-600: #6d5bff;
+  --color-brand-700: #5b48f0;
+  --color-brand-800: #4c3ac9;
+  --color-brand-900: #38299a;
+  --color-brand-950: #16112e;
 
-  /* Neutrales semánticos (fríos, con un matiz violeta muy leve) */
-  --color-surface: #ffffff;
-  --color-surface-2: #f7f7fb;
-  --color-surface-3: #f1f1f7;
-  --color-border: #e7e7ef;
-  --color-border-strong: #d5d5e2;
-  --color-ink: #16161d;
-  --color-ink-soft: #4b4b57;
-  --color-ink-muted: #6e6e7a;
+  /* Neutrales nocturnos: azul-noche y tinta clara */
+  --color-surface: #151a24;
+  --color-surface-2: #0c0f16;
+  --color-surface-3: #1d2430;
+  --color-border: #262e3d;
+  --color-border-strong: #364155;
+  --color-ink: #eef0f6;
+  --color-ink-soft: #b8bdcb;
+  --color-ink-muted: #8b92a3;
 
-  /* Estados (compartidos por badges y gráficos; ver src/lib/design/tokens.ts) */
-  --color-success: #0ca30c;
-  --color-success-soft: #e7f6e7;
-  --color-success-strong: #0a7a0a;
-  --color-warning: #d4682a;
-  --color-warning-soft: #fdeee4;
-  --color-warning-strong: #9a4112;
+  /* Estados en oscuro (compartidos por badges y gráficos; ver tokens.ts) */
+  --color-success: #34c46a;
+  --color-success-soft: #10281a;
+  --color-success-strong: #7fe0a0;
+  --color-warning: #e08a4e;
+  --color-warning-soft: #2d1c10;
+  --color-warning-strong: #f0a875;
   --color-danger: #d03b3b;
-  --color-danger-soft: #fdebeb;
-  --color-danger-strong: #b02a2a;
-  --color-info: #2a78d6;
-  --color-info-soft: #e8f1fb;
-  --color-info-strong: #1d5eb0;
+  --color-danger-soft: #2e1414;
+  --color-danger-strong: #f08c8c;
+  --color-info: #4a90e0;
+  --color-info-soft: #12222f;
+  --color-info-strong: #85b8f0;
 
-  /* Radios ligeramente más suaves que los de serie */
-  --radius-lg: 0.625rem;
-  --radius-xl: 0.875rem;
-  --radius-2xl: 1.125rem;
+  /* Radios definidos: aristas técnicas */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
 
-  /* Sombras por capas: elevación real en vez de un borde difuso */
-  --shadow-xs:
-    0 1px 2px 0 rgb(22 22 29 / 0.05);
+  /* En oscuro la elevación es luz contenida: negros profundos y poco halo */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.45);
   --shadow-sm:
-    0 1px 2px 0 rgb(22 22 29 / 0.05),
-    0 2px 8px -2px rgb(22 22 29 / 0.08);
+    0 1px 2px 0 rgb(0 0 0 / 0.45),
+    0 2px 10px -2px rgb(0 0 0 / 0.5);
   --shadow-md:
-    0 2px 4px -1px rgb(22 22 29 / 0.06),
-    0 8px 24px -6px rgb(22 22 29 / 0.12);
+    0 2px 6px -1px rgb(0 0 0 / 0.5),
+    0 10px 30px -6px rgb(0 0 0 / 0.6);
 }
 
 /* La fuente la inyecta next/font como variable en <html> (ver layout.tsx). */
@@ -72,6 +72,11 @@
     "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 }
 
+/* Controles nativos (date picker, select, scrollbars) en modo oscuro */
+html {
+  color-scheme: dark;
+}
+
 body {
   background: var(--color-surface-2);
   color: var(--color-ink);
@@ -79,7 +84,7 @@ body {
 
 ::selection {
   background: var(--color-brand-200);
-  color: var(--color-brand-950);
+  color: var(--color-ink);
 }
 
 /* Componentes base reutilizados por toda la app.
@@ -87,19 +92,19 @@ body {
    repite las utilidades compartidas en lugar de heredar de una clase .btn. */
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 border border-border-strong bg-surface text-ink-soft hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 border border-border-strong bg-surface-3 text-ink-soft hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 bg-danger text-white hover:bg-danger-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 bg-danger text-white hover:bg-danger/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger;
   }
   .card {
     @apply rounded-xl border border-border bg-surface p-5 shadow-sm;
   }
   .input {
-    @apply w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-200;
+    @apply w-full rounded-lg border border-border-strong bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-200;
   }
   .label {
     @apply mb-1 block text-sm font-medium text-ink-soft;

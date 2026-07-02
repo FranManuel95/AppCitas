@@ -60,14 +60,14 @@ export function AdminNavLink({
       className={cn(
         "group flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
         active
-          ? "bg-brand-50 font-medium text-brand-700"
+          ? "bg-brand-50 font-medium text-brand-300"
           : "text-ink-soft hover:bg-surface-3 hover:text-ink",
       )}
     >
       <Icon
         className={cn(
           "h-4 w-4 shrink-0",
-          active ? "text-brand-600" : "text-ink-muted group-hover:text-ink-soft",
+          active ? "text-brand-400" : "text-ink-muted group-hover:text-ink-soft",
         )}
         aria-hidden
       />

@@ -111,7 +111,7 @@ export default async function MyAppointmentsPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <Link
                     href={`/b/${a.business.slug}`}
-                    className="min-w-0 font-semibold text-ink transition-colors hover:text-brand-700"
+                    className="min-w-0 font-semibold text-ink transition-colors hover:text-brand-300"
                   >
                     {a.business.name}
                   </Link>
