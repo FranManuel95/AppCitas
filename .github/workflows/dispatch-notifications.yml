@@ -1,0 +1,27 @@
+name: Despachar notificaciones pendientes
+
+# El plan Hobby de Vercel solo permite crons diarios; este workflow llama al
+# mismo endpoint cada 5 minutos (el mínimo real que soporta el scheduler de
+# GitHub Actions) para que confirmaciones y recordatorios salgan a tiempo.
+# El cron de vercel.json queda como red de seguridad diaria.
+#
+# Requiere dos secrets en Settings → Secrets and variables → Actions:
+#   APP_BASE_URL   la URL pública de la app (p. ej. https://tu-app.vercel.app)
+#   CRON_SECRET    el mismo valor que la variable de entorno CRON_SECRET en Vercel
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar a /api/jobs/notifications
+        run: |
+          curl --fail --silent --show-error \
+            -X POST "${APP_BASE_URL%/}/api/jobs/notifications" \
+            -H "Authorization: Bearer ${CRON_SECRET}"
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

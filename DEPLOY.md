@@ -52,9 +52,19 @@ cuando `DATABASE_URL` empieza por `postgres`.
    DATABASE_URL="postgresql://…" npx prisma migrate deploy
    DATABASE_URL="postgresql://…" npm run db:seed   # opcional: datos demo
    ```
-4. El cron ya está declarado en `vercel.json` (cada minuto llama a
-   `/api/jobs/notifications`). Al definir la variable `CRON_SECRET`, Vercel
-   la envía automáticamente como `Authorization: Bearer …`.
+4. **Cron de notificaciones**: el plan **Hobby (gratuito) de Vercel solo
+   permite crons diarios**; un `schedule` más frecuente en `vercel.json`
+   bloquea el despliegue con el aviso "Hobby accounts are limited to daily
+   cron jobs". Por eso `vercel.json` trae un cron diario (red de seguridad)
+   y el despacho real y frecuente lo hace un **GitHub Action** ya incluido
+   (`.github/workflows/dispatch-notifications.yml`), que llama a
+   `/api/jobs/notifications` cada 5 minutos (el mínimo que soporta el
+   scheduler de GitHub) sin depender del plan de Vercel. Actívalo añadiendo
+   en el repo, en *Settings → Secrets and variables → Actions*, dos secrets:
+   `APP_BASE_URL` (tu URL de Vercel) y `CRON_SECRET` (el mismo valor que
+   pusiste en las variables de entorno de Vercel). Si en algún momento pasas
+   al plan Pro, puedes volver a poner `* * * * *` en `vercel.json` y
+   desactivar el workflow.
 5. Conecta tu dominio en *Settings → Domains* y actualiza `APP_BASE_URL`.
 6. Verifica: `https://TU-DOMINIO/api/health` debe devolver `{"ok":true}`.
 
