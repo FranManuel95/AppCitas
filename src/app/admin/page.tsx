@@ -21,7 +21,7 @@ import {
   RevenueChart,
   StatusChart,
   TopServicesChart,
-} from "@/components/admin/dashboard-charts";
+} from "@/components/admin/dashboard-charts-lazy";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard" };

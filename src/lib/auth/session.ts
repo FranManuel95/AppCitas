@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { ROLES, type Role } from "@/lib/domain/types";
@@ -57,7 +58,10 @@ export async function createSession(
   });
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+// cache() de React deduplica por petición: el header del layout y el guard de
+// página lo llaman ambos → sin esto, 2 verificaciones JWT + 2 consultas a BD
+// por render. Con cache(), una sola ejecución compartida por request.
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const token = (await cookies()).get(COOKIE_NAME)?.value;
   if (!token) return null;
 
@@ -86,7 +90,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   } catch {
     return null; // token caducado o manipulado
   }
-}
+});
 
 export async function destroySession(): Promise<void> {
   (await cookies()).delete(COOKIE_NAME);
