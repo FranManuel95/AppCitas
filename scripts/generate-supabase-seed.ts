@@ -69,13 +69,13 @@ async function main() {
 
   insert(
     "Business",
-    ["id", "slug", "name", "description", "category", "timezone", "currency", "address", "phone", "email", "cancellationWindowHours", "lateCancellationFeePercent", "slotGranularityMinutes", "maxAdvanceBookingDays", "minNoticeMinutes", "requireCardToBook", "remindersEnabled", "reminderHoursBefore", "notifyByEmail", "notifyBySms", "notifyByWhatsapp", "taxPercent", "active", "createdAt", "updatedAt"],
-    [sqlStr(aurora), sqlStr("estudio-aurora"), sqlStr("Estudio Aurora"), sqlStr("Espacio multidisciplinar de sesiones y consultas personalizadas."), sqlStr("general"), sqlStr(TZ), sqlStr("EUR"), sqlStr("Calle Mayor 12, Sevilla"), sqlStr("+34 954 000 111"), sqlStr("hola@estudioaurora.example"), "24", "100", "30", "60", "60", sqlBool(false), sqlBool(true), "26", sqlBool(true), sqlBool(false), sqlBool(true), "0", sqlBool(true), sqlTs(now), sqlTs(now)],
+    ["id", "slug", "name", "description", "category", "timezone", "currency", "address", "phone", "email", "plan", "subscriptionStatus", "cancellationWindowHours", "lateCancellationFeePercent", "slotGranularityMinutes", "maxAdvanceBookingDays", "minNoticeMinutes", "requireCardToBook", "remindersEnabled", "reminderHoursBefore", "notifyByEmail", "notifyBySms", "notifyByWhatsapp", "taxPercent", "active", "createdAt", "updatedAt"],
+    [sqlStr(aurora), sqlStr("estudio-aurora"), sqlStr("Estudio Aurora"), sqlStr("Espacio multidisciplinar de sesiones y consultas personalizadas."), sqlStr("general"), sqlStr(TZ), sqlStr("EUR"), sqlStr("Calle Mayor 12, Sevilla"), sqlStr("+34 954 000 111"), sqlStr("hola@estudioaurora.example"), sqlStr("pro"), sqlStr("active"), "24", "100", "30", "60", "60", sqlBool(false), sqlBool(true), "26", sqlBool(true), sqlBool(false), sqlBool(true), "0", sqlBool(true), sqlTs(now), sqlTs(now)],
   );
   insert(
     "Business",
-    ["id", "slug", "name", "description", "category", "timezone", "currency", "address", "phone", "cancellationWindowHours", "lateCancellationFeePercent", "slotGranularityMinutes", "maxAdvanceBookingDays", "minNoticeMinutes", "requireCardToBook", "remindersEnabled", "reminderHoursBefore", "notifyByEmail", "notifyBySms", "notifyByWhatsapp", "taxPercent", "active", "createdAt", "updatedAt"],
-    [sqlStr(barberia), sqlStr("barberia-norte"), sqlStr("Barbería Norte"), sqlStr("Corte y arreglo de barba con cita previa."), sqlStr("belleza"), sqlStr(TZ), sqlStr("EUR"), sqlStr("Av. de la Constitución 3, Madrid"), sqlStr("+34 910 222 333"), "24", "50", "15", "30", "30", sqlBool(false), sqlBool(true), "25", sqlBool(true), sqlBool(false), sqlBool(true), "0", sqlBool(true), sqlTs(now), sqlTs(now)],
+    ["id", "slug", "name", "description", "category", "timezone", "currency", "address", "phone", "plan", "subscriptionStatus", "cancellationWindowHours", "lateCancellationFeePercent", "slotGranularityMinutes", "maxAdvanceBookingDays", "minNoticeMinutes", "requireCardToBook", "remindersEnabled", "reminderHoursBefore", "notifyByEmail", "notifyBySms", "notifyByWhatsapp", "taxPercent", "active", "createdAt", "updatedAt"],
+    [sqlStr(barberia), sqlStr("barberia-norte"), sqlStr("Barbería Norte"), sqlStr("Corte y arreglo de barba con cita previa."), sqlStr("belleza"), sqlStr(TZ), sqlStr("EUR"), sqlStr("Av. de la Constitución 3, Madrid"), sqlStr("+34 910 222 333"), sqlStr("pro"), sqlStr("active"), "24", "50", "15", "30", "30", sqlBool(false), sqlBool(true), "25", sqlBool(true), sqlBool(false), sqlBool(true), "0", sqlBool(true), sqlTs(now), sqlTs(now)],
   );
 
   // --- Horario semanal ----------------------------------------------------
@@ -124,6 +124,7 @@ async function main() {
   }
   addUser("seed_user_owner_aurora", "admin@demo.com", ownerHash, "Ana Propietaria", "OWNER", aurora);
   addUser("seed_user_owner_barberia", "barberia@demo.com", ownerHash, "Braulio Norte", "OWNER", barberia);
+  addUser("seed_user_superadmin", "plataforma@demo.com", ownerHash, "Plataforma AppCitas", "SUPER_ADMIN", null);
   addUser(userAna, "ana@demo.com", staffHash, "Ana García", "STAFF", aurora);
 
   const demoClient = "seed_user_client_demo";

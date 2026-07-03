@@ -38,8 +38,13 @@ const TZ = "Europe/Madrid";
 
 async function main() {
   console.log("Limpiando base de datos…");
+  // Orden seguro de FKs: primero lo que referencia a citas/servicios/negocios.
+  await prisma.review.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.appointment.deleteMany();
+  await prisma.clientPackage.deleteMany();
+  await prisma.package.deleteMany();
+  await prisma.coupon.deleteMany();
   await prisma.staffService.deleteMany();
   await prisma.staffHour.deleteMany();
   await prisma.staffMember.deleteMany();
@@ -62,6 +67,9 @@ async function main() {
       address: "Calle Mayor 12, Sevilla",
       phone: "+34 954 000 111",
       email: "hola@estudioaurora.example",
+      // Negocio demo consolidado: suscripción Pro activa (sin límites)
+      plan: "pro",
+      subscriptionStatus: "active",
       cancellationWindowHours: 24,
       lateCancellationFeePercent: 100,
       slotGranularityMinutes: 30,
@@ -120,6 +128,9 @@ async function main() {
       currency: "EUR",
       address: "Av. de la Constitución 3, Madrid",
       phone: "+34 910 222 333",
+      // Negocio demo consolidado: suscripción Pro activa (sin límites)
+      plan: "pro",
+      subscriptionStatus: "active",
       cancellationWindowHours: 24,
       lateCancellationFeePercent: 50,
       slotGranularityMinutes: 15,
@@ -278,6 +289,17 @@ async function main() {
       name: "Braulio Norte",
       role: "OWNER",
       businessId: barberia.id,
+      emailVerifiedAt: now0,
+    },
+  });
+
+  // Super-admin de la plataforma (sin businessId): accede a /superadmin.
+  await prisma.user.create({
+    data: {
+      email: "plataforma@demo.com",
+      passwordHash: ownerHash,
+      name: "Plataforma AppCitas",
+      role: "SUPER_ADMIN",
       emailVerifiedAt: now0,
     },
   });
@@ -541,6 +563,7 @@ async function main() {
   console.log("  Dueño Barbería Norte → barberia@demo.com / admin1234");
   console.log("  Empleada (portal) → ana@demo.com / staff1234");
   console.log("  Cliente → cliente@demo.com / cliente1234");
+  console.log("  Super-admin plataforma → plataforma@demo.com / admin1234");
 }
 
 main()

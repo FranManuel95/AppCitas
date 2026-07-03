@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Card } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { OnboardingChecklist } from "@/components/admin/onboarding-checklist";
+import { PlanBanner } from "@/components/admin/plan-banner";
 import {
   RevenueChart,
   StatusChart,
@@ -41,7 +42,14 @@ export default async function AdminDashboardPage() {
   ] = await Promise.all([
       prisma.business.findUniqueOrThrow({
         where: { id: admin.businessId },
-        select: { currency: true, timezone: true, requireCardToBook: true },
+        select: {
+          currency: true,
+          timezone: true,
+          requireCardToBook: true,
+          plan: true,
+          subscriptionStatus: true,
+          trialEndsAt: true,
+        },
       }),
       getDashboardStats(admin.businessId),
       getDayAgenda(admin.businessId),
@@ -58,6 +66,12 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <PlanBanner
+        plan={business.plan}
+        subscriptionStatus={business.subscriptionStatus}
+        trialEndsAt={business.trialEndsAt}
+      />
+
       <SectionHeader
         as="h1"
         title={t.admin.dashboard.title}

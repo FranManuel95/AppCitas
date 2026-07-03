@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { apiRequireBusinessAdmin } from "@/lib/auth/guards";
 import { assertServicesOwned } from "@/lib/domain/ownership";
+import { assertWithinPlan } from "@/lib/domain/plans";
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -46,6 +47,8 @@ export const POST = apiHandler(async (request: Request) => {
 
   // Aislamiento: los servicios vinculados deben ser del propio negocio.
   await assertServicesOwned(admin.businessId, data.serviceIds);
+  // Límite del plan: nº de empleados activos.
+  await assertWithinPlan(admin.businessId, "addStaff");
 
   const member = await prisma.staffMember.create({
     data: {

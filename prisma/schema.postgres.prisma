@@ -102,6 +102,17 @@ model Business {
 
   active Boolean @default(true)
 
+  // Suscripción SaaS: qué paga el NEGOCIO a la plataforma (distinto del cobro
+  // B2C de cancelaciones a sus clientes). plan: free|pro; subscriptionStatus:
+  // trialing|active|past_due|canceled. Los IDs de Stripe son de la suscripción
+  // del negocio (no confundir con User.stripeCustomerId, del cliente final).
+  plan                         String    @default("free")
+  subscriptionStatus           String    @default("trialing")
+  trialEndsAt                  DateTime?
+  planRenewsAt                 DateTime?
+  platformStripeCustomerId     String?
+  platformStripeSubscriptionId String?
+
   // Facturación de recibos: NIF/CIF y % de IVA a desglosar (0 = sin desglose)
   taxId      String?
   taxPercent Int     @default(0)

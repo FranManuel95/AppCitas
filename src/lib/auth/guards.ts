@@ -47,6 +47,24 @@ export function isBusinessAdmin(
   );
 }
 
+// --- Super-admin de la plataforma (rol SUPER_ADMIN) ------------------------
+// Gobierna TODOS los negocios y no está atado a ningún businessId propio, por
+// eso no reutiliza los guards de negocio (que exigen businessId).
+
+export async function requireSuperAdmin(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (user.role !== "SUPER_ADMIN") redirect("/");
+  return user;
+}
+
+export async function apiRequireSuperAdmin(): Promise<SessionUser> {
+  const user = await apiRequireUser();
+  if (user.role !== "SUPER_ADMIN") {
+    throw new DomainError("Acceso restringido a la plataforma", "FORBIDDEN", 403);
+  }
+  return user;
+}
+
 // --- Portal del empleado (rol STAFF) ---------------------------------------
 
 export interface StaffSession extends SessionUser {

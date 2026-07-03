@@ -9,6 +9,7 @@ import {
   CalendarDays,
   ClipboardList,
   Clock,
+  CreditCard,
   LayoutDashboard,
   Settings,
   Users,
@@ -28,6 +29,7 @@ const ICONS = {
   horario: Clock,
   notificaciones: Bell,
   ajustes: Settings,
+  plan: CreditCard,
 } satisfies Record<string, LucideIcon>;
 
 export type AdminNavIcon = keyof typeof ICONS;

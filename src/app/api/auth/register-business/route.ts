@@ -9,6 +9,7 @@ import { sendVerificationEmail } from "@/lib/auth/mailer";
 import { DomainError } from "@/lib/domain/errors";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
+import { TRIAL_DAYS } from "@/lib/domain/plans";
 
 const schema = z.object({
   ownerName: z.string().trim().min(2).max(100),
@@ -64,6 +65,11 @@ export const POST = apiHandler(async (request: Request) => {
         category: data.category?.trim() || "general",
         phone: data.phone || null,
         email: data.email,
+        // Prueba de 14 días del plan Pro al darse de alta; si no se suscribe,
+        // el cron lo degrada a Free (degradeExpiredTrials).
+        plan: "pro",
+        subscriptionStatus: "trialing",
+        trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60_000),
         hours: {
           create: [1, 2, 3, 4, 5].map((weekday) => ({
             weekday,
