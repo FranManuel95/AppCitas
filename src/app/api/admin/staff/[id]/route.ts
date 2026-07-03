@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { apiRequireBusinessAdmin } from "@/lib/auth/guards";
 import { DomainError } from "@/lib/domain/errors";
+import { assertServicesOwned } from "@/lib/domain/ownership";
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -48,6 +49,9 @@ export const PATCH = apiHandler(
     const admin = await apiRequireBusinessAdmin();
     await ownedStaff(admin.businessId, id);
     const data = updateSchema.parse(await request.json());
+
+    // Aislamiento: los servicios vinculados deben ser del propio negocio.
+    await assertServicesOwned(admin.businessId, data.serviceIds);
 
     const member = await prisma.$transaction(async (tx) => {
       if (data.hours) {

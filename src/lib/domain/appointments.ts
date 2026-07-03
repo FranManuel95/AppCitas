@@ -551,16 +551,27 @@ export async function rescheduleAppointment(params: {
   actorIsBusinessAdmin: boolean;
   newStartAt: Date;
   now?: Date;
+  // Aislamiento en profundidad: si se indica, la cita debe pertenecer a este
+  // negocio (los callers admin lo pasan para no depender solo del guard).
+  expectedBusinessId?: string;
 }) {
   const now = params.now ?? new Date();
-  const { appointmentId, actorUserId, actorIsBusinessAdmin, newStartAt } =
-    params;
+  const {
+    appointmentId,
+    actorUserId,
+    actorIsBusinessAdmin,
+    newStartAt,
+    expectedBusinessId,
+  } = params;
 
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
     include: { business: true },
   });
   if (!appointment) {
+    throw new DomainError("Cita no encontrada", "APPOINTMENT_NOT_FOUND", 404);
+  }
+  if (expectedBusinessId && appointment.businessId !== expectedBusinessId) {
     throw new DomainError("Cita no encontrada", "APPOINTMENT_NOT_FOUND", 404);
   }
 

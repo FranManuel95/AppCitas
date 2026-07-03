@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { apiRequireBusinessAdmin } from "@/lib/auth/guards";
+import { assertServicesOwned } from "@/lib/domain/ownership";
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -42,6 +43,9 @@ export const GET = apiHandler(async () => {
 export const POST = apiHandler(async (request: Request) => {
   const admin = await apiRequireBusinessAdmin();
   const data = createSchema.parse(await request.json());
+
+  // Aislamiento: los servicios vinculados deben ser del propio negocio.
+  await assertServicesOwned(admin.businessId, data.serviceIds);
 
   const member = await prisma.staffMember.create({
     data: {

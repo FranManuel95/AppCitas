@@ -36,6 +36,7 @@ export const POST = apiHandler(
       actorUserId: admin.id,
       actorIsBusinessAdmin: true,
       newStartAt: new Date(startAt),
+      expectedBusinessId: admin.businessId,
     });
 
     return NextResponse.json({

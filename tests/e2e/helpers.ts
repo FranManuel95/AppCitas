@@ -3,7 +3,10 @@ import Database from "better-sqlite3";
 import { expect, type Page } from "@playwright/test";
 
 export const CLIENT = { email: "cliente@demo.com", password: "cliente1234" };
+// Admin del negocio A (Estudio Aurora)
 export const ADMIN = { email: "admin@demo.com", password: "admin1234" };
+// Admin del negocio B (Barbería Norte) — para pruebas de aislamiento
+export const ADMIN_B = { email: "barberia@demo.com", password: "admin1234" };
 export const STAFF = { email: "ana@demo.com", password: "staff1234" };
 
 /** Inicia sesión vía API; la cookie queda en el contexto del navegador. */
@@ -51,6 +54,23 @@ export function getService(
       | undefined;
     if (!row) throw new Error(`servicio ${name} no sembrado`);
     return row;
+  } finally {
+    db.close();
+  }
+}
+
+/** Primer id de una tabla filtrada por negocio (para pruebas cruzadas). */
+export function firstIdForBusiness(
+  table: "Service" | "StaffMember" | "Coupon" | "Package" | "Appointment",
+  businessId: string,
+): string {
+  const db = e2eDb();
+  try {
+    const row = db
+      .prepare(`SELECT id FROM ${table} WHERE businessId = ? LIMIT 1`)
+      .get(businessId) as { id: string } | undefined;
+    if (!row) throw new Error(`sin ${table} para ${businessId}`);
+    return row.id;
   } finally {
     db.close();
   }
