@@ -10,7 +10,7 @@ import { enforceRateLimit } from "@/lib/rate-limit";
 // usuario autenticado.
 export const POST = apiHandler(async (request: Request) => {
   const sessionUser = await apiRequireUser();
-  enforceRateLimit(
+  await enforceRateLimit(
     request,
     "send-verification",
     { limit: 3, windowMs: 15 * 60_000 },

@@ -18,7 +18,7 @@ export const POST = apiHandler(async (request: Request) => {
   const { email, password } = schema.parse(await request.json());
 
   // Frena la fuerza bruta de credenciales por IP+cuenta
-  enforceRateLimit(request, "login", { limit: 10, windowMs: 15 * 60_000 }, email);
+  await enforceRateLimit(request, "login", { limit: 10, windowMs: 15 * 60_000 }, email);
 
   const user = await prisma.user.findUnique({ where: { email } });
   // Mismo error para email inexistente y contraseña errónea: no revela cuentas

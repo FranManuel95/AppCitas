@@ -13,7 +13,8 @@
     "db:reset": "prisma migrate reset --force",
     "test": "vitest run",
     "worker": "tsx scripts/worker.ts",
-    "db:sync-pg": "node scripts/sync-postgres-schema.mjs"
+    "db:sync-pg": "node scripts/sync-postgres-schema.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
@@ -40,8 +41,10 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",

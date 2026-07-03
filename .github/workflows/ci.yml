@@ -1,0 +1,54 @@
+name: CI
+
+# Calidad en cada push/PR: tests de dominio + build de producción, y la
+# suite E2E de Playwright contra un servidor real con SQLite sembrado.
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-y-tests:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "file:./dev.db"
+      AUTH_SECRET: "ci-secret-solo-para-build"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Tests de dominio (vitest)
+        run: npx vitest run
+      - name: Build de producción
+        run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      AUTH_SECRET: "ci-secret-solo-para-e2e"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+        env:
+          DATABASE_URL: "file:./e2e.db"
+      - name: Instalar Chromium de Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Suite E2E
+        run: npm run test:e2e
+      - name: Guardar informe si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

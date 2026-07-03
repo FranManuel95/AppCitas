@@ -13,7 +13,7 @@ const schema = z.object({ email: z.email().toLowerCase() });
 // cuenta existe. Si existe, envía el enlace de restablecimiento (30 min).
 export const POST = apiHandler(async (request: Request) => {
   const { email } = schema.parse(await request.json());
-  enforceRateLimit(
+  await enforceRateLimit(
     request,
     "forgot-password",
     { limit: 3, windowMs: 15 * 60_000 },

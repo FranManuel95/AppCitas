@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { processDueNotifications } from "@/lib/notifications/service";
+import { cleanupRateLimitCounters } from "@/lib/rate-limit";
 
 // /api/jobs/notifications — despacha los mensajes vencidos del outbox.
 // Pensado para invocarse cada minuto desde un cron externo (Vercel Cron usa
@@ -22,6 +23,8 @@ async function handleCron(request: Request) {
   }
 
   const result = await processDueNotifications();
+  // Mantenimiento oportunista: purga ventanas viejas del rate limiting.
+  await cleanupRateLimitCounters();
   return NextResponse.json(result);
 }
 

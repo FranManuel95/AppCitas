@@ -50,3 +50,7 @@ next-env.d.ts
 # Cliente Prisma generado (se regenera con `prisma generate` en postinstall)
 /src/generated/
 !.env.example
+
+# Playwright
+/test-results/
+/playwright-report/

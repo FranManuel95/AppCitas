@@ -30,7 +30,7 @@ function slugify(value: string): string {
 }
 
 export const POST = apiHandler(async (request: Request) => {
-  enforceRateLimit(request, "register", { limit: 5, windowMs: 60 * 60_000 });
+  await enforceRateLimit(request, "register", { limit: 5, windowMs: 60 * 60_000 });
   const data = schema.parse(await request.json());
 
   const existing = await prisma.user.findUnique({

@@ -343,6 +343,17 @@ model Appointment {
   @@index([staffId, startAt])
 }
 
+// Contador de rate limiting por ventana fija, compartido entre instancias
+// (en serverless la memoria de proceso no protege entre réplicas).
+// windowStart es el epoch ms del inicio de la ventana.
+model RateLimitCounter {
+  key         String
+  windowStart BigInt
+  count       Int    @default(1)
+
+  @@id([key, windowStart])
+}
+
 // Outbox de notificaciones: cada mensaje se persiste y un worker/cron lo
 // despacha cuando vence (scheduledFor). Reintentos con backoff simple.
 model Notification {

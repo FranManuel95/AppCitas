@@ -16,7 +16,7 @@ const schema = z.object({
 // POST /api/auth/reset-password — canjea el token de un solo uso.
 // También completa las invitaciones de empleados (mismo mecanismo).
 export const POST = apiHandler(async (request: Request) => {
-  enforceRateLimit(request, "reset-password", {
+  await enforceRateLimit(request, "reset-password", {
     limit: 10,
     windowMs: 15 * 60_000,
   });
