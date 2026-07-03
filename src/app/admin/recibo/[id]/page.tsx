@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
+import { getDict } from "@/lib/i18n";
+import { fmt } from "@/lib/i18n/shared";
 import { formatCents } from "@/lib/money";
 import { STATUS_LABELS, type AppointmentStatus } from "@/lib/domain/types";
 import { PrintButton } from "@/components/print-button";
@@ -18,6 +20,9 @@ export default async function ReceiptPage({
   params: Promise<{ id: string }>;
 }) {
   const admin = await requireBusinessAdmin();
+  const { locale, t } = await getDict();
+  const r = t.admin.recibo;
+  const intl = locale === "es" ? "es-ES" : "en";
   const { id } = await params;
 
   const appointment = await prisma.appointment.findFirst({
@@ -39,7 +44,7 @@ export default async function ReceiptPage({
     b.taxPercent > 0 ? Math.round(total / (1 + b.taxPercent / 100)) : total;
   const tax = total - base;
 
-  const when = new Intl.DateTimeFormat("es-ES", {
+  const when = new Intl.DateTimeFormat(intl, {
     dateStyle: "long",
     timeStyle: "short",
     timeZone: b.timezone,
@@ -52,9 +57,9 @@ export default async function ReceiptPage({
           href="/admin/citas"
           className="text-sm font-medium text-brand-700 transition-colors hover:text-brand-800"
         >
-          ← Volver a citas
+          {r.backToAppointments}
         </Link>
-        <PrintButton />
+        <PrintButton label={r.print} />
       </div>
 
       <Card className="print:border-0 print:shadow-none">
@@ -67,25 +72,27 @@ export default async function ReceiptPage({
               {[b.address, b.phone, b.email].filter(Boolean).join(" · ")}
             </p>
             {b.taxId && (
-              <p className="text-sm text-ink-muted">NIF/CIF: {b.taxId}</p>
+              <p className="text-sm text-ink-muted">
+                {fmt(r.taxIdLine, { taxId: b.taxId })}
+              </p>
             )}
           </div>
           <div className="shrink-0 text-right">
             <p className="text-sm font-semibold tracking-widest text-ink">
-              RECIBO
+              {r.receiptHeading}
             </p>
             <p className="text-xs tabular-nums text-ink-muted">
-              Ref. {appointment.id.slice(-10).toUpperCase()}
+              {fmt(r.ref, { ref: appointment.id.slice(-10).toUpperCase() })}
             </p>
             <p className="text-xs tabular-nums text-ink-muted">
-              {new Date().toLocaleDateString("es-ES")}
+              {new Date().toLocaleDateString(intl)}
             </p>
           </div>
         </div>
 
         <dl className="mt-4 space-y-1.5 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-ink-muted">Cliente</dt>
+            <dt className="text-ink-muted">{r.client}</dt>
             <dd className="text-right text-ink">
               {appointment.client.name}
               <span className="block text-xs text-ink-muted">
@@ -94,28 +101,28 @@ export default async function ReceiptPage({
             </dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-ink-muted">Servicio</dt>
+            <dt className="text-ink-muted">{r.service}</dt>
             <dd className="text-ink">{appointment.service.name}</dd>
           </div>
           {appointment.staff && (
             <div className="flex justify-between gap-4">
-              <dt className="text-ink-muted">Profesional</dt>
+              <dt className="text-ink-muted">{r.staff}</dt>
               <dd className="text-ink">{appointment.staff.name}</dd>
             </div>
           )}
           <div className="flex justify-between gap-4">
-            <dt className="text-ink-muted">Fecha de la cita</dt>
+            <dt className="text-ink-muted">{r.appointmentDate}</dt>
             <dd className="text-ink">{when}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-ink-muted">Concepto</dt>
+            <dt className="text-ink-muted">{r.concept}</dt>
             <dd className="text-ink">
               {STATUS_LABELS[appointment.status as AppointmentStatus] ??
                 appointment.status}
               {appointment.clientPackageId
-                ? " (bono)"
+                ? r.packageSuffix
                 : appointment.coupon
-                  ? ` (cupón ${appointment.coupon.code})`
+                  ? fmt(r.couponSuffix, { code: appointment.coupon.code })
                   : ""}
             </dd>
           </div>
@@ -127,7 +134,7 @@ export default async function ReceiptPage({
               {appointment.discountCents > 0 && (
                 <>
                   <tr>
-                    <td className="py-1 text-ink-muted">Precio del servicio</td>
+                    <td className="py-1 text-ink-muted">{r.servicePrice}</td>
                     <td className="py-1 text-right tabular-nums text-ink-soft">
                       {formatCents(
                         appointment.priceCents + appointment.discountCents,
@@ -136,7 +143,7 @@ export default async function ReceiptPage({
                     </td>
                   </tr>
                   <tr>
-                    <td className="py-1 text-ink-muted">Descuento</td>
+                    <td className="py-1 text-ink-muted">{r.discount}</td>
                     <td className="py-1 text-right tabular-nums text-success-strong">
                       −{formatCents(appointment.discountCents, b.currency)}
                     </td>
@@ -146,14 +153,14 @@ export default async function ReceiptPage({
               {b.taxPercent > 0 && (
                 <>
                   <tr>
-                    <td className="py-1 text-ink-muted">Base imponible</td>
+                    <td className="py-1 text-ink-muted">{r.taxBase}</td>
                     <td className="py-1 text-right tabular-nums text-ink-soft">
                       {formatCents(base, b.currency)}
                     </td>
                   </tr>
                   <tr>
                     <td className="py-1 text-ink-muted">
-                      IVA ({b.taxPercent}%)
+                      {fmt(r.vat, { percent: b.taxPercent })}
                     </td>
                     <td className="py-1 text-right tabular-nums text-ink-soft">
                       {formatCents(tax, b.currency)}
@@ -162,7 +169,9 @@ export default async function ReceiptPage({
                 </>
               )}
               <tr className="border-t border-border-strong">
-                <td className="py-2 font-semibold text-ink">Total cobrado</td>
+                <td className="py-2 font-semibold text-ink">
+                  {r.totalCharged}
+                </td>
                 <td className="py-2 text-right text-lg font-bold tabular-nums text-ink">
                   {formatCents(total, b.currency)}
                 </td>
@@ -170,15 +179,18 @@ export default async function ReceiptPage({
             </tbody>
           </table>
           <p className="mt-2 text-xs text-ink-muted">
-            Estado del cobro: {appointment.paymentStatus === "CHARGED"
-              ? "cobrado con tarjeta"
-              : appointment.paymentStatus === "SIMULATED"
-                ? "cobro simulado (entorno de pruebas)"
-                : appointment.paymentStatus === "UNCOLLECTED"
-                  ? "pendiente / cobrado en persona"
-                  : appointment.paymentStatus === "CHARGE_FAILED"
-                    ? "cargo rechazado — gestionar en persona"
-                    : "—"}
+            {fmt(r.paymentStatus, {
+              status:
+                appointment.paymentStatus === "CHARGED"
+                  ? r.paymentCharged
+                  : appointment.paymentStatus === "SIMULATED"
+                    ? r.paymentSimulated
+                    : appointment.paymentStatus === "UNCOLLECTED"
+                      ? r.paymentUncollected
+                      : appointment.paymentStatus === "CHARGE_FAILED"
+                        ? r.paymentChargeFailed
+                        : t.admin.common.emptyValue,
+            })}
           </p>
         </div>
       </Card>

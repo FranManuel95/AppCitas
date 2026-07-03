@@ -1,13 +1,19 @@
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
+import { getDict } from "@/lib/i18n";
 import { StaffManager } from "@/components/admin/staff-manager";
 import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Equipo" };
+
+export async function generateMetadata() {
+  const { t } = await getDict();
+  return { title: t.admin.equipo.title };
+}
 
 export default async function StaffPage() {
   const admin = await requireBusinessAdmin();
+  const { locale, t } = await getDict();
   const [staff, services] = await Promise.all([
     prisma.staffMember.findMany({
       where: { businessId: admin.businessId },
@@ -28,8 +34,8 @@ export default async function StaffPage() {
     <div className="space-y-6">
       <SectionHeader
         as="h1"
-        title="Equipo"
-        description="Cada empleado tiene su propia agenda: varias citas pueden coincidir en hora si las atienden personas distintas."
+        title={t.admin.equipo.title}
+        description={t.admin.equipo.description}
       />
       <StaffManager
         staff={staff.map((m) => ({
@@ -48,6 +54,8 @@ export default async function StaffPage() {
           serviceIds: m.services.map((s) => s.serviceId),
         }))}
         services={services}
+        locale={locale}
+        labels={{ equipo: t.admin.equipo, common: t.admin.common }}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AlertCircle, Clock, Plus, Tags } from "lucide-react";
 import { formatCents } from "@/lib/money";
+import type { Dict } from "@/lib/i18n/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,12 +21,41 @@ interface ServiceDTO {
   active: boolean;
 }
 
+export interface ServicesManagerLabels {
+  servicios: Pick<
+    Dict["admin"]["servicios"],
+    | "newService"
+    | "nameLabel"
+    | "descriptionLabel"
+    | "durationLabel"
+    | "priceLabel"
+    | "colorLabel"
+    | "saveError"
+    | "submitCreate"
+    | "emptyTitle"
+    | "emptyDescription"
+  >;
+  common: Pick<
+    Dict["admin"]["common"],
+    | "edit"
+    | "cancel"
+    | "activate"
+    | "deactivate"
+    | "saving"
+    | "saveChanges"
+    | "inactive"
+    | "min"
+  >;
+}
+
 function ServiceForm({
   initial,
+  labels,
   onDone,
   onCancel,
 }: {
   initial?: ServiceDTO;
+  labels: ServicesManagerLabels;
   onDone: () => void;
   onCancel?: () => void;
 }) {
@@ -56,7 +86,7 @@ function ServiceForm({
     );
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setError(json.error ?? "No se pudo guardar el servicio");
+      setError(json.error ?? labels.servicios.saveError);
       setBusy(false);
       return;
     }
@@ -65,13 +95,13 @@ function ServiceForm({
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
-      <Field label="Nombre" className="sm:col-span-2">
+      <Field label={labels.servicios.nameLabel} className="sm:col-span-2">
         <Input name="name" required minLength={2} defaultValue={initial?.name} />
       </Field>
-      <Field label="Descripción (opcional)" className="sm:col-span-2">
+      <Field label={labels.servicios.descriptionLabel} className="sm:col-span-2">
         <Input name="description" defaultValue={initial?.description ?? ""} />
       </Field>
-      <Field label="Duración (minutos)">
+      <Field label={labels.servicios.durationLabel}>
         <Input
           name="durationMinutes"
           type="number"
@@ -83,7 +113,7 @@ function ServiceForm({
           className="tabular-nums"
         />
       </Field>
-      <Field label="Precio (€)">
+      <Field label={labels.servicios.priceLabel}>
         <Input
           name="price"
           type="number"
@@ -94,7 +124,7 @@ function ServiceForm({
           className="tabular-nums"
         />
       </Field>
-      <Field label="Color en la agenda">
+      <Field label={labels.servicios.colorLabel}>
         <input
           name="color"
           type="color"
@@ -110,11 +140,15 @@ function ServiceForm({
       )}
       <div className="flex gap-2 sm:col-span-2">
         <Button type="submit" disabled={busy}>
-          {busy ? "Guardando…" : initial ? "Guardar cambios" : "Crear servicio"}
+          {busy
+            ? labels.common.saving
+            : initial
+              ? labels.common.saveChanges
+              : labels.servicios.submitCreate}
         </Button>
         {onCancel && (
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancelar
+            {labels.common.cancel}
           </Button>
         )}
       </div>
@@ -125,9 +159,11 @@ function ServiceForm({
 export function ServicesManager({
   services,
   currency,
+  labels,
 }: {
   services: ServiceDTO[];
   currency: string;
+  labels: ServicesManagerLabels;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
@@ -153,13 +189,19 @@ export function ServicesManager({
       {!creating && (
         <Button onClick={() => setCreating(true)}>
           <Plus className="h-4 w-4" aria-hidden />
-          Nuevo servicio
+          {labels.servicios.newService}
         </Button>
       )}
       {creating && (
         <Card>
-          <h2 className="mb-4 font-semibold text-ink">Nuevo servicio</h2>
-          <ServiceForm onDone={refresh} onCancel={() => setCreating(false)} />
+          <h2 className="mb-4 font-semibold text-ink">
+            {labels.servicios.newService}
+          </h2>
+          <ServiceForm
+            labels={labels}
+            onDone={refresh}
+            onCancel={() => setCreating(false)}
+          />
         </Card>
       )}
 
@@ -169,6 +211,7 @@ export function ServicesManager({
             {editing === s.id ? (
               <ServiceForm
                 initial={s}
+                labels={labels}
                 onDone={refresh}
                 onCancel={() => setEditing(null)}
               />
@@ -183,12 +226,14 @@ export function ServicesManager({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-ink">{s.name}</p>
-                      {!s.active && <Badge tone="neutral">Inactivo</Badge>}
+                      {!s.active && (
+                        <Badge tone="neutral">{labels.common.inactive}</Badge>
+                      )}
                     </div>
                     <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-ink-muted">
                       <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       <span className="tabular-nums">
-                        {s.durationMinutes} min
+                        {s.durationMinutes} {labels.common.min}
                       </span>
                       {s.description ? <span>· {s.description}</span> : null}
                     </p>
@@ -203,14 +248,14 @@ export function ServicesManager({
                     size="sm"
                     onClick={() => setEditing(s.id)}
                   >
-                    Editar
+                    {labels.common.edit}
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => toggleActive(s)}
                   >
-                    {s.active ? "Desactivar" : "Activar"}
+                    {s.active ? labels.common.deactivate : labels.common.activate}
                   </Button>
                 </div>
               </div>
@@ -220,8 +265,8 @@ export function ServicesManager({
         {services.length === 0 && (
           <EmptyState
             icon={Tags}
-            title="Aún no hay servicios."
-            description="Crea el primero para que tus clientes puedan reservar."
+            title={labels.servicios.emptyTitle}
+            description={labels.servicios.emptyDescription}
           />
         )}
       </div>

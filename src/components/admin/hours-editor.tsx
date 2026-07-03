@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, Plus, Trash2, X } from "lucide-react";
-import { WEEKDAYS_ES, WEEKDAY_ORDER } from "@/lib/weekdays";
+import { WEEKDAY_ORDER, weekdayNames } from "@/lib/weekdays";
+import type { Dict, Locale } from "@/lib/i18n/shared";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/field";
@@ -21,14 +22,42 @@ interface ClosureDTO {
   reason: string | null;
 }
 
+export interface HoursEditorLabels {
+  horario: Pick<
+    Dict["admin"]["horario"],
+    | "weeklyTitle"
+    | "weeklyDescription"
+    | "saved"
+    | "addError"
+    | "remove"
+    | "closed"
+    | "addRange"
+    | "save"
+    | "closuresTitle"
+    | "closuresDescription"
+    | "closureDate"
+    | "closureReason"
+    | "closureReasonPlaceholder"
+    | "addClosure"
+    | "delete"
+    | "noClosures"
+  >;
+  common: Pick<Dict["admin"]["common"], "saving" | "saveError">;
+}
+
 export function HoursEditor({
   initialHours,
   closures,
+  locale,
+  labels,
 }: {
   initialHours: HourRange[];
   closures: ClosureDTO[];
+  locale: Locale;
+  labels: HoursEditorLabels;
 }) {
   const router = useRouter();
+  const weekdays = weekdayNames(locale);
   const [hours, setHours] = useState<HourRange[]>(initialHours);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
@@ -61,9 +90,9 @@ export function HoursEditor({
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setMessage({ kind: "error", text: json.error ?? "No se pudo guardar" });
+      setMessage({ kind: "error", text: json.error ?? labels.common.saveError });
     } else {
-      setMessage({ kind: "ok", text: "Horario guardado" });
+      setMessage({ kind: "ok", text: labels.horario.saved });
       router.refresh();
     }
     setSaving(false);
@@ -79,7 +108,7 @@ export function HoursEditor({
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setMessage({ kind: "error", text: json.error ?? "No se pudo añadir" });
+      setMessage({ kind: "error", text: json.error ?? labels.horario.addError });
       return;
     }
     setMessage(null);
@@ -99,8 +128,8 @@ export function HoursEditor({
     <div className="space-y-6">
       <Card>
         <SectionHeader
-          title="Horario semanal"
-          description="Varios tramos por día permitidos (p. ej. mañana y tarde)."
+          title={labels.horario.weeklyTitle}
+          description={labels.horario.weeklyDescription}
         />
         <div className="mt-5 space-y-4">
           {WEEKDAY_ORDER.map((weekday) => {
@@ -113,7 +142,7 @@ export function HoursEditor({
                 className="flex flex-wrap items-start gap-3 border-b border-border pb-4 last:border-0 last:pb-0"
               >
                 <span className="w-24 pt-1.5 text-sm font-medium text-ink">
-                  {WEEKDAYS_ES[weekday]}
+                  {weekdays[weekday]}
                 </span>
                 <div className="flex flex-1 flex-col gap-2">
                   {dayRanges.map((r) => (
@@ -140,8 +169,8 @@ export function HoursEditor({
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label="Quitar"
-                        title="Quitar"
+                        aria-label={labels.horario.remove}
+                        title={labels.horario.remove}
                         onClick={() => removeRange(r.index)}
                       >
                         <X className="h-4 w-4" aria-hidden />
@@ -149,7 +178,9 @@ export function HoursEditor({
                     </div>
                   ))}
                   {dayRanges.length === 0 && (
-                    <p className="pt-1.5 text-sm text-ink-muted">Cerrado</p>
+                    <p className="pt-1.5 text-sm text-ink-muted">
+                      {labels.horario.closed}
+                    </p>
                   )}
                 </div>
                 <Button
@@ -158,7 +189,7 @@ export function HoursEditor({
                   onClick={() => addRange(weekday)}
                 >
                   <Plus className="h-3.5 w-3.5" aria-hidden />
-                  Tramo
+                  {labels.horario.addRange}
                 </Button>
               </div>
             );
@@ -181,20 +212,20 @@ export function HoursEditor({
           </p>
         )}
         <Button className="mt-4" disabled={saving} onClick={save}>
-          {saving ? "Guardando…" : "Guardar horario"}
+          {saving ? labels.common.saving : labels.horario.save}
         </Button>
       </Card>
 
       <Card>
         <SectionHeader
-          title="Cierres puntuales y festivos"
-          description="Días concretos en los que no se aceptan reservas."
+          title={labels.horario.closuresTitle}
+          description={labels.horario.closuresDescription}
         />
         <form
           action={addClosure}
           className="mt-5 flex flex-wrap items-end gap-2"
         >
-          <Field label="Fecha" htmlFor="closure-date">
+          <Field label={labels.horario.closureDate} htmlFor="closure-date">
             <Input
               id="closure-date"
               type="date"
@@ -204,18 +235,18 @@ export function HoursEditor({
             />
           </Field>
           <Field
-            label="Motivo (opcional)"
+            label={labels.horario.closureReason}
             htmlFor="closure-reason"
             className="min-w-40 flex-1"
           >
             <Input
               id="closure-reason"
               name="reason"
-              placeholder="Festivo, vacaciones…"
+              placeholder={labels.horario.closureReasonPlaceholder}
             />
           </Field>
           <Button type="submit" variant="secondary">
-            Añadir cierre
+            {labels.horario.addClosure}
           </Button>
         </form>
         <ul className="mt-4 space-y-2">
@@ -239,13 +270,13 @@ export function HoursEditor({
                 onClick={() => removeClosure(c.id)}
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                Eliminar
+                {labels.horario.delete}
               </Button>
             </li>
           ))}
           {closures.length === 0 && (
             <li className="text-sm text-ink-muted">
-              No hay cierres programados.
+              {labels.horario.noClosures}
             </li>
           )}
         </ul>

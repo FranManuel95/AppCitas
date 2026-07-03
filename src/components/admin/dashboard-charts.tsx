@@ -30,6 +30,38 @@ const STATUS_COLOR = {
   noShow: TONE_COLORS[APPOINTMENT_STATUS_UI.NO_SHOW.tone].chart,
 } as const;
 
+// Etiquetas visibles de las gráficas: castellano por defecto, el dashboard
+// pasa las del diccionario activo (los nombres de serie de estado siguen en
+// STATUS_LABELS — limitación aceptada).
+export interface ChartLabels {
+  revenueChartTitle: string;
+  revenueChartSubtitle: string;
+  statusChartTitle: string;
+  statusChartSubtitle: string;
+  topServicesTitle: string;
+  topServicesSubtitle: string;
+  viewDataTable: string;
+  chartMonth: string;
+  chartRevenue: string;
+  chartService: string;
+  chartAppointments: string;
+}
+
+export const DEFAULT_CHART_LABELS: ChartLabels = {
+  revenueChartTitle: "Ingresos mensuales",
+  revenueChartSubtitle: "Últimos 12 meses · importes efectivamente cobrados",
+  statusChartTitle: "Citas por estado",
+  statusChartSubtitle:
+    "Últimos 12 meses · el color indica el desenlace de la cita",
+  topServicesTitle: "Top servicios",
+  topServicesSubtitle: "Por ingresos en los últimos 12 meses",
+  viewDataTable: "Ver tabla de datos",
+  chartMonth: "Mes",
+  chartRevenue: "Ingresos",
+  chartService: "Servicio",
+  chartAppointments: "Citas",
+};
+
 export interface MonthlyPointDTO {
   month: string; // "YYYY-MM"
   revenueCents: number;
@@ -47,17 +79,17 @@ export interface ServiceStatDTO {
   revenueCents: number;
 }
 
-function monthLabel(month: string): string {
+function monthLabel(month: string, dateLocale: string): string {
   const [y, m] = month.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("es-ES", {
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(dateLocale, {
     month: "short",
     timeZone: "UTC",
   });
 }
 
-function monthLabelLong(month: string): string {
+function monthLabelLong(month: string, dateLocale: string): string {
   const [y, m] = month.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("es-ES", {
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(dateLocale, {
     month: "long",
     year: "numeric",
     timeZone: "UTC",
@@ -70,18 +102,20 @@ function ChartTooltip({
   payload,
   currency,
   isMoney,
+  dateLocale,
 }: {
   active?: boolean;
   label?: string;
   payload?: Array<{ name: string; value: number; color?: string }>;
   currency: string;
   isMoney?: boolean;
+  dateLocale: string;
 }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-md">
       <p className="font-medium" style={{ color: INK.primary }}>
-        {label ? monthLabelLong(label) : ""}
+        {label ? monthLabelLong(label, dateLocale) : ""}
       </p>
       <ul className="mt-1 space-y-0.5">
         {payload.map((entry) => (
@@ -106,15 +140,17 @@ function TableView({
   caption,
   headers,
   rows,
+  summaryLabel,
 }: {
   caption: string;
   headers: string[];
   rows: Array<Array<string | number>>;
+  summaryLabel: string;
 }) {
   return (
     <details className="mt-3">
       <summary className="cursor-pointer text-xs text-ink-muted transition-colors hover:text-ink-soft">
-        Ver tabla de datos
+        {summaryLabel}
       </summary>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full text-xs tabular-nums">
@@ -148,9 +184,13 @@ function TableView({
 export function RevenueChart({
   monthly,
   currency,
+  labels = DEFAULT_CHART_LABELS,
+  dateLocale = "es-ES",
 }: {
   monthly: MonthlyPointDTO[];
   currency: string;
+  labels?: ChartLabels;
+  dateLocale?: string;
 }) {
   const data = monthly.map((m) => ({
     month: m.month,
@@ -161,8 +201,8 @@ export function RevenueChart({
     <div className="card">
       <SectionHeader
         as="h2"
-        title="Ingresos mensuales"
-        description="Últimos 12 meses · importes efectivamente cobrados"
+        title={labels.revenueChartTitle}
+        description={labels.revenueChartSubtitle}
       />
       <div className="mt-4 h-64">
         <ResponsiveContainer width="100%" height="100%">
@@ -174,7 +214,7 @@ export function RevenueChart({
             />
             <XAxis
               dataKey="month"
-              tickFormatter={monthLabel}
+              tickFormatter={(m: string) => monthLabel(m, dateLocale)}
               tick={{ fill: INK.muted, fontSize: 11 }}
               axisLine={{ stroke: CHROME.axis }}
               tickLine={false}
@@ -185,7 +225,7 @@ export function RevenueChart({
               tickLine={false}
               width={56}
               tickFormatter={(v: number) =>
-                new Intl.NumberFormat("es-ES", {
+                new Intl.NumberFormat(dateLocale, {
                   style: "currency",
                   currency,
                   maximumFractionDigits: 0,
@@ -194,11 +234,11 @@ export function RevenueChart({
             />
             <Tooltip
               cursor={{ fill: "rgba(22,22,29,0.04)" }}
-              content={<ChartTooltip currency={currency} isMoney />}
+              content={<ChartTooltip currency={currency} isMoney dateLocale={dateLocale} />}
             />
             <Bar
               dataKey="ingresos"
-              name="Ingresos"
+              name={labels.chartRevenue}
               fill={SERIES_PRIMARY}
               barSize={18}
               radius={[4, 4, 0, 0]}
@@ -207,10 +247,11 @@ export function RevenueChart({
         </ResponsiveContainer>
       </div>
       <TableView
-        caption="Ingresos mensuales de los últimos 12 meses"
-        headers={["Mes", "Ingresos"]}
+        caption={labels.revenueChartTitle}
+        headers={[labels.chartMonth, labels.chartRevenue]}
+        summaryLabel={labels.viewDataTable}
         rows={monthly.map((m) => [
-          monthLabelLong(m.month),
+          monthLabelLong(m.month, dateLocale),
           formatCents(m.revenueCents, currency),
         ])}
       />
@@ -218,7 +259,15 @@ export function RevenueChart({
   );
 }
 
-export function StatusChart({ monthly }: { monthly: MonthlyPointDTO[] }) {
+export function StatusChart({
+  monthly,
+  labels = DEFAULT_CHART_LABELS,
+  dateLocale = "es-ES",
+}: {
+  monthly: MonthlyPointDTO[];
+  labels?: ChartLabels;
+  dateLocale?: string;
+}) {
   const data = monthly.map((m) => ({
     month: m.month,
     [STATUS_LABELS.COMPLETED]: m.completed,
@@ -231,8 +280,8 @@ export function StatusChart({ monthly }: { monthly: MonthlyPointDTO[] }) {
     <div className="card">
       <SectionHeader
         as="h2"
-        title="Citas por estado"
-        description="Últimos 12 meses · el color indica el desenlace de la cita"
+        title={labels.statusChartTitle}
+        description={labels.statusChartSubtitle}
       />
       <div className="mt-4 h-64">
         <ResponsiveContainer width="100%" height="100%">
@@ -240,7 +289,7 @@ export function StatusChart({ monthly }: { monthly: MonthlyPointDTO[] }) {
             <CartesianGrid vertical={false} stroke={CHROME.grid} strokeWidth={1} />
             <XAxis
               dataKey="month"
-              tickFormatter={monthLabel}
+              tickFormatter={(m: string) => monthLabel(m, dateLocale)}
               tick={{ fill: INK.muted, fontSize: 11 }}
               axisLine={{ stroke: CHROME.axis }}
               tickLine={false}
@@ -253,7 +302,7 @@ export function StatusChart({ monthly }: { monthly: MonthlyPointDTO[] }) {
             />
             <Tooltip
               cursor={{ fill: "rgba(22,22,29,0.04)" }}
-              content={<ChartTooltip currency="EUR" />}
+              content={<ChartTooltip currency="EUR" dateLocale={dateLocale} />}
             />
             <Legend
               wrapperStyle={{ fontSize: 12 }}
@@ -301,16 +350,17 @@ export function StatusChart({ monthly }: { monthly: MonthlyPointDTO[] }) {
         </ResponsiveContainer>
       </div>
       <TableView
-        caption="Citas por estado y mes"
+        caption={labels.statusChartTitle}
+        summaryLabel={labels.viewDataTable}
         headers={[
-          "Mes",
+          labels.chartMonth,
           STATUS_LABELS.COMPLETED,
           STATUS_LABELS.CANCELLED,
           STATUS_LABELS.CANCELLED_LATE,
           STATUS_LABELS.NO_SHOW,
         ]}
         rows={monthly.map((m) => [
-          monthLabelLong(m.month),
+          monthLabelLong(m.month, dateLocale),
           m.completed,
           m.cancelled,
           m.cancelledLate,
@@ -324,9 +374,13 @@ export function StatusChart({ monthly }: { monthly: MonthlyPointDTO[] }) {
 export function TopServicesChart({
   services,
   currency,
+  labels = DEFAULT_CHART_LABELS,
+  dateLocale = "es-ES",
 }: {
   services: ServiceStatDTO[];
   currency: string;
+  labels?: ChartLabels;
+  dateLocale?: string;
 }) {
   const data = services.map((s) => ({
     name: s.name,
@@ -338,8 +392,8 @@ export function TopServicesChart({
     <div className="card">
       <SectionHeader
         as="h2"
-        title="Top servicios"
-        description="Por ingresos en los últimos 12 meses"
+        title={labels.topServicesTitle}
+        description={labels.topServicesSubtitle}
       />
       <div className="mt-4" style={{ height: Math.max(160, data.length * 44) }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -359,7 +413,7 @@ export function TopServicesChart({
             />
             <Bar
               dataKey="ingresos"
-              name="Ingresos"
+              name={labels.chartRevenue}
               fill={SERIES_PRIMARY}
               barSize={18}
               radius={[0, 4, 4, 0]}
@@ -369,7 +423,7 @@ export function TopServicesChart({
                 dataKey="ingresos"
                 position="right"
                 formatter={(v) =>
-                  new Intl.NumberFormat("es-ES", {
+                  new Intl.NumberFormat(dateLocale, {
                     style: "currency",
                     currency,
                     maximumFractionDigits: 0,
@@ -382,8 +436,9 @@ export function TopServicesChart({
         </ResponsiveContainer>
       </div>
       <TableView
-        caption="Servicios con más ingresos"
-        headers={["Servicio", "Citas", "Ingresos"]}
+        caption={labels.topServicesTitle}
+        summaryLabel={labels.viewDataTable}
+        headers={[labels.chartService, labels.chartAppointments, labels.chartRevenue]}
         rows={services.map((s) => [
           s.name,
           s.count,

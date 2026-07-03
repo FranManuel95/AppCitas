@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
+import { getDict, fmt } from "@/lib/i18n";
 import { getDashboardStats, getDayAgenda } from "@/lib/domain/stats";
 import { formatCents } from "@/lib/money";
 import { toLocalTime } from "@/lib/domain/dates";
@@ -17,6 +18,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Card } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
+import { OnboardingChecklist } from "@/components/admin/onboarding-checklist";
 import {
   RevenueChart,
   StatusChart,
@@ -28,21 +30,38 @@ export const metadata = { title: "Dashboard" };
 
 export default async function AdminDashboardPage() {
   const admin = await requireBusinessAdmin();
-  const [business, stats, agenda] = await Promise.all([
-    prisma.business.findUniqueOrThrow({
-      where: { id: admin.businessId },
-      select: { currency: true, timezone: true },
-    }),
-    getDashboardStats(admin.businessId),
-    getDayAgenda(admin.businessId),
-  ]);
+  const [
+    business,
+    stats,
+    agenda,
+    activeServices,
+    hoursCount,
+    staffCount,
+    { locale, t },
+  ] = await Promise.all([
+      prisma.business.findUniqueOrThrow({
+        where: { id: admin.businessId },
+        select: { currency: true, timezone: true, requireCardToBook: true },
+      }),
+      getDashboardStats(admin.businessId),
+      getDayAgenda(admin.businessId),
+      prisma.service.count({
+        where: { businessId: admin.businessId, active: true },
+      }),
+      prisma.businessHour.count({ where: { businessId: admin.businessId } }),
+      prisma.staffMember.count({
+        where: { businessId: admin.businessId, active: true },
+      }),
+      getDict(),
+    ]);
+  const chartLocale = locale === "es" ? "es-ES" : "en";
 
   return (
     <div className="space-y-6">
       <SectionHeader
         as="h1"
-        title="Dashboard"
-        description="Resumen del mes en curso y evolución anual."
+        title={t.admin.dashboard.title}
+        description={t.admin.dashboard.description}
         action={
           <a
             href="/api/admin/export/revenue"
@@ -50,66 +69,94 @@ export default async function AdminDashboardPage() {
             download
           >
             <Download className="h-4 w-4" aria-hidden />
-            Ingresos (CSV)
+            {t.admin.dashboard.revenueCsv}
           </a>
         }
       />
+
+      {/* Primeros pasos: solo mientras el negocio no tenga servicios activos */}
+      {activeServices === 0 && (
+        <OnboardingChecklist
+          hasServices={activeServices > 0}
+          hasHours={hoursCount > 0}
+          paymentsConfigured={business.requireCardToBook}
+          hasStaff={staffCount > 0}
+          labels={t.admin.onboarding}
+        />
+      )}
 
       {/* KPIs del mes */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
           icon={Wallet}
           tone="brand"
-          label="Ingresos del mes"
+          label={t.admin.dashboard.monthRevenue}
           value={formatCents(stats.monthRevenueCents, business.currency)}
-          hint="Importes cobrados (citas + cargos por cancelación)"
+          hint={t.admin.dashboard.monthRevenueHint}
         />
         <StatTile
           icon={CalendarDays}
           tone="info"
-          label="Citas del mes"
+          label={t.admin.dashboard.monthAppointments}
           value={String(stats.monthAppointments)}
-          hint={`${stats.upcomingConfirmed} confirmadas próximamente`}
+          hint={fmt(t.admin.dashboard.monthAppointmentsHint, {
+            n: stats.upcomingConfirmed,
+          })}
         />
         <StatTile
           icon={CalendarX}
           tone="warning"
-          label="Cancelaciones tardías"
+          label={t.admin.dashboard.lateCancellations}
           value={String(stats.monthLateCancellations)}
-          hint={`${formatCents(stats.monthLateChargesCents, business.currency)} en cargos este mes`}
+          hint={fmt(t.admin.dashboard.lateCancellationsHint, {
+            amount: formatCents(stats.monthLateChargesCents, business.currency),
+          })}
         />
         <StatTile
           icon={Gauge}
           tone="neutral"
-          label="Ocupación del mes"
+          label={t.admin.dashboard.occupancy}
           value={`${stats.occupancyPercent}%`}
-          hint={`${stats.uniqueClients} clientes distintos en 12 meses`}
+          hint={fmt(t.admin.dashboard.occupancyHint, {
+            n: stats.uniqueClients,
+          })}
         />
       </div>
 
       {/* Evolución */}
       <div className="grid gap-6 xl:grid-cols-2">
-        <RevenueChart monthly={stats.monthly} currency={business.currency} />
-        <StatusChart monthly={stats.monthly} />
+        <RevenueChart
+          monthly={stats.monthly}
+          currency={business.currency}
+          labels={t.admin.dashboard}
+          dateLocale={chartLocale}
+        />
+        <StatusChart
+          monthly={stats.monthly}
+          labels={t.admin.dashboard}
+          dateLocale={chartLocale}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <TopServicesChart
           services={stats.topServices}
           currency={business.currency}
+          labels={t.admin.dashboard}
+          dateLocale={chartLocale}
         />
 
         {/* Agenda de hoy */}
         <Card>
           <SectionHeader
             as="h2"
-            title="Agenda de hoy"
+            title={t.admin.dashboard.todayAgenda}
             action={
               <Link
                 href="/admin/agenda"
                 className="text-sm font-medium text-brand-700 hover:text-brand-800 hover:underline"
               >
-                Ver agenda completa
+                {t.admin.dashboard.seeFullAgenda}
               </Link>
             }
           />
@@ -140,7 +187,7 @@ export default async function AdminDashboardPage() {
           ) : (
             <EmptyState
               icon={CalendarDays}
-              title="Hoy no hay citas."
+              title={t.admin.dashboard.noAppointmentsToday}
               className="mt-4 py-10"
             />
           )}

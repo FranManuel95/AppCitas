@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
+import { getDict } from "@/lib/i18n";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { LogoutAllButton } from "@/components/logout-all-button";
 import { AUDIT_EVENT_LABELS } from "@/lib/audit";
@@ -11,6 +12,7 @@ export const metadata = { title: "Ajustes" };
 
 export default async function SettingsPage() {
   const admin = await requireBusinessAdmin();
+  const { locale, t } = await getDict();
   const [business, activity] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
@@ -26,8 +28,8 @@ export default async function SettingsPage() {
     <div className="space-y-6">
       <SectionHeader
         as="h1"
-        title="Ajustes"
-        description="Datos públicos y política de reservas del negocio."
+        title={t.admin.ajustes.title}
+        description={t.admin.ajustes.description}
       />
       <SettingsForm
         business={{
@@ -53,16 +55,21 @@ export default async function SettingsPage() {
           taxId: business.taxId,
           taxPercent: business.taxPercent,
         }}
+        labels={{
+          ...t.admin.ajustes,
+          saving: t.admin.common.saving,
+          saveError: t.admin.common.saveError,
+        }}
       />
 
       {/* Seguridad de la cuenta */}
       <Card>
-        <SectionHeader as="h2" title="Seguridad de la cuenta" />
+        <SectionHeader as="h2" title={t.admin.ajustes.securityTitle} />
         <div className="mt-4">
           <LogoutAllButton />
         </div>
         <h3 className="mt-6 text-sm font-semibold text-ink">
-          Actividad reciente
+          {t.admin.ajustes.recentActivity}
         </h3>
         <ul className="mt-2 divide-y divide-border text-sm">
           {activity.map((entry) => (
@@ -78,12 +85,16 @@ export default async function SettingsPage() {
               </span>
               <span className="text-xs tabular-nums text-ink-muted">
                 {entry.ip ? `${entry.ip} · ` : ""}
-                {entry.createdAt.toLocaleString("es-ES")}
+                {entry.createdAt.toLocaleString(
+                  locale === "es" ? "es-ES" : "en",
+                )}
               </span>
             </li>
           ))}
           {activity.length === 0 && (
-            <li className="py-2.5 text-ink-muted">Sin actividad registrada.</li>
+            <li className="py-2.5 text-ink-muted">
+              {t.admin.ajustes.noActivity}
+            </li>
           )}
         </ul>
       </Card>

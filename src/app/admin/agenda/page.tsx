@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
+import { getDict } from "@/lib/i18n";
 import { getDayAgenda } from "@/lib/domain/stats";
 import { addDaysISO, toLocalDateISO, toLocalTime, isValidDateISO } from "@/lib/domain/dates";
 import { formatCents } from "@/lib/money";
@@ -20,6 +21,7 @@ export default async function AgendaPage({
   searchParams: Promise<{ fecha?: string }>;
 }) {
   const admin = await requireBusinessAdmin();
+  const { locale, t } = await getDict();
   const { fecha } = await searchParams;
   const business = await prisma.business.findUniqueOrThrow({
     where: { id: admin.businessId },
@@ -31,7 +33,7 @@ export default async function AgendaPage({
   const agenda = await getDayAgenda(admin.businessId, day);
   const now = Date.now();
 
-  const dayLabel = new Intl.DateTimeFormat("es-ES", {
+  const dayLabel = new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en", {
     dateStyle: "full",
     timeZone: business.timezone,
   }).format(new Date(`${day}T12:00:00Z`));
@@ -40,7 +42,7 @@ export default async function AgendaPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">Agenda</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">{t.admin.agenda.title}</h1>
           <p className="mt-1 text-sm capitalize text-ink-muted">{dayLabel}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -49,21 +51,21 @@ export default async function AgendaPage({
             className={buttonClasses({ variant: "secondary", size: "sm" })}
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
-            Anterior
+            {t.admin.agenda.previous}
           </Link>
           {day !== today && (
             <Link
               href="/admin/agenda"
               className={buttonClasses({ variant: "ghost", size: "sm" })}
             >
-              Hoy
+              {t.admin.agenda.today}
             </Link>
           )}
           <Link
             href={`/admin/agenda?fecha=${addDaysISO(day, 1)}`}
             className={buttonClasses({ variant: "secondary", size: "sm" })}
           >
-            Siguiente
+            {t.admin.agenda.next}
             <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
         </div>
@@ -114,13 +116,14 @@ export default async function AgendaPage({
                   appointmentId={a.id}
                   status={a.status}
                   isPast={a.startAt.getTime() < now}
+                  labels={t.admin.actions}
                 />
               </div>
             </div>
           </Card>
         ))}
         {agenda.length === 0 && (
-          <EmptyState icon={CalendarDays} title="No hay citas para este día." />
+          <EmptyState icon={CalendarDays} title={t.admin.agenda.noAppointmentsThatDay} />
         )}
       </div>
     </div>

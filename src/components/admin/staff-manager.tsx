@@ -14,7 +14,8 @@ import {
   Users,
   UserX,
 } from "lucide-react";
-import { WEEKDAYS_ES, WEEKDAY_ORDER } from "@/lib/weekdays";
+import { WEEKDAY_ORDER, weekdayNames } from "@/lib/weekdays";
+import { fmt, type Dict, type Locale } from "@/lib/i18n/shared";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,18 +48,60 @@ interface ServiceOption {
   name: string;
 }
 
+export interface StaffManagerLabels {
+  equipo: Pick<
+    Dict["admin"]["equipo"],
+    | "addStaff"
+    | "newStaff"
+    | "nameLabel"
+    | "colorLabel"
+    | "emailLabel"
+    | "phoneLabel"
+    | "servicesPerformed"
+    | "servicesPerformedHint"
+    | "ownHoursLabel"
+    | "addRange"
+    | "submitCreate"
+    | "inviteError"
+    | "inviteSent"
+    | "allServices"
+    | "portalActive"
+    | "ownScheduleSuffix"
+    | "businessScheduleSuffix"
+    | "giveAccess"
+    | "emptyTitle"
+    | "emptyDescription"
+  >;
+  common: Pick<
+    Dict["admin"]["common"],
+    | "edit"
+    | "cancel"
+    | "activate"
+    | "deactivate"
+    | "saving"
+    | "saveChanges"
+    | "inactive"
+    | "saveError"
+  >;
+}
+
 function StaffForm({
   initial,
   services,
+  locale,
+  labels,
   onDone,
   onCancel,
 }: {
   initial?: StaffDTO;
   services: ServiceOption[];
+  locale: Locale;
+  labels: StaffManagerLabels;
   onDone: () => void;
   onCancel: () => void;
 }) {
   const uid = useId();
+  const weekdays = weekdayNames(locale);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ownHours, setOwnHours] = useState<HourRange[]>(initial?.hours ?? []);
@@ -100,7 +143,7 @@ function StaffForm({
     );
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setError(json.error ?? "No se pudo guardar");
+      setError(json.error ?? labels.common.saveError);
       setBusy(false);
       return;
     }
@@ -110,7 +153,7 @@ function StaffForm({
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nombre" htmlFor={`${uid}-name`}>
+        <Field label={labels.equipo.nameLabel} htmlFor={`${uid}-name`}>
           <Input
             id={`${uid}-name`}
             name="name"
@@ -119,7 +162,7 @@ function StaffForm({
             defaultValue={initial?.name}
           />
         </Field>
-        <Field label="Color en la agenda" htmlFor={`${uid}-color`}>
+        <Field label={labels.equipo.colorLabel} htmlFor={`${uid}-color`}>
           <input
             id={`${uid}-color`}
             name="color"
@@ -128,7 +171,7 @@ function StaffForm({
             className="h-10 w-16 cursor-pointer rounded-lg border border-border-strong bg-surface p-1"
           />
         </Field>
-        <Field label="Email (opcional)" htmlFor={`${uid}-email`}>
+        <Field label={labels.equipo.emailLabel} htmlFor={`${uid}-email`}>
           <Input
             id={`${uid}-email`}
             name="email"
@@ -136,7 +179,7 @@ function StaffForm({
             defaultValue={initial?.email ?? ""}
           />
         </Field>
-        <Field label="Teléfono (opcional)" htmlFor={`${uid}-phone`}>
+        <Field label={labels.equipo.phoneLabel} htmlFor={`${uid}-phone`}>
           <Input
             id={`${uid}-phone`}
             name="phone"
@@ -146,9 +189,9 @@ function StaffForm({
       </div>
 
       <div>
-        <p className="label">Servicios que realiza</p>
+        <p className="label">{labels.equipo.servicesPerformed}</p>
         <p className="mb-2 text-xs text-ink-muted">
-          Sin marcar ninguno, realiza todos los servicios.
+          {labels.equipo.servicesPerformedHint}
         </p>
         <div className="flex flex-wrap gap-2">
           {services.map((s) => (
@@ -177,7 +220,7 @@ function StaffForm({
         <Switch
           checked={useOwnHours}
           onChange={(e) => setUseOwnHours(e.target.checked)}
-          label="Horario propio (si no, hereda el horario del negocio)"
+          label={labels.equipo.ownHoursLabel}
         />
         {useOwnHours && (
           <div className="mt-3 space-y-2 rounded-lg border border-border bg-surface-3/50 p-3">
@@ -188,7 +231,7 @@ function StaffForm({
               return (
                 <div key={weekday} className="flex flex-wrap items-center gap-2">
                   <span className="w-20 text-xs font-medium text-ink-soft">
-                    {WEEKDAYS_ES[weekday]}
+                    {weekdays[weekday]}
                   </span>
                   {dayRanges.map((r) => (
                     <span key={r.index} className="flex items-center gap-1">
@@ -244,7 +287,7 @@ function StaffForm({
                       ])
                     }
                   >
-                    + tramo
+                    {labels.equipo.addRange}
                   </button>
                 </div>
               );
@@ -261,10 +304,14 @@ function StaffForm({
       )}
       <div className="flex flex-wrap gap-2 border-t border-border pt-4">
         <Button type="submit" disabled={busy}>
-          {busy ? "Guardando…" : initial ? "Guardar cambios" : "Añadir al equipo"}
+          {busy
+            ? labels.common.saving
+            : initial
+              ? labels.common.saveChanges
+              : labels.equipo.submitCreate}
         </Button>
         <Button variant="secondary" onClick={onCancel}>
-          Cancelar
+          {labels.common.cancel}
         </Button>
       </div>
     </form>
@@ -274,9 +321,13 @@ function StaffForm({
 export function StaffManager({
   staff,
   services,
+  locale,
+  labels,
 }: {
   staff: StaffDTO[];
   services: ServiceOption[];
+  locale: Locale;
+  labels: StaffManagerLabels;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
@@ -296,12 +347,10 @@ export function StaffManager({
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setInviteMessage(json.error ?? "No se pudo enviar la invitación");
+      setInviteMessage(json.error ?? labels.equipo.inviteError);
       return;
     }
-    setInviteMessage(
-      `Invitación enviada a ${json.email}: recibirá un enlace para establecer su contraseña.`,
-    );
+    setInviteMessage(fmt(labels.equipo.inviteSent, { email: json.email }));
     router.refresh();
   }
 
@@ -315,7 +364,7 @@ export function StaffManager({
   }
 
   function serviceNames(ids: string[]): string {
-    if (ids.length === 0) return "Todos los servicios";
+    if (ids.length === 0) return labels.equipo.allServices;
     return services
       .filter((s) => ids.includes(s.id))
       .map((s) => s.name)
@@ -325,7 +374,9 @@ export function StaffManager({
   return (
     <div className="space-y-4">
       {!creating && (
-        <Button onClick={() => setCreating(true)}>+ Añadir empleado</Button>
+        <Button onClick={() => setCreating(true)}>
+          {labels.equipo.addStaff}
+        </Button>
       )}
       {inviteMessage && (
         <p className="flex items-start gap-2 rounded-lg bg-info-soft px-3 py-2 text-sm text-info-strong">
@@ -336,10 +387,12 @@ export function StaffManager({
       {creating && (
         <Card>
           <h2 className="mb-4 text-base font-semibold text-ink">
-            Nuevo empleado
+            {labels.equipo.newStaff}
           </h2>
           <StaffForm
             services={services}
+            locale={locale}
+            labels={labels}
             onDone={refresh}
             onCancel={() => setCreating(false)}
           />
@@ -353,6 +406,8 @@ export function StaffManager({
               <StaffForm
                 initial={member}
                 services={services}
+                locale={locale}
+                labels={labels}
                 onDone={refresh}
                 onCancel={() => setEditing(null)}
               />
@@ -364,19 +419,19 @@ export function StaffManager({
                     <p className="flex flex-wrap items-center gap-2 font-medium text-ink">
                       {member.name}
                       {!member.active && (
-                        <Badge tone="neutral">Inactivo</Badge>
+                        <Badge tone="neutral">{labels.common.inactive}</Badge>
                       )}
                       {member.hasAccess && (
                         <Badge tone="success" icon={KeyRound}>
-                          Portal activo
+                          {labels.equipo.portalActive}
                         </Badge>
                       )}
                     </p>
                     <p className="text-sm text-ink-muted">
                       {serviceNames(member.serviceIds)}
                       {member.hours.length > 0
-                        ? " · horario propio"
-                        : " · horario del negocio"}
+                        ? labels.equipo.ownScheduleSuffix
+                        : labels.equipo.businessScheduleSuffix}
                     </p>
                     {(member.email || member.phone) && (
                       <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
@@ -404,7 +459,7 @@ export function StaffManager({
                       onClick={() => invite(member)}
                     >
                       <Send className="h-3.5 w-3.5" aria-hidden />
-                      Dar acceso
+                      {labels.equipo.giveAccess}
                     </Button>
                   )}
                   <Button
@@ -413,7 +468,7 @@ export function StaffManager({
                     onClick={() => setEditing(member.id)}
                   >
                     <Pencil className="h-3.5 w-3.5" aria-hidden />
-                    Editar
+                    {labels.common.edit}
                   </Button>
                   <Button
                     variant="secondary"
@@ -430,7 +485,7 @@ export function StaffManager({
                     ) : (
                       <UserCheck className="h-3.5 w-3.5" aria-hidden />
                     )}
-                    {member.active ? "Desactivar" : "Activar"}
+                    {member.active ? labels.common.deactivate : labels.common.activate}
                   </Button>
                 </div>
               </div>
@@ -440,8 +495,8 @@ export function StaffManager({
         {staff.length === 0 && (
           <EmptyState
             icon={Users}
-            title="Sin equipo definido, el negocio funciona con una única agenda (capacidad 1)."
-            description="Añade empleados para atender varias citas a la vez."
+            title={labels.equipo.emptyTitle}
+            description={labels.equipo.emptyDescription}
           />
         )}
       </div>

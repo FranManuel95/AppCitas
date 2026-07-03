@@ -2,7 +2,10 @@ import Link from "next/link";
 import { CalendarDays, ExternalLink, LogOut } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
+import { getDict } from "@/lib/i18n";
+import type { Dict } from "@/lib/i18n/shared";
 import { LogoutButton } from "@/components/logout-button";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { Avatar } from "@/components/ui/avatar";
 import {
@@ -12,17 +15,25 @@ import {
 
 // El icono va como clave (no como componente): las funciones no pueden
 // cruzar la frontera server→client; AdminNavLink resuelve la clave.
-const NAV: Array<{ href: string; label: string; icon: AdminNavIcon }> = [
-  { href: "/admin", label: "Dashboard", icon: "dashboard" },
-  { href: "/admin/agenda", label: "Agenda", icon: "agenda" },
-  { href: "/admin/citas", label: "Citas", icon: "citas" },
-  { href: "/admin/equipo", label: "Equipo", icon: "equipo" },
-  { href: "/admin/servicios", label: "Servicios", icon: "servicios" },
-  { href: "/admin/promociones", label: "Promos", icon: "promociones" },
-  { href: "/admin/horario", label: "Horario", icon: "horario" },
-  { href: "/admin/notificaciones", label: "Notificaciones", icon: "notificaciones" },
-  { href: "/admin/ajustes", label: "Ajustes", icon: "ajustes" },
-];
+function buildNav(
+  nav: Dict["admin"]["nav"],
+): Array<{ href: string; label: string; icon: AdminNavIcon }> {
+  return [
+    { href: "/admin", label: nav.dashboard, icon: "dashboard" },
+    { href: "/admin/agenda", label: nav.agenda, icon: "agenda" },
+    { href: "/admin/citas", label: nav.citas, icon: "citas" },
+    { href: "/admin/equipo", label: nav.equipo, icon: "equipo" },
+    { href: "/admin/servicios", label: nav.servicios, icon: "servicios" },
+    { href: "/admin/promociones", label: nav.promos, icon: "promociones" },
+    { href: "/admin/horario", label: nav.horario, icon: "horario" },
+    {
+      href: "/admin/notificaciones",
+      label: nav.notificaciones,
+      icon: "notificaciones",
+    },
+    { href: "/admin/ajustes", label: nav.ajustes, icon: "ajustes" },
+  ];
+}
 
 export default async function AdminLayout({
   children,
@@ -30,7 +41,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const admin = await requireBusinessAdmin();
-  const [business, account] = await Promise.all([
+  const [business, account, { locale, t }] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
       select: { name: true, slug: true },
@@ -39,7 +50,9 @@ export default async function AdminLayout({
       where: { id: admin.id },
       select: { emailVerifiedAt: true },
     }),
+    getDict(),
   ]);
+  const nav = buildNav(t.admin.nav);
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-2 md:flex-row">
@@ -61,7 +74,7 @@ export default async function AdminLayout({
 
         <nav className="min-h-0 md:flex-1 md:overflow-y-auto">
           <ul className="flex items-center gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:items-stretch md:gap-0.5 md:overflow-x-visible md:py-1">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <li key={item.href} className="shrink-0 md:shrink">
                 <AdminNavLink href={item.href} icon={item.icon}>
                   {item.label}
@@ -80,7 +93,7 @@ export default async function AdminLayout({
               className="h-4 w-4 shrink-0 text-ink-muted group-hover:text-ink-soft"
               aria-hidden
             />
-            Ver página pública
+            {t.admin.layout.viewPublicPage}
           </Link>
           <div className="flex items-center gap-3 px-3 py-1 md:mt-1 md:justify-between md:py-2">
             <span className="flex min-w-0 items-center gap-2">
@@ -89,9 +102,10 @@ export default async function AdminLayout({
                 {admin.name}
               </span>
             </span>
+            <LanguageSwitcher current={locale} />
             <span className="flex shrink-0 items-center gap-1.5">
               <LogOut className="h-4 w-4 text-ink-muted" aria-hidden />
-              <LogoutButton />
+              <LogoutButton label={t.admin.common.logout} />
             </span>
           </div>
         </div>

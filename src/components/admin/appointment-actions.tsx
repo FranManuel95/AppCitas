@@ -4,6 +4,22 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Check, RotateCcw, UserX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Dict } from "@/lib/i18n/shared";
+
+export type AppointmentActionsLabels = Pick<
+  Dict["admin"]["actions"],
+  "complete" | "noShow" | "cancelNoCharge" | "revert" | "updateError" | "cancelError"
+>;
+
+// Valores por defecto (español) para las páginas que aún no pasan `labels`.
+const DEFAULT_LABELS: AppointmentActionsLabels = {
+  complete: "Completar",
+  noShow: "No presentado",
+  cancelNoCharge: "Cancelar (sin cargo)",
+  revert: "Revertir",
+  updateError: "No se pudo actualizar",
+  cancelError: "No se pudo cancelar",
+};
 
 // Acciones operativas del negocio sobre una cita. El cargo se recalcula en el
 // servidor según el estado (completada = precio íntegro, no-show = % de la
@@ -14,6 +30,7 @@ export function AppointmentActions({
   isPast,
   endpointBase = "/api/admin/appointments",
   canCancel = true,
+  labels = DEFAULT_LABELS,
 }: {
   appointmentId: string;
   status: string;
@@ -21,6 +38,7 @@ export function AppointmentActions({
   // El portal del empleado usa /api/staff/appointments (solo sus citas)
   endpointBase?: string;
   canCancel?: boolean;
+  labels?: AppointmentActionsLabels;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -36,7 +54,7 @@ export function AppointmentActions({
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setError(json.error ?? "No se pudo actualizar");
+      setError(json.error ?? labels.updateError);
       setBusy(false);
       return;
     }
@@ -51,7 +69,7 @@ export function AppointmentActions({
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setError(json.error ?? "No se pudo cancelar");
+      setError(json.error ?? labels.cancelError);
       setBusy(false);
       return;
     }
@@ -69,7 +87,7 @@ export function AppointmentActions({
             onClick={() => setStatus("COMPLETED")}
           >
             <Check className="h-3.5 w-3.5" aria-hidden />
-            Completar
+            {labels.complete}
           </Button>
           <Button
             variant="secondary"
@@ -78,7 +96,7 @@ export function AppointmentActions({
             onClick={() => setStatus("NO_SHOW")}
           >
             <UserX className="h-3.5 w-3.5" aria-hidden />
-            No presentado
+            {labels.noShow}
           </Button>
         </>
       )}
@@ -91,7 +109,7 @@ export function AppointmentActions({
           onClick={cancelByBusiness}
         >
           <X className="h-3.5 w-3.5" aria-hidden />
-          Cancelar (sin cargo)
+          {labels.cancelNoCharge}
         </Button>
       )}
       {(status === "COMPLETED" || status === "NO_SHOW") && (
@@ -102,7 +120,7 @@ export function AppointmentActions({
           onClick={() => setStatus("CONFIRMED")}
         >
           <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-          Revertir
+          {labels.revert}
         </Button>
       )}
       {error && <span className="text-xs text-danger-strong">{error}</span>}

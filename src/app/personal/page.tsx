@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Briefcase, CalendarDays, User } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireStaff } from "@/lib/auth/guards";
+import { fmt, getDict, intlLocale } from "@/lib/i18n";
 import {
   addDaysISO,
   isValidDateISO,
@@ -28,6 +29,7 @@ export default async function StaffPortalPage({
   searchParams: Promise<{ fecha?: string }>;
 }) {
   const staff = await requireStaff();
+  const { locale, t } = await getDict();
   const { fecha } = await searchParams;
 
   const business = await prisma.business.findUniqueOrThrow({
@@ -64,7 +66,7 @@ export default async function StaffPortalPage({
   ]);
 
   const now = Date.now();
-  const dayLabel = new Intl.DateTimeFormat("es-ES", {
+  const dayLabel = new Intl.DateTimeFormat(intlLocale(locale), {
     dateStyle: "full",
     timeZone: business.timezone,
   }).format(new Date(`${day}T12:00:00Z`));
@@ -75,7 +77,7 @@ export default async function StaffPortalPage({
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
         <SectionHeader
           as="h1"
-          title="Mi agenda"
+          title={t.admin.personal.title}
           description={
             <>
               {business.name} · {staff.staffName}
@@ -90,21 +92,21 @@ export default async function StaffPortalPage({
                 href={`/personal?fecha=${addDaysISO(day, -1)}`}
                 className={buttonClasses({ variant: "secondary", size: "sm" })}
               >
-                ← Anterior
+                {t.admin.personal.previous}
               </Link>
               {day !== today && (
                 <Link
                   href="/personal"
                   className={buttonClasses({ variant: "secondary", size: "sm" })}
                 >
-                  Hoy
+                  {t.admin.personal.today}
                 </Link>
               )}
               <Link
                 href={`/personal?fecha=${addDaysISO(day, 1)}`}
                 className={buttonClasses({ variant: "secondary", size: "sm" })}
               >
-                Siguiente →
+                {t.admin.personal.next}
               </Link>
             </div>
           }
@@ -112,7 +114,7 @@ export default async function StaffPortalPage({
 
         <p className="mt-3 flex items-center gap-2 text-sm text-ink-muted">
           <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
-          Tienes {upcomingCount} citas confirmadas próximamente.
+          {fmt(t.admin.personal.upcomingConfirmed, { count: upcomingCount })}
         </p>
 
         <div className="mt-6 space-y-3">
@@ -166,6 +168,7 @@ export default async function StaffPortalPage({
                     isPast={a.startAt.getTime() < now}
                     endpointBase="/api/staff/appointments"
                     canCancel={false}
+                    labels={t.admin.actions}
                   />
                 </div>
               </div>
@@ -174,7 +177,7 @@ export default async function StaffPortalPage({
           {agenda.length === 0 && (
             <EmptyState
               icon={CalendarDays}
-              title="No tienes citas este día."
+              title={t.admin.personal.noAppointmentsThatDay}
             />
           )}
         </div>

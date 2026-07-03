@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
+import { getDict } from "@/lib/i18n";
 import { PromosManager } from "@/components/admin/promos-manager";
 import { SectionHeader } from "@/components/ui/section-header";
 
@@ -8,6 +9,7 @@ export const metadata = { title: "Promociones" };
 
 export default async function PromosPage() {
   const admin = await requireBusinessAdmin();
+  const { locale, t } = await getDict();
   const [business, packages, coupons, services] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
@@ -36,8 +38,8 @@ export default async function PromosPage() {
     <div className="space-y-6">
       <SectionHeader
         as="h1"
-        title="Promociones"
-        description="Bonos prepagados y cupones de descuento para tus clientes."
+        title={t.admin.promos.title}
+        description={t.admin.promos.description}
       />
       <PromosManager
         packages={packages.map((p) => ({
@@ -64,6 +66,15 @@ export default async function PromosPage() {
         }))}
         services={services}
         currency={business.currency}
+        dateLocale={locale === "es" ? "es-ES" : "en"}
+        labels={{
+          ...t.admin.promos,
+          cancel: t.admin.common.cancel,
+          activate: t.admin.common.activate,
+          deactivate: t.admin.common.deactivate,
+          active: t.admin.common.active,
+          inactive: t.admin.common.inactive,
+        }}
       />
     </div>
   );

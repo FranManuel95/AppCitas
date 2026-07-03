@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Download, Receipt } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
+import { getDict } from "@/lib/i18n";
+import { fmt } from "@/lib/i18n/shared";
 import { formatCents } from "@/lib/money";
 import { APPOINTMENT_STATUSES, STATUS_LABELS, type AppointmentStatus } from "@/lib/domain/types";
 import { StatusBadge } from "@/components/status-badge";
@@ -29,6 +31,7 @@ export default async function AppointmentsPage({
   }>;
 }) {
   const admin = await requireBusinessAdmin();
+  const { locale, t } = await getDict();
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.pagina) || 1);
   const estado = APPOINTMENT_STATUSES.includes(sp.estado as AppointmentStatus)
@@ -85,7 +88,7 @@ export default async function AppointmentsPage({
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const now = Date.now();
-  const formatter = new Intl.DateTimeFormat("es-ES", {
+  const formatter = new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: business.timezone,
@@ -113,8 +116,8 @@ export default async function AppointmentsPage({
     <div className="space-y-6">
       <SectionHeader
         as="h1"
-        title="Citas"
-        description={<>{total} resultados con los filtros actuales.</>}
+        title={t.admin.citas.title}
+        description={<>{fmt(t.admin.citas.resultsWithFilters, { count: total })}</>}
         action={
           <a
             href={exportHref}
@@ -122,16 +125,16 @@ export default async function AppointmentsPage({
             download
           >
             <Download className="h-4 w-4" aria-hidden />
-            Exportar CSV
+            {t.admin.citas.exportCsv}
           </a>
         }
       />
 
       {/* Fila única de filtros (GET): comparten estado vía URL */}
       <form className="card grid gap-3 sm:grid-cols-2 lg:grid-cols-5" method="get">
-        <Field label="Estado" htmlFor="estado">
+        <Field label={t.admin.citas.filterStatus} htmlFor="estado">
           <Select id="estado" name="estado" defaultValue={sp.estado ?? ""}>
-            <option value="">Todos</option>
+            <option value="">{t.admin.citas.filterAll}</option>
             {APPOINTMENT_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {STATUS_LABELS[s]}
@@ -139,9 +142,9 @@ export default async function AppointmentsPage({
             ))}
           </Select>
         </Field>
-        <Field label="Servicio" htmlFor="servicio">
+        <Field label={t.admin.citas.filterService} htmlFor="servicio">
           <Select id="servicio" name="servicio" defaultValue={sp.servicio ?? ""}>
-            <option value="">Todos</option>
+            <option value="">{t.admin.citas.filterAll}</option>
             {services.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -149,23 +152,23 @@ export default async function AppointmentsPage({
             ))}
           </Select>
         </Field>
-        <Field label="Desde" htmlFor="desde">
+        <Field label={t.admin.citas.filterFrom} htmlFor="desde">
           <Input id="desde" type="date" name="desde" defaultValue={sp.desde ?? ""} />
         </Field>
-        <Field label="Hasta" htmlFor="hasta">
+        <Field label={t.admin.citas.filterTo} htmlFor="hasta">
           <Input id="hasta" type="date" name="hasta" defaultValue={sp.hasta ?? ""} />
         </Field>
         <div className="flex items-end gap-2">
-          <Field label="Cliente" htmlFor="q" className="flex-1">
+          <Field label={t.admin.citas.filterClient} htmlFor="q" className="flex-1">
             <Input
               id="q"
               name="q"
               defaultValue={sp.q ?? ""}
-              placeholder="Nombre o email"
+              placeholder={t.admin.citas.filterClientPlaceholder}
             />
           </Field>
           <Button type="submit" variant="primary">
-            Filtrar
+            {t.admin.citas.filterSubmit}
           </Button>
         </div>
       </form>
@@ -174,13 +177,13 @@ export default async function AppointmentsPage({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
-              <th className="px-4 py-2.5 font-medium">Fecha</th>
-              <th className="px-4 py-2.5 font-medium">Cliente</th>
-              <th className="px-4 py-2.5 font-medium">Servicio</th>
-              <th className="px-4 py-2.5 font-medium">Estado</th>
-              <th className="px-4 py-2.5 text-right font-medium">Precio</th>
-              <th className="px-4 py-2.5 text-right font-medium">Cobrado</th>
-              <th className="px-4 py-2.5 font-medium">Acciones</th>
+              <th className="px-4 py-2.5 font-medium">{t.admin.citas.colDate}</th>
+              <th className="px-4 py-2.5 font-medium">{t.admin.citas.colClient}</th>
+              <th className="px-4 py-2.5 font-medium">{t.admin.citas.colService}</th>
+              <th className="px-4 py-2.5 font-medium">{t.admin.citas.colStatus}</th>
+              <th className="px-4 py-2.5 text-right font-medium">{t.admin.citas.colPrice}</th>
+              <th className="px-4 py-2.5 text-right font-medium">{t.admin.citas.colCharged}</th>
+              <th className="px-4 py-2.5 font-medium">{t.admin.citas.colActions}</th>
             </tr>
           </thead>
           <tbody>
@@ -224,6 +227,7 @@ export default async function AppointmentsPage({
                     appointmentId={a.id}
                     status={a.status}
                     isPast={a.startAt.getTime() < now}
+                    labels={t.admin.actions}
                   />
                   {a.chargedCents > 0 && (
                     <Link
@@ -231,7 +235,7 @@ export default async function AppointmentsPage({
                       className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline"
                     >
                       <Receipt className="h-3.5 w-3.5" aria-hidden />
-                      Recibo
+                      {t.admin.citas.receiptLink}
                     </Link>
                   )}
                 </td>
@@ -243,7 +247,7 @@ export default async function AppointmentsPage({
                   colSpan={7}
                   className="px-4 py-10 text-center text-sm text-ink-muted"
                 >
-                  No hay citas con estos filtros.
+                  {t.admin.citas.emptyWithFilters}
                 </td>
               </tr>
             )}
@@ -254,7 +258,7 @@ export default async function AppointmentsPage({
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
           <span className="tabular-nums text-ink-muted">
-            Página {page} de {totalPages}
+            {fmt(t.admin.citas.pageOf, { page, total: totalPages })}
           </span>
           <div className="flex gap-2">
             {page > 1 && (
@@ -262,7 +266,7 @@ export default async function AppointmentsPage({
                 href={pageLink(page - 1)}
                 className={buttonClasses({ variant: "secondary", size: "sm" })}
               >
-                ← Anterior
+                {t.admin.citas.prevPage}
               </Link>
             )}
             {page < totalPages && (
@@ -270,7 +274,7 @@ export default async function AppointmentsPage({
                 href={pageLink(page + 1)}
                 className={buttonClasses({ variant: "secondary", size: "sm" })}
               >
-                Siguiente →
+                {t.admin.citas.nextPage}
               </Link>
             )}
           </div>

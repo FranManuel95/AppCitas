@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
+import type { Dict } from "@/lib/i18n/shared";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Textarea } from "@/components/ui/field";
@@ -33,7 +34,18 @@ interface BusinessSettings {
   taxPercent: number;
 }
 
-export function SettingsForm({ business }: { business: BusinessSettings }) {
+// Textos resueltos en el servidor: el subárbol admin.ajustes completo más los
+// estados comunes de guardado.
+type SettingsLabels = Dict["admin"]["ajustes"] &
+  Pick<Dict["admin"]["common"], "saving" | "saveError">;
+
+export function SettingsForm({
+  business,
+  labels,
+}: {
+  business: BusinessSettings;
+  labels: SettingsLabels;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{
@@ -84,9 +96,9 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setMessage({ kind: "error", text: json.error ?? "No se pudo guardar" });
+      setMessage({ kind: "error", text: json.error ?? labels.saveError });
     } else {
-      setMessage({ kind: "ok", text: "Ajustes guardados" });
+      setMessage({ kind: "ok", text: labels.saved });
       router.refresh();
     }
     setBusy(false);
@@ -95,9 +107,9 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       <Card>
-        <SectionHeader as="h2" title="Datos del negocio" />
+        <SectionHeader as="h2" title={labels.businessDataTitle} />
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <Field label="Nombre" htmlFor="settings-name">
+          <Field label={labels.nameLabel} htmlFor="settings-name">
             <Input
               id="settings-name"
               name="name"
@@ -106,16 +118,16 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
               defaultValue={business.name}
             />
           </Field>
-          <Field label="Sector" htmlFor="settings-category">
+          <Field label={labels.categoryLabel} htmlFor="settings-category">
             <Input
               id="settings-category"
               name="category"
               defaultValue={business.category}
-              placeholder="general, belleza, salud…"
+              placeholder={labels.categoryPlaceholder}
             />
           </Field>
           <Field
-            label="Descripción"
+            label={labels.descriptionLabel}
             htmlFor="settings-description"
             className="sm:col-span-2"
           >
@@ -126,21 +138,21 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
               defaultValue={business.description ?? ""}
             />
           </Field>
-          <Field label="Dirección" htmlFor="settings-address">
+          <Field label={labels.addressLabel} htmlFor="settings-address">
             <Input
               id="settings-address"
               name="address"
               defaultValue={business.address ?? ""}
             />
           </Field>
-          <Field label="Teléfono" htmlFor="settings-phone">
+          <Field label={labels.phoneLabel} htmlFor="settings-phone">
             <Input
               id="settings-phone"
               name="phone"
               defaultValue={business.phone ?? ""}
             />
           </Field>
-          <Field label="Email de contacto" htmlFor="settings-email">
+          <Field label={labels.contactEmailLabel} htmlFor="settings-email">
             <Input
               id="settings-email"
               name="email"
@@ -154,14 +166,14 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
       <Card>
         <SectionHeader
           as="h2"
-          title="Política de reservas y cancelación"
-          description="Estas reglas se aplican automáticamente a todas las reservas."
+          title={labels.policyTitle}
+          description={labels.policyDescription}
         />
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <Field
-            label="Ventana de cancelación gratuita (horas)"
+            label={labels.cancellationWindowLabel}
             htmlFor="settings-cancellation-window"
-            hint="Cancelar con menos antelación genera cargo. 24 = un día."
+            hint={labels.cancellationWindowHint}
           >
             <Input
               id="settings-cancellation-window"
@@ -174,9 +186,9 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
             />
           </Field>
           <Field
-            label="Cargo por cancelación tardía (%)"
+            label={labels.lateFeeLabel}
             htmlFor="settings-late-fee"
-            hint="Porcentaje del precio del servicio. 100 = importe íntegro."
+            hint={labels.lateFeeHint}
           >
             <Input
               id="settings-late-fee"
@@ -189,7 +201,7 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
             />
           </Field>
           <Field
-            label="Granularidad de huecos (minutos)"
+            label={labels.slotGranularityLabel}
             htmlFor="settings-slot-granularity"
           >
             <Input
@@ -204,7 +216,7 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
             />
           </Field>
           <Field
-            label="Antelación mínima (minutos)"
+            label={labels.minNoticeLabel}
             htmlFor="settings-min-notice"
           >
             <Input
@@ -218,7 +230,7 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
             />
           </Field>
           <Field
-            label="Reserva máxima con antelación (días)"
+            label={labels.maxAdvanceLabel}
             htmlFor="settings-max-advance"
           >
             <Input
@@ -237,24 +249,19 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
       <Card>
         <SectionHeader
           as="h2"
-          title="Recordatorios y notificaciones"
-          description={
-            <>
-              Confirmación al reservar y recordatorio con enlace de asistencia
-              (&quot;¿vas a venir?&quot;) antes de cada cita.
-            </>
-          }
+          title={labels.remindersTitle}
+          description={labels.remindersDescription}
         />
         <div className="mt-5 space-y-4">
           <Switch
             name="remindersEnabled"
             defaultChecked={business.remindersEnabled}
-            label="Enviar recordatorio antes de la cita"
+            label={labels.remindersEnabledLabel}
           />
           <Field
-            label="Horas de antelación del recordatorio"
+            label={labels.reminderHoursLabel}
             htmlFor="settings-reminder-hours"
-            hint="Consejo: mayor que la ventana de cancelación, para que el cliente aún pueda cancelar gratis desde el recordatorio."
+            hint={labels.reminderHoursHint}
             className="max-w-xs"
           >
             <Input
@@ -268,7 +275,7 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
             />
           </Field>
           <Field
-            label="2º recordatorio (horas antes, vacío = desactivado)"
+            label={labels.reminder2Label}
             htmlFor="settings-reminder2-hours"
             className="max-w-xs"
           >
@@ -285,58 +292,49 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
             <Switch
               name="autoCompleteEnabled"
               defaultChecked={business.autoCompleteEnabled}
-              label="Cierre automático de citas pasadas"
+              label={labels.autoCompleteLabel}
             />
             <p className="mt-1.5 text-xs text-ink-muted">
-              Las citas confirmadas se marcan como completadas 24 h después de
-              su fin.
+              {labels.autoCompleteHint}
             </p>
           </div>
           <div className="border-t border-border pt-4">
-            <p className="text-sm font-medium text-ink-soft">Canales</p>
+            <p className="text-sm font-medium text-ink-soft">
+              {labels.channelsTitle}
+            </p>
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-3">
               <Switch
                 name="notifyByEmail"
                 defaultChecked={business.notifyByEmail}
-                label="Email"
+                label={labels.channelEmail}
               />
               <Switch
                 name="notifyBySms"
                 defaultChecked={business.notifyBySms}
-                label="SMS"
+                label={labels.channelSms}
               />
               <Switch
                 name="notifyByWhatsapp"
                 defaultChecked={business.notifyByWhatsapp}
-                label="WhatsApp"
+                label={labels.channelWhatsapp}
               />
             </div>
           </div>
-          <p className="text-xs text-ink-muted">
-            Cada canal requiere su proveedor configurado en el servidor (SMTP,
-            Twilio, UltraMsg o Evolution API). Sin configurar, los mensajes
-            quedan registrados pero no se envían.
-          </p>
+          <p className="text-xs text-ink-muted">{labels.channelsNote}</p>
         </div>
       </Card>
 
       <Card>
-        <SectionHeader as="h2" title="Facturación (recibos)" />
+        <SectionHeader as="h2" title={labels.billingTitle} />
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <Field
-            label="NIF/CIF (aparece en los recibos)"
-            htmlFor="settings-tax-id"
-          >
+          <Field label={labels.taxIdLabel} htmlFor="settings-tax-id">
             <Input
               id="settings-tax-id"
               name="taxId"
               defaultValue={business.taxId ?? ""}
             />
           </Field>
-          <Field
-            label="% de IVA a desglosar (0 = sin desglose)"
-            htmlFor="settings-tax-percent"
-          >
+          <Field label={labels.taxPercentLabel} htmlFor="settings-tax-percent">
             <Input
               id="settings-tax-percent"
               name="taxPercent"
@@ -351,18 +349,14 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
       </Card>
 
       <Card>
-        <SectionHeader as="h2" title="Pagos" />
+        <SectionHeader as="h2" title={labels.paymentsTitle} />
         <div className="mt-5 space-y-3">
           <Switch
             name="requireCardToBook"
             defaultChecked={business.requireCardToBook}
-            label="Exigir tarjeta guardada para reservar"
+            label={labels.requireCardLabel}
           />
-          <p className="text-xs text-ink-muted">
-            Permite cobrar automáticamente el cargo por cancelación tardía o
-            no-show. Requiere Stripe configurado en el servidor; sin tarjeta
-            guardada, el cargo queda registrado para cobrarlo en persona.
-          </p>
+          <p className="text-xs text-ink-muted">{labels.requireCardHint}</p>
         </div>
       </Card>
 
@@ -383,7 +377,7 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
         </p>
       )}
       <Button type="submit" variant="primary" disabled={busy}>
-        {busy ? "Guardando…" : "Guardar ajustes"}
+        {busy ? labels.saving : labels.save}
       </Button>
     </form>
   );

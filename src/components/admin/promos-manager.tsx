@@ -10,6 +10,7 @@ import {
   Ticket,
   TicketPercent,
 } from "lucide-react";
+import { fmt, type Dict } from "@/lib/i18n/shared";
 import { formatCents } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,16 +49,28 @@ interface ServiceOption {
   priceCents: number;
 }
 
+// Textos resueltos en el servidor: el subárbol admin.promos completo más las
+// acciones comunes que usa este componente.
+type PromosLabels = Dict["admin"]["promos"] &
+  Pick<
+    Dict["admin"]["common"],
+    "cancel" | "activate" | "deactivate" | "active" | "inactive"
+  >;
+
 export function PromosManager({
   packages,
   coupons,
   services,
   currency,
+  dateLocale,
+  labels,
 }: {
   packages: PackageDTO[];
   coupons: CouponDTO[];
   services: ServiceOption[];
   currency: string;
+  dateLocale: string;
+  labels: PromosLabels;
 }) {
   const router = useRouter();
   const [creatingPackage, setCreatingPackage] = useState(false);
@@ -82,7 +95,7 @@ export function PromosManager({
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setError(json.error ?? "No se pudo crear el bono");
+      setError(json.error ?? labels.createPackageError);
       return;
     }
     setCreatingPackage(false);
@@ -110,7 +123,7 @@ export function PromosManager({
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setError(json.error ?? "No se pudo crear el cupón");
+      setError(json.error ?? labels.createCouponError);
       return;
     }
     setCreatingCoupon(false);
@@ -147,12 +160,12 @@ export function PromosManager({
       {/* Bonos */}
       <section className="space-y-4">
         <SectionHeader
-          title="Bonos de sesiones"
-          description="Packs prepagados de un servicio a precio cerrado."
+          title={labels.packagesTitle}
+          description={labels.packagesDescription}
           action={
             !creatingPackage ? (
               <Button onClick={() => setCreatingPackage(true)}>
-                + Nuevo bono
+                {labels.newPackage}
               </Button>
             ) : undefined
           }
@@ -161,10 +174,14 @@ export function PromosManager({
         {creatingPackage && (
           <Card>
             <form onSubmit={submitPackage} className="grid gap-4 sm:grid-cols-2">
-              <Field label="Nombre" htmlFor="pkg-name" className="sm:col-span-2">
+              <Field
+                label={labels.packageName}
+                htmlFor="pkg-name"
+                className="sm:col-span-2"
+              >
                 <Input id="pkg-name" name="name" required minLength={2} />
               </Field>
-              <Field label="Servicio" htmlFor="pkg-service">
+              <Field label={labels.packageService} htmlFor="pkg-service">
                 <Select id="pkg-service" name="serviceId" required>
                   {services.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -173,7 +190,7 @@ export function PromosManager({
                   ))}
                 </Select>
               </Field>
-              <Field label="Nº de sesiones" htmlFor="pkg-sessions">
+              <Field label={labels.packageSessions} htmlFor="pkg-sessions">
                 <Input
                   id="pkg-sessions"
                   name="sessions"
@@ -184,7 +201,7 @@ export function PromosManager({
                   defaultValue={5}
                 />
               </Field>
-              <Field label="Precio del bono (€)" htmlFor="pkg-price">
+              <Field label={labels.packagePrice} htmlFor="pkg-price">
                 <Input
                   id="pkg-price"
                   name="price"
@@ -194,19 +211,16 @@ export function PromosManager({
                   required
                 />
               </Field>
-              <Field
-                label="Validez (días; vacío = sin caducidad)"
-                htmlFor="pkg-validity"
-              >
+              <Field label={labels.packageValidity} htmlFor="pkg-validity">
                 <Input id="pkg-validity" name="validityDays" type="number" min={0} />
               </Field>
               <div className="flex gap-2 sm:col-span-2">
-                <Button type="submit">Crear bono</Button>
+                <Button type="submit">{labels.createPackage}</Button>
                 <Button
                   variant="secondary"
                   onClick={() => setCreatingPackage(false)}
                 >
-                  Cancelar
+                  {labels.cancel}
                 </Button>
               </div>
             </form>
@@ -227,9 +241,9 @@ export function PromosManager({
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium text-ink">{p.name}</p>
                     {p.active ? (
-                      <Badge tone="success">Activo</Badge>
+                      <Badge tone="success">{labels.active}</Badge>
                     ) : (
-                      <Badge tone="neutral">Inactivo</Badge>
+                      <Badge tone="neutral">{labels.inactive}</Badge>
                     )}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-soft">
@@ -238,13 +252,21 @@ export function PromosManager({
                         className="h-3.5 w-3.5 shrink-0 text-ink-muted"
                         aria-hidden
                       />
-                      {p.sessions} × {p.serviceName}
+                      {fmt(labels.sessionsTimesService, {
+                        sessions: p.sessions,
+                        service: p.serviceName,
+                      })}
                     </span>
                     <span className="font-semibold tabular-nums text-ink">
                       {formatCents(p.priceCents, currency)}
                     </span>
                     <span className="tabular-nums text-ink-muted">
-                      (suelto: {formatCents(p.sessions * p.servicePriceCents, currency)})
+                      {fmt(labels.standalonePrice, {
+                        amount: formatCents(
+                          p.sessions * p.servicePriceCents,
+                          currency,
+                        ),
+                      })}
                     </span>
                     {p.validityDays ? (
                       <span className="inline-flex items-center gap-1.5">
@@ -252,12 +274,12 @@ export function PromosManager({
                           className="h-3.5 w-3.5 shrink-0 text-ink-muted"
                           aria-hidden
                         />
-                        válido {p.validityDays} días
+                        {fmt(labels.validDays, { days: p.validityDays })}
                       </span>
                     ) : null}
                   </div>
                   <p className="mt-1 text-xs tabular-nums text-ink-muted">
-                    {p.purchases} bonos vendidos
+                    {fmt(labels.packagesSold, { count: p.purchases })}
                   </p>
                 </div>
               </div>
@@ -266,15 +288,15 @@ export function PromosManager({
                 size="sm"
                 onClick={() => togglePackage(p)}
               >
-                {p.active ? "Desactivar" : "Activar"}
+                {p.active ? labels.deactivate : labels.activate}
               </Button>
             </Card>
           ))}
           {packages.length === 0 && (
             <EmptyState
               icon={Ticket}
-              title="Sin bonos."
-              description="Crea el primero para fidelizar a tus clientes."
+              title={labels.packagesEmptyTitle}
+              description={labels.packagesEmptyDescription}
             />
           )}
         </div>
@@ -283,12 +305,12 @@ export function PromosManager({
       {/* Cupones */}
       <section className="space-y-4">
         <SectionHeader
-          title="Cupones"
-          description="Códigos de descuento que el cliente introduce al reservar."
+          title={labels.couponsTitle}
+          description={labels.couponsDescription}
           action={
             !creatingCoupon ? (
               <Button onClick={() => setCreatingCoupon(true)}>
-                + Nuevo cupón
+                {labels.newCoupon}
               </Button>
             ) : undefined
           }
@@ -297,24 +319,24 @@ export function PromosManager({
         {creatingCoupon && (
           <Card>
             <form onSubmit={submitCoupon} className="grid gap-4 sm:grid-cols-2">
-              <Field label="Código" htmlFor="coupon-code">
+              <Field label={labels.couponCode} htmlFor="coupon-code">
                 <Input
                   id="coupon-code"
                   name="code"
                   required
                   minLength={3}
                   maxLength={30}
-                  placeholder="BIENVENIDA10"
+                  placeholder={labels.couponCodePlaceholder}
                   className="uppercase"
                 />
               </Field>
-              <Field label="Tipo" htmlFor="coupon-type">
+              <Field label={labels.couponType} htmlFor="coupon-type">
                 <Select id="coupon-type" name="type">
-                  <option value="PERCENT">Porcentaje (%)</option>
-                  <option value="FIXED">Importe fijo (€)</option>
+                  <option value="PERCENT">{labels.couponTypePercent}</option>
+                  <option value="FIXED">{labels.couponTypeFixed}</option>
                 </Select>
               </Field>
-              <Field label="Valor (% o €)" htmlFor="coupon-value">
+              <Field label={labels.couponValue} htmlFor="coupon-value">
                 <Input
                   id="coupon-value"
                   name="value"
@@ -324,22 +346,19 @@ export function PromosManager({
                   required
                 />
               </Field>
-              <Field
-                label="Usos máximos (vacío = ilimitado)"
-                htmlFor="coupon-max"
-              >
+              <Field label={labels.couponMaxUses} htmlFor="coupon-max">
                 <Input id="coupon-max" name="maxRedemptions" type="number" min={0} />
               </Field>
-              <Field label="Caducidad (opcional)" htmlFor="coupon-expires">
+              <Field label={labels.couponExpiry} htmlFor="coupon-expires">
                 <Input id="coupon-expires" name="expiresAt" type="date" />
               </Field>
               <div className="flex items-end gap-2">
-                <Button type="submit">Crear cupón</Button>
+                <Button type="submit">{labels.createCoupon}</Button>
                 <Button
                   variant="secondary"
                   onClick={() => setCreatingCoupon(false)}
                 >
-                  Cancelar
+                  {labels.cancel}
                 </Button>
               </div>
             </form>
@@ -359,21 +378,29 @@ export function PromosManager({
                   </code>
                   <Badge tone="brand" icon={TicketPercent}>
                     {c.type === "PERCENT"
-                      ? `${c.value}% de descuento`
-                      : `${formatCents(c.value, currency)} de descuento`}
+                      ? fmt(labels.percentOff, { value: c.value })
+                      : fmt(labels.amountOff, {
+                          amount: formatCents(c.value, currency),
+                        })}
                   </Badge>
-                  {!c.active && <Badge tone="neutral">Inactivo</Badge>}
+                  {!c.active && <Badge tone="neutral">{labels.inactive}</Badge>}
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">
                   <span className="inline-flex items-center gap-1.5 tabular-nums">
                     <Hash className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    {c.timesRedeemed} usos
-                    {c.maxRedemptions ? ` de ${c.maxRedemptions}` : ""}
+                    {fmt(labels.usedCount, { count: c.timesRedeemed })}
+                    {c.maxRedemptions
+                      ? fmt(labels.usedOfMax, { max: c.maxRedemptions })
+                      : ""}
                   </span>
                   {c.expiresAt ? (
                     <span className="inline-flex items-center gap-1.5">
                       <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      caduca {new Date(c.expiresAt).toLocaleDateString("es-ES")}
+                      {fmt(labels.expiresOn, {
+                        date: new Date(c.expiresAt).toLocaleDateString(
+                          dateLocale,
+                        ),
+                      })}
                     </span>
                   ) : null}
                 </div>
@@ -383,12 +410,12 @@ export function PromosManager({
                 size="sm"
                 onClick={() => toggleCoupon(c)}
               >
-                {c.active ? "Desactivar" : "Activar"}
+                {c.active ? labels.deactivate : labels.activate}
               </Button>
             </Card>
           ))}
           {coupons.length === 0 && (
-            <EmptyState icon={TicketPercent} title="Sin cupones creados." />
+            <EmptyState icon={TicketPercent} title={labels.couponsEmptyTitle} />
           )}
         </div>
       </section>
