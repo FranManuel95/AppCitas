@@ -1,6 +1,9 @@
 import bcrypt from "bcryptjs";
 
-const SALT_ROUNDS = 10;
+// El coste (2^12) va incrustado en cada hash, así que los hashes antiguos con
+// coste 10 siguen verificándose; solo los nuevos usan 12 (más resistente a
+// fuerza bruta, ~2x el tiempo de cálculo, asumible en un login).
+const SALT_ROUNDS = 12;
 
 export function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, SALT_ROUNDS);

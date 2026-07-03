@@ -174,7 +174,9 @@ export default async function AppointmentsPage({
       </form>
 
       <Card className="overflow-x-auto p-0">
-        <table className="w-full text-sm">
+        {/* min-w evita que las columnas se aplasten en móvil; el contenedor
+            hace scroll horizontal en su lugar. */}
+        <table className="w-full min-w-[42rem] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
               <th className="px-4 py-2.5 font-medium">{t.admin.citas.colDate}</th>

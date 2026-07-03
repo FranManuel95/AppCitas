@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { processDueNotifications } from "../src/lib/notifications/service";
 import { closePastAppointments } from "../src/lib/domain/auto-close";
+import { logError } from "../src/lib/logger";
 
 // Worker local: despacha el outbox de notificaciones y cierra citas pasadas
 // en bucle. Para despliegues serverless usa en su lugar un cron que llame a
@@ -17,7 +18,7 @@ async function tick() {
       );
     }
   } catch (error) {
-    console.error("[worker] error:", error);
+    logError("worker.tick", error);
   }
 }
 

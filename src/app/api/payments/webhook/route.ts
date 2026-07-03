@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { claimWebhookEvent } from "@/lib/webhooks/idempotency";
+import { logError } from "@/lib/logger";
 
 // POST /api/payments/webhook — eventos de Stripe (verificados por firma).
 // Mantiene el estado de cobro de la cita sincronizado con la pasarela para
@@ -64,10 +65,7 @@ export async function POST(request: Request) {
             ? (error as { code?: unknown }).code
             : undefined;
         if (code !== "P2025") {
-          console.error(
-            `[payments/webhook] error al actualizar la cita ${appointmentId}`,
-            error,
-          );
+          logError("payments.webhook.update", error, { appointmentId });
         }
       }
     }
