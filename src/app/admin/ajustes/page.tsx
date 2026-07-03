@@ -45,6 +45,8 @@ export default async function SettingsPage() {
           requireCardToBook: business.requireCardToBook,
           remindersEnabled: business.remindersEnabled,
           reminderHoursBefore: business.reminderHoursBefore,
+          reminder2HoursBefore: business.reminder2HoursBefore,
+          autoCompleteEnabled: business.autoCompleteEnabled,
           notifyByEmail: business.notifyByEmail,
           notifyBySms: business.notifyBySms,
           notifyByWhatsapp: business.notifyByWhatsapp,

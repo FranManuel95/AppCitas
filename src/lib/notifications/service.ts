@@ -43,6 +43,7 @@ type AppointmentForNotify = {
     lateCancellationFeePercent: number;
     remindersEnabled: boolean;
     reminderHoursBefore: number;
+    reminder2HoursBefore: number | null;
     notifyByEmail: boolean;
     notifyBySms: boolean;
     notifyByWhatsapp: boolean;
@@ -72,6 +73,7 @@ async function loadAppointment(
           lateCancellationFeePercent: true,
           remindersEnabled: true,
           reminderHoursBefore: true,
+          reminder2HoursBefore: true,
           notifyByEmail: true,
           notifyBySms: true,
           notifyByWhatsapp: true,
@@ -151,14 +153,27 @@ export async function enqueueBookingNotifications(
   }
 
   if (appointment.business.remindersEnabled) {
-    const remindAt = new Date(
-      appointment.startAt.getTime() -
-        appointment.business.reminderHoursBefore * 3_600_000,
-    );
-    // Solo se programa si queda margen real (una cita para dentro de una hora
-    // no necesita recordatorio además de la confirmación)
-    if (remindAt.getTime() > now.getTime() + 5 * 60_000) {
-      const reminder = reminderMessage(ctx);
+    // Recordatorio principal + segundo recordatorio opcional más cercano a
+    // la cita (reminder2HoursBefore null = sin segundo aviso).
+    const reminderOffsets = [appointment.business.reminderHoursBefore];
+    if (typeof appointment.business.reminder2HoursBefore === "number") {
+      reminderOffsets.push(appointment.business.reminder2HoursBefore);
+    }
+
+    const reminder = reminderMessage(ctx);
+    const scheduledMinutes = new Set<number>();
+    for (const hoursBefore of reminderOffsets) {
+      const remindAt = new Date(
+        appointment.startAt.getTime() - hoursBefore * 3_600_000,
+      );
+      // Solo se programa si queda margen real (una cita para dentro de una
+      // hora no necesita recordatorio además de la confirmación)
+      if (remindAt.getTime() <= now.getTime() + 5 * 60_000) continue;
+      // Si ambos recordatorios caen en el mismo minuto, se encola solo uno
+      const minute = Math.floor(remindAt.getTime() / 60_000);
+      if (scheduledMinutes.has(minute)) continue;
+      scheduledMinutes.add(minute);
+
       for (const d of deliveries) {
         rows.push({
           businessId: appointment.businessId,

@@ -1,17 +1,19 @@
 import "dotenv/config";
 import { processDueNotifications } from "../src/lib/notifications/service";
+import { closePastAppointments } from "../src/lib/domain/auto-close";
 
-// Worker local: despacha el outbox de notificaciones en bucle.
-// Para despliegues serverless usa en su lugar un cron que llame a
+// Worker local: despacha el outbox de notificaciones y cierra citas pasadas
+// en bucle. Para despliegues serverless usa en su lugar un cron que llame a
 // POST /api/jobs/notifications cada minuto.
 const INTERVAL_MS = 30_000;
 
 async function tick() {
   try {
     const { sent, failed, skipped } = await processDueNotifications();
-    if (sent || failed || skipped) {
+    const { closed } = await closePastAppointments();
+    if (sent || failed || skipped || closed) {
       console.log(
-        `[worker] enviados=${sent} fallidos=${failed} omitidos=${skipped}`,
+        `[worker] enviados=${sent} fallidos=${failed} omitidos=${skipped} autocerradas=${closed}`,
       );
     }
   } catch (error) {

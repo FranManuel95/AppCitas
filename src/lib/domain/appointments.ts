@@ -8,7 +8,7 @@ import {
   type StaffAgendaContext,
   type StaffSlot,
 } from "./availability";
-import { evaluateCancellation } from "./cancellation";
+import { cancellationDeadline, evaluateCancellation } from "./cancellation";
 import { DomainError } from "./errors";
 import {
   addDaysISO,
@@ -54,8 +54,11 @@ async function loadAvailabilityContext(params: {
   dateISO: string;
   now: Date;
   staffId?: string;
+  // Al reprogramar: la propia cita no bloquea su hueco (queda libre al moverla)
+  excludeAppointmentId?: string;
 }): Promise<AvailabilityContext> {
-  const { businessId, serviceId, dateISO, now, staffId } = params;
+  const { businessId, serviceId, dateISO, now, staffId, excludeAppointmentId } =
+    params;
 
   if (!isValidDateISO(dateISO)) {
     throw new DomainError("Fecha no válida", "INVALID_DATE");
@@ -104,6 +107,7 @@ async function loadAvailabilityContext(params: {
       status: { in: [...BLOCKING_STATUSES] },
       startAt: { lt: dayEnd },
       endAt: { gt: dayStart },
+      ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
     },
     select: { startAt: true, endAt: true, staffId: true },
   });
@@ -463,6 +467,200 @@ export async function cancelAppointment(params: {
   );
 
   return { appointment: updated, outcome, collection };
+}
+
+// ---------------------------------------------------------------------------
+// Reprogramación
+// ---------------------------------------------------------------------------
+
+// Regla pura de quién puede reprogramar y hasta cuándo. Extraída de
+// rescheduleAppointment para poder testearla de forma determinista (sin BD).
+// Lanza DomainError; si no lanza, la cita es reprogramable por ese actor.
+export function assertReschedulable(params: {
+  appointment: { status: string; startAt: Date; clientId: string };
+  actorUserId: string;
+  actorIsBusinessAdmin: boolean;
+  cancellationWindowHours: number;
+  now: Date;
+}): void {
+  const {
+    appointment,
+    actorUserId,
+    actorIsBusinessAdmin,
+    cancellationWindowHours,
+    now,
+  } = params;
+
+  const isOwnerOfAppointment = appointment.clientId === actorUserId;
+  if (!isOwnerOfAppointment && !actorIsBusinessAdmin) {
+    throw new DomainError("No tienes permiso sobre esta cita", "FORBIDDEN", 403);
+  }
+
+  if (appointment.status !== "CONFIRMED") {
+    throw new DomainError(
+      "Solo se pueden reprogramar citas confirmadas",
+      "INVALID_STATUS",
+      409,
+    );
+  }
+  if (appointment.startAt.getTime() <= now.getTime()) {
+    throw new DomainError(
+      "La cita ya ha comenzado; el negocio debe registrarla como completada o no presentada",
+      "ALREADY_STARTED",
+      409,
+    );
+  }
+
+  // El negocio puede reprogramar en cualquier momento; el cliente solo dentro
+  // de la ventana de cancelación gratuita: fuera de plazo únicamente puede
+  // cancelar (con el cargo que corresponda).
+  if (!actorIsBusinessAdmin) {
+    const deadline = cancellationDeadline(
+      appointment.startAt,
+      cancellationWindowHours,
+    );
+    if (now.getTime() > deadline.getTime()) {
+      throw new DomainError(
+        "El plazo para reprogramar ha pasado; fuera de plazo solo se puede cancelar la cita",
+        "RESCHEDULE_WINDOW_PASSED",
+        422,
+      );
+    }
+  }
+}
+
+// Mantiene el profesional original si sigue disponible en el hueco nuevo;
+// si no, reasigna con la misma regla de menor carga que una reserva nueva.
+export function pickRescheduleStaffId(
+  originalStaffId: string | null,
+  slotStaffIds: string[],
+  dayLoadByStaff: Map<string, number>,
+): string | null {
+  if (originalStaffId && slotStaffIds.includes(originalStaffId)) {
+    return originalStaffId;
+  }
+  return chooseStaffId(slotStaffIds, dayLoadByStaff);
+}
+
+// Mueve una cita CONFIRMED a un hueco nuevo validado con el mismo motor que
+// una reserva (horario, antelaciones, cierres, solapamientos), excluyendo la
+// propia cita: su hueco actual queda libre al moverla.
+export async function rescheduleAppointment(params: {
+  appointmentId: string;
+  actorUserId: string;
+  actorIsBusinessAdmin: boolean;
+  newStartAt: Date;
+  now?: Date;
+}) {
+  const now = params.now ?? new Date();
+  const { appointmentId, actorUserId, actorIsBusinessAdmin, newStartAt } =
+    params;
+
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    include: { business: true },
+  });
+  if (!appointment) {
+    throw new DomainError("Cita no encontrada", "APPOINTMENT_NOT_FOUND", 404);
+  }
+
+  assertReschedulable({
+    appointment,
+    actorUserId,
+    actorIsBusinessAdmin,
+    cancellationWindowHours: appointment.business.cancellationWindowHours,
+    now,
+  });
+
+  const dateISO = toLocalDateISO(newStartAt, appointment.business.timezone);
+  const ctx = await loadAvailabilityContext({
+    businessId: appointment.businessId,
+    serviceId: appointment.serviceId,
+    dateISO,
+    now,
+    excludeAppointmentId: appointmentId,
+  });
+
+  // Solo instantes exactamente ofertados por el motor de huecos (mismas
+  // garantías que createAppointment: antelación mínima/máxima, horario, etc.)
+  const slot = slotsFromContext(ctx).find(
+    (s) => s.start.getTime() === newStartAt.getTime(),
+  );
+  if (!slot) {
+    throw new DomainError(
+      "El horario seleccionado ya no está disponible",
+      "SLOT_TAKEN",
+      409,
+    );
+  }
+
+  const hasStaff = ctx.staff.length > 0;
+  const assignedStaffId = hasStaff
+    ? pickRescheduleStaffId(
+        appointment.staffId,
+        slot.staffIds,
+        ctx.dayLoadByStaff,
+      )
+    : null;
+  if (hasStaff && !assignedStaffId) {
+    throw new DomainError(
+      "No hay profesionales disponibles en ese horario",
+      "SLOT_TAKEN",
+      409,
+    );
+  }
+
+  const newEndAt = new Date(
+    newStartAt.getTime() + ctx.service.durationMinutes * 60_000,
+  );
+
+  // Transacción: re-comprueba el solapamiento justo antes de mover la cita
+  // (misma protección anti doble-reserva que createAppointment) y anula los
+  // recordatorios pendientes, que apuntan a la hora antigua.
+  const updated = await prisma.$transaction(async (tx) => {
+    const conflict = await tx.appointment.findFirst({
+      where: {
+        businessId: appointment.businessId,
+        id: { not: appointmentId },
+        status: { in: [...BLOCKING_STATUSES] },
+        startAt: { lt: newEndAt },
+        endAt: { gt: newStartAt },
+        ...(assignedStaffId
+          ? { OR: [{ staffId: assignedStaffId }, { staffId: null }] }
+          : {}),
+      },
+      select: { id: true },
+    });
+    if (conflict) {
+      throw new DomainError(
+        "Otro cliente acaba de reservar este hueco",
+        "SLOT_TAKEN",
+        409,
+      );
+    }
+
+    await tx.notification.updateMany({
+      where: { appointmentId, status: "PENDING", template: "REMINDER" },
+      data: { status: "SKIPPED", lastError: "Cita reprogramada" },
+    });
+
+    return tx.appointment.update({
+      where: { id: appointmentId },
+      data: { startAt: newStartAt, endAt: newEndAt, staffId: assignedStaffId },
+      include: {
+        service: true,
+        business: true,
+        staff: { select: { id: true, name: true, color: true } },
+      },
+    });
+  });
+
+  // Nueva confirmación inmediata + recordatorios reprogramados (outbox).
+  // No se registra auditoría: src/lib/audit.ts solo cubre eventos de acceso
+  // y cancelAppointment tampoco audita (mismo patrón).
+  await enqueueBookingNotifications(appointmentId, now);
+
+  return updated;
 }
 
 // Acciones del negocio sobre citas pasadas o en curso.

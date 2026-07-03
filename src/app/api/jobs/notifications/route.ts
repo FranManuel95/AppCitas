@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { processDueNotifications } from "@/lib/notifications/service";
+import { closePastAppointments } from "@/lib/domain/auto-close";
 import { cleanupRateLimitCounters } from "@/lib/rate-limit";
 
 // /api/jobs/notifications — despacha los mensajes vencidos del outbox.
@@ -23,9 +24,11 @@ async function handleCron(request: Request) {
   }
 
   const result = await processDueNotifications();
+  // Cierre automático de citas pasadas (negocios con autoCompleteEnabled)
+  const { closed: autoClosed } = await closePastAppointments();
   // Mantenimiento oportunista: purga ventanas viejas del rate limiting.
   await cleanupRateLimitCounters();
-  return NextResponse.json(result);
+  return NextResponse.json({ ...result, autoClosed });
 }
 
 export const POST = handleCron;

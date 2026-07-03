@@ -22,6 +22,10 @@ const updateSchema = z.object({
   // Recordatorios y canales
   remindersEnabled: z.boolean().optional(),
   reminderHoursBefore: z.number().int().min(1).max(24 * 14).optional(),
+  // Segundo recordatorio más cercano a la cita (null = desactivado)
+  reminder2HoursBefore: z.number().int().min(1).max(168).nullable().optional(),
+  // Cierre automático de citas pasadas (CONFIRMED → COMPLETED tras 24 h)
+  autoCompleteEnabled: z.boolean().optional(),
   notifyByEmail: z.boolean().optional(),
   notifyBySms: z.boolean().optional(),
   notifyByWhatsapp: z.boolean().optional(),

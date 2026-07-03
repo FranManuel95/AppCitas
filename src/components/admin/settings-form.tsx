@@ -24,6 +24,8 @@ interface BusinessSettings {
   requireCardToBook: boolean;
   remindersEnabled: boolean;
   reminderHoursBefore: number;
+  reminder2HoursBefore: number | null;
+  autoCompleteEnabled: boolean;
   notifyByEmail: boolean;
   notifyBySms: boolean;
   notifyByWhatsapp: boolean;
@@ -68,6 +70,11 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
         requireCardToBook: bool("requireCardToBook"),
         remindersEnabled: bool("remindersEnabled"),
         reminderHoursBefore: num("reminderHoursBefore"),
+        // Vacío = segundo recordatorio desactivado
+        reminder2HoursBefore: str("reminder2HoursBefore")
+          ? num("reminder2HoursBefore")
+          : null,
+        autoCompleteEnabled: bool("autoCompleteEnabled"),
         notifyByEmail: bool("notifyByEmail"),
         notifyBySms: bool("notifyBySms"),
         notifyByWhatsapp: bool("notifyByWhatsapp"),
@@ -260,6 +267,31 @@ export function SettingsForm({ business }: { business: BusinessSettings }) {
               defaultValue={business.reminderHoursBefore}
             />
           </Field>
+          <Field
+            label="2º recordatorio (horas antes, vacío = desactivado)"
+            htmlFor="settings-reminder2-hours"
+            className="max-w-xs"
+          >
+            <Input
+              id="settings-reminder2-hours"
+              name="reminder2HoursBefore"
+              type="number"
+              min={1}
+              max={168}
+              defaultValue={business.reminder2HoursBefore ?? ""}
+            />
+          </Field>
+          <div className="border-t border-border pt-4">
+            <Switch
+              name="autoCompleteEnabled"
+              defaultChecked={business.autoCompleteEnabled}
+              label="Cierre automático de citas pasadas"
+            />
+            <p className="mt-1.5 text-xs text-ink-muted">
+              Las citas confirmadas se marcan como completadas 24 h después de
+              su fin.
+            </p>
+          </div>
           <div className="border-t border-border pt-4">
             <p className="text-sm font-medium text-ink-soft">Canales</p>
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-3">

@@ -11,6 +11,7 @@ import { requireUser } from "@/lib/auth/guards";
 import { SiteHeader } from "@/components/site-header";
 import { StatusBadge } from "@/components/status-badge";
 import { CancelAppointmentButton } from "@/components/cancel-appointment-button";
+import { RescheduleAppointment } from "@/components/reschedule-appointment";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,7 @@ export default async function MyAppointmentsPage() {
           currency: true,
           cancellationWindowHours: true,
           lateCancellationFeePercent: true,
+          maxAdvanceBookingDays: true,
         },
       },
     },
@@ -83,6 +85,10 @@ export default async function MyAppointmentsPage() {
       timeStyle: "short",
       timeZone: timezone,
     }).format(date);
+  }
+
+  function toDateISO(ms: number): string {
+    return new Date(ms).toISOString().slice(0, 10);
   }
 
   return (
@@ -165,7 +171,22 @@ export default async function MyAppointmentsPage() {
                   )}
                 </div>
 
-                <div className="mt-4 border-t border-border pt-4">
+                <div className="mt-4 flex flex-wrap items-start gap-2 border-t border-border pt-4">
+                  {/* Reprogramar solo mientras dure la ventana de cancelación gratuita */}
+                  {a.startAt.getTime() -
+                    a.business.cancellationWindowHours * 3_600_000 >
+                    now && (
+                    <RescheduleAppointment
+                      appointmentId={a.id}
+                      businessSlug={a.business.slug}
+                      serviceId={a.serviceId}
+                      minDateISO={toDateISO(now)}
+                      maxDateISO={toDateISO(
+                        now + a.business.maxAdvanceBookingDays * 86_400_000,
+                      )}
+                      labels={t.myAppointments}
+                    />
+                  )}
                   <CancelAppointmentButton
                     appointmentId={a.id}
                     startAt={a.startAt.toISOString()}
