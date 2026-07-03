@@ -61,7 +61,10 @@ export function ReviewForm({
 
   if (done) {
     return (
-      <p className="rounded-lg bg-success-soft px-3 py-2 text-sm font-medium text-success-strong">
+      <p
+        role="status"
+        className="rounded-lg bg-success-soft px-3 py-2 text-sm font-medium text-success-strong"
+      >
         {labels.reviewThanks}
       </p>
     );
@@ -79,7 +82,14 @@ export function ReviewForm({
   const commentId = `review-comment-${appointmentId}`;
 
   return (
-    <div className="w-full rounded-lg border border-border bg-surface-2 p-4 text-sm">
+    <div
+      role="group"
+      aria-label={labels.reviewTitle}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && !busy) setOpen(false);
+      }}
+      className="w-full rounded-lg border border-border bg-surface-2 p-4 text-sm"
+    >
       <p className="font-medium text-ink">{labels.reviewTitle}</p>
 
       <div className="mt-2 flex items-center gap-1">
@@ -119,7 +129,11 @@ export function ReviewForm({
         />
       </Field>
 
-      {error && <p className="mt-2 text-danger-strong">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-danger-strong">
+          {error}
+        </p>
+      )}
 
       <div className="mt-3">
         <Button

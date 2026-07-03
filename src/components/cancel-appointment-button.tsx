@@ -64,6 +64,11 @@ export function CancelAppointmentButton({
 
   return (
     <div
+      role="group"
+      aria-label={t.cancelCta}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && !busy) setOpen(false);
+      }}
       className={cn(
         "rounded-lg border p-4 text-sm",
         isLate ? "border-warning/30 bg-warning-soft" : "border-border bg-surface-2",
@@ -82,7 +87,11 @@ export function CancelAppointmentButton({
       ) : (
         <p className="text-ink-soft">{t.cancelFree}</p>
       )}
-      {error && <p className="mt-2 text-danger-strong">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-danger-strong">
+          {error}
+        </p>
+      )}
       <div className="mt-3 flex flex-wrap gap-2">
         <Button
           variant="danger"

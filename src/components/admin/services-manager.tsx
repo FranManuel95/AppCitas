@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { AlertCircle, Clock, Plus, Tags } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import type { Dict } from "@/lib/i18n/shared";
@@ -61,6 +61,8 @@ function ServiceForm({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Asocia cada label con su control (accesibilidad: labels no huérfanas).
+  const fid = useId();
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -95,14 +97,33 @@ function ServiceForm({
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
-      <Field label={labels.servicios.nameLabel} className="sm:col-span-2">
-        <Input name="name" required minLength={2} defaultValue={initial?.name} />
-      </Field>
-      <Field label={labels.servicios.descriptionLabel} className="sm:col-span-2">
-        <Input name="description" defaultValue={initial?.description ?? ""} />
-      </Field>
-      <Field label={labels.servicios.durationLabel}>
+      <Field
+        label={labels.servicios.nameLabel}
+        htmlFor={`${fid}-name`}
+        className="sm:col-span-2"
+      >
         <Input
+          id={`${fid}-name`}
+          name="name"
+          required
+          minLength={2}
+          defaultValue={initial?.name}
+        />
+      </Field>
+      <Field
+        label={labels.servicios.descriptionLabel}
+        htmlFor={`${fid}-description`}
+        className="sm:col-span-2"
+      >
+        <Input
+          id={`${fid}-description`}
+          name="description"
+          defaultValue={initial?.description ?? ""}
+        />
+      </Field>
+      <Field label={labels.servicios.durationLabel} htmlFor={`${fid}-duration`}>
+        <Input
+          id={`${fid}-duration`}
           name="durationMinutes"
           type="number"
           min={5}
@@ -113,8 +134,9 @@ function ServiceForm({
           className="tabular-nums"
         />
       </Field>
-      <Field label={labels.servicios.priceLabel}>
+      <Field label={labels.servicios.priceLabel} htmlFor={`${fid}-price`}>
         <Input
+          id={`${fid}-price`}
           name="price"
           type="number"
           min={0}
@@ -124,8 +146,9 @@ function ServiceForm({
           className="tabular-nums"
         />
       </Field>
-      <Field label={labels.servicios.colorLabel}>
+      <Field label={labels.servicios.colorLabel} htmlFor={`${fid}-color`}>
         <input
+          id={`${fid}-color`}
           name="color"
           type="color"
           defaultValue={initial?.color ?? "#6366f1"}
@@ -133,7 +156,10 @@ function ServiceForm({
         />
       </Field>
       {error && (
-        <p className="flex items-start gap-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger-strong sm:col-span-2">
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger-strong sm:col-span-2"
+        >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           {error}
         </p>

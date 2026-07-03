@@ -24,6 +24,17 @@ import { CardSetup } from "./card-setup";
 
 type BookingDict = Dict["booking"];
 
+// Traduce un error de la API por su `code` al idioma del usuario; si el código
+// no está mapeado, cae al mensaje del servidor (español) y luego al genérico.
+function localizeError(
+  json: { code?: string; error?: string },
+  errors: BookingDict["errors"],
+  fallback: string,
+): string {
+  const code = json.code as keyof BookingDict["errors"] | undefined;
+  return (code && errors[code]) || json.error || fallback;
+}
+
 interface ServiceOption {
   id: string;
   name: string;
@@ -187,7 +198,7 @@ export function BookingWizard({
         `/api/businesses/${business.slug}/availability?${params.toString()}`,
       );
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? t.availabilityError);
+      if (!res.ok) throw new Error(localizeError(json, t.errors, t.availabilityError));
       setSlots(json.slots);
     } catch (e) {
       setSlots([]);
@@ -227,7 +238,7 @@ export function BookingWizard({
         if (json.code === "SLOT_TAKEN" || json.code === "SLOT_UNAVAILABLE") {
           await loadSlots();
         }
-        throw new Error(json.error ?? t.bookingError);
+        throw new Error(localizeError(json, t.errors, t.bookingError));
       }
       setConfirmed({
         startAt: json.appointment.startAt,
@@ -313,6 +324,8 @@ export function BookingWizard({
               {services.map((s) => (
                 <button
                   key={s.id}
+                  type="button"
+                  aria-pressed={s.id === serviceId}
                   onClick={() => {
                     setServiceId(s.id);
                     setStaffId("");
@@ -345,6 +358,8 @@ export function BookingWizard({
               <SectionHeader as="h2" title={stepLabel(t.stepStaff)} />
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
+                  type="button"
+                  aria-pressed={staffId === ""}
                   onClick={() => setStaffId("")}
                   className={cn(
                     "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
@@ -358,6 +373,8 @@ export function BookingWizard({
                 {qualifiedStaff.map((m) => (
                   <button
                     key={m.id}
+                    type="button"
+                    aria-pressed={staffId === m.id}
                     onClick={() => setStaffId(m.id)}
                     className={cn(
                       "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
@@ -397,7 +414,7 @@ export function BookingWizard({
                 onChange={(e) => setDateISO(e.target.value)}
               />
             </Field>
-            <div className="mt-4">
+            <div className="mt-4" role="status" aria-live="polite">
               {loadingSlots && (
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
                   <span className="sr-only">{t.searchingSlots}</span>
@@ -416,6 +433,8 @@ export function BookingWizard({
                   {slots.map((slot) => (
                     <button
                       key={slot.startAt}
+                      type="button"
+                      aria-pressed={selectedSlot?.startAt === slot.startAt}
                       onClick={() => setSelectedSlot(slot)}
                       className={cn(
                         "rounded-lg border px-2 py-2 text-sm font-medium tabular-nums transition-colors",
@@ -612,7 +631,10 @@ export function BookingWizard({
             </p>
 
             {error && (
-              <div className="mt-4 flex items-start gap-2 rounded-lg bg-danger-soft p-3 text-sm text-danger-strong">
+              <div
+                role="alert"
+                className="mt-4 flex items-start gap-2 rounded-lg bg-danger-soft p-3 text-sm text-danger-strong"
+              >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                 <p>{error}</p>
               </div>

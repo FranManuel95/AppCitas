@@ -178,6 +178,18 @@ const es = {
     networkError: "Error de red",
     availabilityError: "No se pudo cargar la disponibilidad",
     bookingError: "No se pudo crear la reserva",
+    // Mensajes de error de dominio por código (se localizan en el cliente en
+    // vez de mostrar el mensaje del servidor, que va en español).
+    errors: {
+      SLOT_TAKEN: "Otro cliente acaba de reservar este hueco. Elige otro.",
+      SLOT_UNAVAILABLE: "Ese horario ya no está disponible. Elige otro.",
+      STAFF_NOT_AVAILABLE: "Ese profesional no atiende este servicio.",
+      COUPON_INVALID: "El cupón no es válido o ha caducado.",
+      PACKAGE_INVALID: "El bono no es válido para esta reserva.",
+      PROMO_CONFLICT: "No se puede combinar un cupón con un bono.",
+      RATE_LIMITED: "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
+      PLAN_LIMIT: "Este negocio ha alcanzado su límite de reservas del mes.",
+    },
   },
   myAppointments: {
     title: "Mis citas",
@@ -236,6 +248,13 @@ const es = {
     deleting: "Eliminando…",
     deleteError: "No se pudo eliminar la cuenta",
     cancel: "Cancelar",
+  },
+  status: {
+    CONFIRMED: "Confirmada",
+    COMPLETED: "Completada",
+    CANCELLED: "Cancelada",
+    CANCELLED_LATE: "Cancelación tardía",
+    NO_SHOW: "No presentado",
   },
   confirmation: {
     hello: "Hola {name} 👋",
@@ -753,6 +772,16 @@ const en: Dict = {
     networkError: "Network error",
     availabilityError: "Could not load availability",
     bookingError: "Could not create the booking",
+    errors: {
+      SLOT_TAKEN: "Someone just booked this slot. Please pick another.",
+      SLOT_UNAVAILABLE: "That time is no longer available. Please pick another.",
+      STAFF_NOT_AVAILABLE: "That professional doesn't offer this service.",
+      COUPON_INVALID: "The coupon is invalid or has expired.",
+      PACKAGE_INVALID: "The pass isn't valid for this booking.",
+      PROMO_CONFLICT: "A coupon and a pass can't be combined.",
+      RATE_LIMITED: "Too many attempts. Please wait a moment and try again.",
+      PLAN_LIMIT: "This business has reached its monthly booking limit.",
+    },
   },
   myAppointments: {
     title: "My appointments",
@@ -810,6 +839,13 @@ const en: Dict = {
     deleting: "Deleting…",
     deleteError: "Could not delete the account",
     cancel: "Cancel",
+  },
+  status: {
+    CONFIRMED: "Confirmed",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+    CANCELLED_LATE: "Late cancellation",
+    NO_SHOW: "No-show",
   },
   confirmation: {
     hello: "Hi {name} 👋",

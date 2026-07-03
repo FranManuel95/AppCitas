@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
@@ -57,6 +57,12 @@ export function RescheduleAppointment({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  // Al abrir el panel, lleva el foco al primer control (accesibilidad).
+  useEffect(() => {
+    if (open) dateInputRef.current?.focus();
+  }, [open]);
 
   useEffect(() => {
     if (!open || !dateISO) return;
@@ -127,7 +133,10 @@ export function RescheduleAppointment({
           {labels.rescheduleCta}
         </Button>
         {success && (
-          <p className="rounded-lg bg-success-soft px-3 py-1.5 text-xs font-medium text-success-strong">
+          <p
+            role="status"
+            className="rounded-lg bg-success-soft px-3 py-1.5 text-xs font-medium text-success-strong"
+          >
             {success}
           </p>
         )}
@@ -136,7 +145,14 @@ export function RescheduleAppointment({
   }
 
   return (
-    <div className="w-full rounded-lg border border-border bg-surface-2 p-4 text-sm">
+    <div
+      className="w-full rounded-lg border border-border bg-surface-2 p-4 text-sm"
+      role="group"
+      aria-label={labels.rescheduleTitle}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && !busy) setOpen(false);
+      }}
+    >
       <p className="font-medium text-ink">{labels.rescheduleTitle}</p>
       <p className="mt-0.5 text-xs text-ink-muted">
         {labels.rescheduleWindowNote}
@@ -148,6 +164,7 @@ export function RescheduleAppointment({
         className="mt-3"
       >
         <Input
+          ref={dateInputRef}
           id={`reprogramar-${appointmentId}`}
           type="date"
           className="max-w-xs"
@@ -159,7 +176,7 @@ export function RescheduleAppointment({
       </Field>
 
       {dateISO && (
-        <div className="mt-3">
+        <div className="mt-3" role="status" aria-live="polite">
           {loadingSlots && (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -178,6 +195,7 @@ export function RescheduleAppointment({
                 <button
                   key={slot.startAt}
                   type="button"
+                  aria-pressed={selected?.startAt === slot.startAt}
                   onClick={() => setSelected(slot)}
                   className={cn(
                     "rounded-lg border px-2 py-2 text-sm font-medium tabular-nums transition-colors",
@@ -195,7 +213,10 @@ export function RescheduleAppointment({
       )}
 
       {error && (
-        <div className="mt-3 flex items-start gap-2 rounded-lg bg-danger-soft p-3 text-sm text-danger-strong">
+        <div
+          role="alert"
+          className="mt-3 flex items-start gap-2 rounded-lg bg-danger-soft p-3 text-sm text-danger-strong"
+        >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <span>{error}</span>
         </div>

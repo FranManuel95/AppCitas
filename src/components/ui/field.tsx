@@ -32,23 +32,25 @@ export function Field({
   );
 }
 
+// Con ComponentPropsWithRef, `ref` es una prop válida y se reenvía al elemento
+// nativo (React 19: los componentes de función aceptan ref como prop normal).
 export function Input({
   className,
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement>) {
+}: React.ComponentPropsWithRef<"input">) {
   return <input className={cn("input", className)} {...props} />;
 }
 
 export function Textarea({
   className,
   ...props
-}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+}: React.ComponentPropsWithRef<"textarea">) {
   return <textarea className={cn("input", className)} {...props} />;
 }
 
 export function Select({
   className,
   ...props
-}: React.SelectHTMLAttributes<HTMLSelectElement>) {
+}: React.ComponentPropsWithRef<"select">) {
   return <select className={cn("input", className)} {...props} />;
 }
