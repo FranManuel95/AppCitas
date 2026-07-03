@@ -17,6 +17,7 @@ import {
   wallTimeToUtc,
 } from "./dates";
 import { BLOCKING_STATUSES, type AppointmentStatus } from "./types";
+import { lockBusinessForBooking } from "./locks";
 import {
   couponDiscountCents,
   couponRejection,
@@ -271,6 +272,10 @@ export async function createAppointment(params: {
   // cerrar la carrera entre dos reservas simultáneas del mismo hueco, y
   // consume la promoción (cupón/bono) de forma atómica con la reserva.
   const appointment = await prisma.$transaction(async (tx) => {
+    // Serializa las reservas concurrentes del negocio antes del chequeo de
+    // solapamiento: bajo READ COMMITTED el findFirst no ve las inserciones de
+    // otra transacción en vuelo. No-op en SQLite. Ver src/lib/domain/locks.ts.
+    await lockBusinessForBooking(tx, businessId);
     const conflict = await tx.appointment.findFirst({
       where: {
         businessId,
@@ -629,6 +634,8 @@ export async function rescheduleAppointment(params: {
   // (misma protección anti doble-reserva que createAppointment) y anula los
   // recordatorios pendientes, que apuntan a la hora antigua.
   const updated = await prisma.$transaction(async (tx) => {
+    // Mismo bloqueo de serialización que createAppointment. No-op en SQLite.
+    await lockBusinessForBooking(tx, appointment.businessId);
     const conflict = await tx.appointment.findFirst({
       where: {
         businessId: appointment.businessId,

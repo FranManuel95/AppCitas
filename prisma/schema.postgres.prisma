@@ -425,3 +425,15 @@ model Notification {
   @@index([businessId, createdAt])
   @@index([appointmentId])
 }
+
+// Deduplicación de webhooks entrantes (Stripe). Stripe reintenta y reordena
+// eventos: guardamos el id del evento antes de procesarlo para no aplicar dos
+// veces el mismo cambio (cobros, cambios de suscripción). La PK sobre eventId
+// hace atómico el "reclamar" el evento vía la violación de unicidad.
+model ProcessedWebhookEvent {
+  eventId   String   @id
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

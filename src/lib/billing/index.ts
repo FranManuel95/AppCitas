@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { DomainError } from "@/lib/domain/errors";
 import type { PlanId } from "@/lib/domain/plans";
+import { claimWebhookEvent } from "@/lib/webhooks/idempotency";
 
 // Facturación B2B: la suscripción que cada NEGOCIO paga a la plataforma
 // (distinto del cobro B2C de cancelaciones en src/lib/payments). Capa fina
@@ -169,6 +170,11 @@ export async function handleStripeWebhook(
     signature,
     webhookSecret,
   );
+
+  // Idempotencia: no re-aplicar un evento ya procesado (Stripe reintenta y
+  // reordena). Se reclama antes de tocar la suscripción del negocio.
+  const fresh = await claimWebhookEvent(event.id, event.type);
+  if (!fresh) return { received: true };
 
   switch (event.type) {
     case "checkout.session.completed": {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
+import { claimWebhookEvent } from "@/lib/webhooks/idempotency";
 
 // POST /api/payments/webhook — eventos de Stripe (verificados por firma).
 // Mantiene el estado de cobro de la cita sincronizado con la pasarela para
@@ -30,6 +31,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Firma no válida" }, { status: 400 });
   }
 
+  // Idempotencia: Stripe reintenta y reordena. Si ya procesamos este evento,
+  // respondemos 200 sin re-aplicar el cambio de estado del cobro.
+  const fresh = await claimWebhookEvent(event.id, event.type);
+  if (!fresh) {
+    return NextResponse.json({ received: true, duplicate: true });
+  }
+
   if (
     event.type === "payment_intent.succeeded" ||
     event.type === "payment_intent.payment_failed"
@@ -37,8 +45,8 @@ export async function POST(request: Request) {
     const intent = event.data.object as Stripe.PaymentIntent;
     const appointmentId = intent.metadata?.appointmentId;
     if (appointmentId) {
-      await prisma.appointment
-        .update({
+      try {
+        await prisma.appointment.update({
           where: { id: appointmentId },
           data: {
             paymentStatus:
@@ -47,10 +55,21 @@ export async function POST(request: Request) {
                 : "CHARGE_FAILED",
             paymentRef: intent.id,
           },
-        })
-        .catch(() => {
-          // La cita pudo eliminarse; el webhook no debe reintentar por esto
         });
+      } catch (error) {
+        // La cita pudo eliminarse (P2025): no es un fallo del webhook, no se
+        // debe reintentar. Cualquier otro error sí se registra para diagnóstico.
+        const code =
+          error instanceof Error && "code" in error
+            ? (error as { code?: unknown }).code
+            : undefined;
+        if (code !== "P2025") {
+          console.error(
+            `[payments/webhook] error al actualizar la cita ${appointmentId}`,
+            error,
+          );
+        }
+      }
     }
   }
 

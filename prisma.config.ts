@@ -16,5 +16,8 @@ export default defineConfig({
   },
   datasource: {
     url: process.env["DATABASE_URL"],
+    // Solo lo usa `prisma migrate diff --from-migrations` para generar las
+    // migraciones de PostgreSQL en una BD desechable; inerte en dev/prod.
+    shadowDatabaseUrl: process.env["SHADOW_DATABASE_URL"],
   },
 });

@@ -18,6 +18,11 @@ const CHANNELS: Record<string, Channel> = {
 
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 5 * 60_000;
+// Un envío reclamado (SENDING) que lleve más de este tiempo sin resolverse se
+// considera huérfano (worker caído entre el claim y el resultado) y se devuelve
+// a PENDING para reintentarlo. Debe superar con holgura el tiempo máximo de un
+// lote de envíos.
+const SENDING_STALE_MS = 10 * 60_000;
 
 function baseUrl(): string {
   return (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(
@@ -226,10 +231,26 @@ export async function enqueueCancellationNotifications(
 }
 
 // Despacha los mensajes vencidos. Lo invoca el endpoint de cron o el worker.
+//
+// Seguridad ante concurrencia: si el cron de Vercel y el worker (o dos crons)
+// coinciden, no deben enviar el mismo mensaje dos veces. Cada fila se reclama
+// con un `updateMany` atómico PENDING→SENDING; solo el proceso cuya
+// actualización afecta a la fila (`count === 1`) la procesa. Los envíos que
+// queden en SENDING por un worker caído se recuperan a PENDING pasado
+// SENDING_STALE_MS.
 export async function processDueNotifications(
   now = new Date(),
   limit = 50,
 ): Promise<{ sent: number; failed: number; skipped: number }> {
+  // Recupera envíos huérfanos de un intento anterior que no terminó.
+  await prisma.notification.updateMany({
+    where: {
+      status: "SENDING",
+      updatedAt: { lt: new Date(now.getTime() - SENDING_STALE_MS) },
+    },
+    data: { status: "PENDING" },
+  });
+
   const due = await prisma.notification.findMany({
     where: { status: "PENDING", scheduledFor: { lte: now } },
     orderBy: { scheduledFor: "asc" },
@@ -241,6 +262,14 @@ export async function processDueNotifications(
   let skipped = 0;
 
   for (const n of due) {
+    // Claim atómico: solo un proceso gana la transición PENDING→SENDING de esta
+    // fila; el resto ve count 0 y la salta, evitando envíos duplicados.
+    const claim = await prisma.notification.updateMany({
+      where: { id: n.id, status: "PENDING" },
+      data: { status: "SENDING" },
+    });
+    if (claim.count === 0) continue;
+
     const channel = CHANNELS[n.channel];
 
     if (!channel) {
