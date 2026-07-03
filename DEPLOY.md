@@ -77,7 +77,9 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
    - **Vercel/serverless** → la del *Transaction pooler* (puerto 6543),
      añadiendo `?pgbouncer=true` al final (evita el error "prepared
      statement already exists" bajo conexiones agrupadas). Verificado con
-     @prisma/adapter-pg contra Postgres real.
+     @prisma/adapter-pg contra Postgres real. Además, deja `PG_POOL_MAX=1`
+     (valor por defecto): cada instancia serverless abre así una sola
+     conexión al pooler; sin tope, muchas instancias concurrentes lo agotan.
    - **VPS/Docker (procesos persistentes)** → la del *Session pooler* o la
      conexión directa (puerto 5432).
    - **Migraciones y seed** (`prisma migrate deploy`, `db:seed`) → siempre la

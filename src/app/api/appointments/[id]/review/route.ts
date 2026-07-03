@@ -19,10 +19,14 @@ export const POST = apiHandler(
   ) => {
     const { id } = await params;
     const user = await apiRequireUser();
-    await enforceRateLimit(request, "review", {
-      limit: 10,
-      windowMs: 3_600_000,
-    });
+    // Por usuario (no por IP): dos clientes tras la misma IP NAT no comparten
+    // cupo.
+    await enforceRateLimit(
+      request,
+      "review",
+      { limit: 10, windowMs: 3_600_000 },
+      user.id,
+    );
     const { rating, comment } = bodySchema.parse(await request.json());
 
     const review = await createReview({

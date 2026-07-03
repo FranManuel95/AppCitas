@@ -5,6 +5,7 @@ import { apiHandler } from "@/lib/api";
 import { apiRequireUser } from "@/lib/auth/guards";
 import { createAppointment } from "@/lib/domain/appointments";
 import { cancellationDeadline } from "@/lib/domain/cancellation";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const createSchema = z.object({
   businessId: z.string().min(1),
@@ -22,6 +23,14 @@ const createSchema = z.object({
 // POST /api/appointments — reservar (cliente autenticado)
 export const POST = apiHandler(async (request: Request) => {
   const user = await apiRequireUser();
+  // Antiabuso de la reserva (por usuario): tope generoso para no molestar al
+  // uso legítimo pero frenar bucles automatizados.
+  await enforceRateLimit(
+    request,
+    "booking",
+    { limit: 30, windowMs: 60 * 60_000 },
+    user.id,
+  );
   const data = createSchema.parse(await request.json());
 
   if (data.phone) {
