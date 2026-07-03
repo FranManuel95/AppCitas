@@ -10,5 +10,10 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
     environment: "node",
+    // globalSetup construye una plantilla de BD SQLite con el schema; el setup
+    // por archivo la copia a una BD temporal y apunta DATABASE_URL antes de que
+    // se importe el singleton de Prisma. Los tests puros la ignoran.
+    globalSetup: ["./tests/setup/global-db.ts"],
+    setupFiles: ["./tests/setup/per-file-db.ts"],
   },
 });
