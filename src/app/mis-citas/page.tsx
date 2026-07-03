@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { CancelAppointmentButton } from "@/components/cancel-appointment-button";
 import { RescheduleAppointment } from "@/components/reschedule-appointment";
 import { ReviewForm } from "@/components/review-form";
+import { MyDataPanel } from "@/components/my-data-panel";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -346,6 +347,13 @@ export default async function MyAppointmentsPage() {
                 title={t.myAppointments.noHistory}
               />
             )}
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <SectionHeader as="h2" title={t.myData.title} />
+          <div className="mt-4">
+            <MyDataPanel t={t.myData} />
           </div>
         </section>
       </main>

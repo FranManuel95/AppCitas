@@ -1,18 +1,24 @@
+import { legalData } from "@/lib/legal";
+
 export const metadata = { title: "Aviso legal" };
 
-// ⚠️ PLANTILLA: sustituir los [CORCHETES] y revisar con asesoría legal.
+// Datos del titular parametrizados por entorno (ver src/lib/legal.ts). Revisar
+// el texto con asesoría legal antes de operar con datos reales.
 export default function LegalNoticePage() {
+  const legal = legalData();
   return (
     <>
       <h1>Aviso legal</h1>
       <p>
         En cumplimiento de la Ley 34/2002 (LSSI-CE), se informa de que el
-        titular de este sitio web es <strong>[RAZÓN SOCIAL]</strong>, con NIF
-        [NIF], domicilio en [DIRECCIÓN] e inscrita en [REGISTRO MERCANTIL, si
-        procede].
+        titular de este sitio web es <strong>{legal.companyName}</strong>, con
+        NIF {legal.taxId}, domicilio en {legal.address} e inscrita en{" "}
+        {legal.registry}.
       </p>
       <h2>Contacto</h2>
-      <p>Email: [EMAIL DE CONTACTO] · Teléfono: [TELÉFONO]</p>
+      <p>
+        Email: {legal.contactEmail} · Teléfono: {legal.contactPhone}
+      </p>
       <h2>Propiedad intelectual</h2>
       <p>
         Los contenidos y el software de la plataforma pertenecen a su titular

@@ -36,6 +36,8 @@ export const POST = apiHandler(async (request: Request) => {
       phone: data.phone || null,
       passwordHash: await hashPassword(data.password),
       role: "CLIENT",
+      // Consentimiento de términos y privacidad aceptado al registrarse.
+      consentedAt: new Date(),
     },
   });
 

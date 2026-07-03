@@ -86,6 +86,8 @@ export const POST = apiHandler(async (request: Request) => {
         passwordHash,
         role: "OWNER",
         businessId: business.id,
+        // Consentimiento de términos y privacidad aceptado al registrarse.
+        consentedAt: new Date(),
       },
     });
     return { user, business };

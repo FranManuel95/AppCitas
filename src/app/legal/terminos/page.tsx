@@ -1,14 +1,19 @@
+import { legalData } from "@/lib/legal";
+
 export const metadata = { title: "Términos de uso" };
 
-// ⚠️ PLANTILLA: sustituir los [CORCHETES] y revisar con asesoría legal.
+// Datos del titular parametrizados por entorno (ver src/lib/legal.ts). Revisar
+// el texto con asesoría legal antes de operar con datos reales.
 export default function TermsPage() {
+  const legal = legalData();
   return (
     <>
       <h1>Términos y condiciones de uso</h1>
       <p>
-        Última actualización: [FECHA]. Estos términos regulan el uso de la
-        plataforma AppCitas, operada por <strong>[RAZÓN SOCIAL]</strong>.
-        Al crear una cuenta aceptas estos términos.
+        Última actualización: {legal.lastUpdated}. Estos términos regulan el uso
+        de la plataforma AppCitas, operada por{" "}
+        <strong>{legal.companyName}</strong>. Al crear una cuenta aceptas estos
+        términos.
       </p>
 
       <h2>El servicio</h2>

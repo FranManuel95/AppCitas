@@ -25,6 +25,10 @@ model User {
 
   emailVerifiedAt DateTime?
 
+  // Evidencia de consentimiento: instante en que aceptó los términos y la
+  // política de privacidad al registrarse (RGPD, prueba del consentimiento).
+  consentedAt DateTime?
+
   // Incrementarlo invalida todas las sesiones emitidas (revocación de JWT)
   sessionVersion Int @default(0)
 

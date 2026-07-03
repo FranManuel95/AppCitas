@@ -7,6 +7,7 @@ import {
   confirmAttendance,
 } from "@/lib/domain/appointments";
 import { DomainError } from "@/lib/domain/errors";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({ attending: z.boolean() });
 
@@ -18,6 +19,12 @@ export const POST = apiHandler(
     request: Request,
     { params }: { params: Promise<{ token: string }> },
   ) => {
+    // Endpoint público y sin firma: se limita por IP para que no se puedan
+    // sondear tokens de confirmación por fuerza bruta.
+    await enforceRateLimit(request, "confirmation-token", {
+      limit: 60,
+      windowMs: 3_600_000,
+    });
     const { token } = await params;
     const { attending } = bodySchema.parse(await request.json());
 

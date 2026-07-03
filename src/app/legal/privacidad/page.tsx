@@ -1,25 +1,28 @@
+import { legalData } from "@/lib/legal";
+
 export const metadata = { title: "Política de privacidad" };
 
-// ⚠️ PLANTILLA: sustituir los [CORCHETES] por los datos reales del responsable
-// y revisar con asesoría legal antes de lanzar a producción.
+// Datos del responsable parametrizados por entorno (ver src/lib/legal.ts).
+// Revisar el texto con asesoría legal antes de lanzar a producción.
 export default function PrivacyPage() {
+  const legal = legalData();
   return (
     <>
       <h1>Política de privacidad</h1>
       <p>
-        Última actualización: [FECHA]. Esta política describe cómo{" "}
-        <strong>[RAZÓN SOCIAL]</strong>, con NIF [NIF] y domicilio en
-        [DIRECCIÓN] (&quot;nosotros&quot;), trata los datos personales de los
-        usuarios de AppCitas, en cumplimiento del Reglamento (UE) 2016/679
+        Última actualización: {legal.lastUpdated}. Esta política describe cómo{" "}
+        <strong>{legal.companyName}</strong>, con NIF {legal.taxId} y domicilio
+        en {legal.address} (&quot;nosotros&quot;), trata los datos personales de
+        los usuarios de AppCitas, en cumplimiento del Reglamento (UE) 2016/679
         (RGPD) y la LOPDGDD.
       </p>
 
       <h2>Responsable del tratamiento</h2>
       <p>
-        [RAZÓN SOCIAL] · [EMAIL DE CONTACTO] · [TELÉFONO]. Los negocios que
-        publican sus servicios en la plataforma actúan como responsables de los
-        datos de sus propios clientes; AppCitas actúa como encargado del
-        tratamiento por cuenta de dichos negocios.
+        {legal.companyName} · {legal.contactEmail} · {legal.contactPhone}. Los
+        negocios que publican sus servicios en la plataforma actúan como
+        responsables de los datos de sus propios clientes; AppCitas actúa como
+        encargado del tratamiento por cuenta de dichos negocios.
       </p>
 
       <h2>Datos que tratamos</h2>
@@ -44,9 +47,9 @@ export default function PrivacyPage() {
       <h2>Destinatarios</h2>
       <p>
         Proveedores que nos prestan servicios: procesamiento de pagos
-        (Stripe), envío de email ([PROVEEDOR SMTP]), SMS (Twilio) y WhatsApp
-        ([ULTRAMSG / SERVIDOR PROPIO]), y alojamiento ([HOSTING]). Algunos
-        pueden estar fuera del EEE; en tal caso se aplican cláusulas
+        (Stripe), envío de email ({legal.smtpProvider}), SMS (Twilio) y
+        WhatsApp ({legal.whatsappProvider}), y alojamiento ({legal.hosting}).
+        Algunos pueden estar fuera del EEE; en tal caso se aplican cláusulas
         contractuales tipo u otras garantías del RGPD.
       </p>
 
@@ -60,9 +63,10 @@ export default function PrivacyPage() {
       <h2>Tus derechos</h2>
       <p>
         Puedes ejercer los derechos de acceso, rectificación, supresión,
-        oposición, limitación y portabilidad escribiendo a [EMAIL DE
-        CONTACTO]. También puedes reclamar ante la Agencia Española de
-        Protección de Datos (aepd.es).
+        oposición, limitación y portabilidad desde tu cuenta (exportar y
+        eliminar tus datos en <strong>Mis citas → Mis datos</strong>) o
+        escribiendo a {legal.contactEmail}. También puedes reclamar ante la
+        Agencia Española de Protección de Datos (aepd.es).
       </p>
     </>
   );

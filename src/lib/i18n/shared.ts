@@ -221,6 +221,22 @@ const es = {
     rescheduleWindowNote: "Solo dentro del plazo de cancelación gratuita",
     noSlotsThatDay: "Sin huecos ese día",
   },
+  myData: {
+    title: "Mis datos",
+    description:
+      "Descarga una copia de tus datos personales o elimina tu cuenta.",
+    exportCta: "Descargar mis datos",
+    exportHint:
+      "Exporta en un archivo JSON tu cuenta, tus citas, tus valoraciones y tus bonos.",
+    exporting: "Preparando…",
+    deleteCta: "Eliminar mi cuenta",
+    deleteHint:
+      "Se anonimizarán tus datos personales (nombre, email, teléfono). Tus citas se conservan sin tu identidad por la contabilidad del negocio. Esta acción no se puede deshacer.",
+    deleteConfirm: "Sí, eliminar definitivamente",
+    deleting: "Eliminando…",
+    deleteError: "No se pudo eliminar la cuenta",
+    cancel: "Cancelar",
+  },
   confirmation: {
     hello: "Hola {name} 👋",
     yourAppointment: "Tu cita en {business}",
@@ -779,6 +795,21 @@ const en: Dict = {
     rescheduleError: "Could not change the appointment",
     rescheduleWindowNote: "Only within the free-cancellation window",
     noSlotsThatDay: "No slots that day",
+  },
+  myData: {
+    title: "My data",
+    description: "Download a copy of your personal data or delete your account.",
+    exportCta: "Download my data",
+    exportHint:
+      "Export your account, appointments, reviews and packages as a JSON file.",
+    exporting: "Preparing…",
+    deleteCta: "Delete my account",
+    deleteHint:
+      "Your personal data (name, email, phone) will be anonymized. Your appointments are kept without your identity for the business's accounting. This action can't be undone.",
+    deleteConfirm: "Yes, delete permanently",
+    deleting: "Deleting…",
+    deleteError: "Could not delete the account",
+    cancel: "Cancel",
   },
   confirmation: {
     hello: "Hi {name} 👋",
