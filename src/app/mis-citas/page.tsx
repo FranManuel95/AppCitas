@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CalendarX2,
   Clock,
+  Star,
   Store,
   User,
 } from "lucide-react";
@@ -12,6 +13,7 @@ import { SiteHeader } from "@/components/site-header";
 import { StatusBadge } from "@/components/status-badge";
 import { CancelAppointmentButton } from "@/components/cancel-appointment-button";
 import { RescheduleAppointment } from "@/components/reschedule-appointment";
+import { ReviewForm } from "@/components/review-form";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +22,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { buttonClasses } from "@/components/ui/button";
 import { formatCents } from "@/lib/money";
 import { fmt, getDict, intlLocale } from "@/lib/i18n";
+import { cn } from "@/lib/cn";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Mis citas" };
@@ -49,6 +52,7 @@ export default async function MyAppointmentsPage() {
     include: {
       service: { select: { name: true, durationMinutes: true } },
       staff: { select: { name: true } },
+      review: { select: { rating: true } },
       business: {
         select: {
           name: true,
@@ -299,7 +303,41 @@ export default async function MyAppointmentsPage() {
                     </p>
                   )}
                 </div>
-                <StatusBadge status={a.status} />
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <StatusBadge status={a.status} />
+                  {a.status === "COMPLETED" && a.review && (
+                    <div className="flex items-center gap-2">
+                      <Badge tone="brand" icon={Star}>
+                        {t.myAppointments.reviewedBadge}
+                      </Badge>
+                      <span
+                        className="flex items-center gap-0.5"
+                        role="img"
+                        aria-label={fmt(t.myAppointments.starAria, {
+                          n: a.review.rating,
+                        })}
+                      >
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <Star
+                            key={n}
+                            className={cn(
+                              "h-3.5 w-3.5",
+                              n <= a.review!.rating
+                                ? "fill-current text-warning"
+                                : "text-ink-muted",
+                            )}
+                            aria-hidden
+                          />
+                        ))}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {a.status === "COMPLETED" && !a.review && (
+                  <div className="w-full border-t border-border pt-3">
+                    <ReviewForm appointmentId={a.id} labels={t.myAppointments} />
+                  </div>
+                )}
               </Card>
             ))}
             {past.length === 0 && (

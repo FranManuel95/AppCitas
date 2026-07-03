@@ -1,10 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarDays, Clock, MapPin, Phone, ShieldCheck } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth/session";
-import { fmt, getDict } from "@/lib/i18n";
+import { getBusinessReviewSummary } from "@/lib/domain/reviews";
+import { fmt, getDict, intlLocale } from "@/lib/i18n";
+import { cn } from "@/lib/cn";
 import { SiteHeader } from "@/components/site-header";
 import { PackagesSection } from "@/components/packages-section";
 import { formatCents } from "@/lib/money";
@@ -69,6 +78,30 @@ export default async function BusinessPage({
   ]);
   if (!business) notFound();
 
+  const [reviewSummary, reviews] = await Promise.all([
+    getBusinessReviewSummary(business.id),
+    prisma.review.findMany({
+      where: { businessId: business.id },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        createdAt: true,
+        client: { select: { name: true } },
+      },
+    }),
+  ]);
+
+  const ratingAverage = new Intl.NumberFormat(intlLocale(locale), {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(reviewSummary.average);
+  const reviewDate = new Intl.DateTimeFormat(intlLocale(locale), {
+    dateStyle: "short",
+  });
+
   const hoursByDay = WEEKDAY_ORDER.map((weekday) => ({
     weekday,
     ranges: business.hours.filter((h) => h.weekday === weekday),
@@ -95,6 +128,25 @@ export default async function BusinessPage({
                   {business.description && (
                     <p className="mt-2 max-w-2xl text-ink-soft">
                       {business.description}
+                    </p>
+                  )}
+                  {reviewSummary.count > 0 && (
+                    <p className="mt-3 flex items-center gap-1.5 text-sm">
+                      <Star
+                        className="h-4 w-4 shrink-0 fill-current text-warning"
+                        aria-hidden
+                      />
+                      <span className="font-semibold text-ink">
+                        {ratingAverage}
+                      </span>
+                      <span className="text-ink-muted">
+                        ·{" "}
+                        {reviewSummary.count === 1
+                          ? t.business.reviewsOne
+                          : fmt(t.business.reviewsCount, {
+                              count: reviewSummary.count,
+                            })}
+                      </span>
                     </p>
                   )}
                   {(business.address || business.phone) && (
@@ -169,6 +221,50 @@ export default async function BusinessPage({
                   </p>
                 )}
               </div>
+
+              {reviews.length > 0 && (
+                <Card className="mt-8">
+                  <SectionHeader title={t.business.reviewsTitle} as="h2" />
+                  <ul className="mt-4 space-y-4">
+                    {reviews.map((r) => (
+                      <li
+                        key={r.id}
+                        className="border-t border-border pt-4 first:border-t-0 first:pt-0"
+                      >
+                        <span
+                          className="flex items-center gap-0.5"
+                          role="img"
+                          aria-label={fmt(t.myAppointments.starAria, {
+                            n: r.rating,
+                          })}
+                        >
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <Star
+                              key={n}
+                              className={cn(
+                                "h-4 w-4",
+                                n <= r.rating
+                                  ? "fill-current text-warning"
+                                  : "text-ink-muted",
+                              )}
+                              aria-hidden
+                            />
+                          ))}
+                        </span>
+                        {r.comment && (
+                          <p className="mt-1.5 text-sm text-ink-soft">
+                            {r.comment}
+                          </p>
+                        )}
+                        <p className="mt-1.5 text-xs text-ink-muted">
+                          {r.client.name.trim().split(/\s+/)[0]} ·{" "}
+                          {reviewDate.format(r.createdAt)}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
             </section>
 
             <aside className="space-y-6">
