@@ -19,7 +19,10 @@ import {
 import { BLOCKING_STATUSES, type AppointmentStatus } from "./types";
 import { lockBusinessForBooking } from "./locks";
 import { assertAppointmentWithinPlanTx } from "./plans";
-import { notifyWaitlistForFreedSlot } from "./waitlist";
+import {
+  fulfillWaitlistOnBooking,
+  notifyWaitlistForFreedSlot,
+} from "./waitlist";
 import {
   couponDiscountCents,
   couponRejection,
@@ -377,6 +380,15 @@ export async function createAppointment(params: {
 
   // Confirmación inmediata + recordatorio programado (outbox)
   await enqueueBookingNotifications(appointment.id, now);
+
+  // El cliente ya cubrió lo que esperaba: quita su entrada de lista de espera
+  // de ese servicio y día (si la tenía).
+  await fulfillWaitlistOnBooking({
+    clientId,
+    businessId,
+    serviceId,
+    desiredDate: dateISO,
+  });
 
   return appointment;
 }

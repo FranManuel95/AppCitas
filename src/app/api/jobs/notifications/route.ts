@@ -4,6 +4,10 @@ import { closePastAppointments } from "@/lib/domain/auto-close";
 import { cleanupRateLimitCounters } from "@/lib/rate-limit";
 import { degradeExpiredTrials } from "@/lib/domain/plans";
 import { purgeExpiredData } from "@/lib/domain/retention";
+import {
+  expireStaleWaitlist,
+  recycleNotifiedWaitlist,
+} from "@/lib/domain/waitlist";
 
 // /api/jobs/notifications — despacha los mensajes vencidos del outbox.
 // Pensado para invocarse cada minuto desde un cron externo (Vercel Cron usa
@@ -34,11 +38,17 @@ async function handleCron(request: Request) {
   await cleanupRateLimitCounters();
   // Retención: purga logs de auditoría y eventos de webhook caducados (>90 d).
   const purged = await purgeExpiredData();
+  // Lista de espera: borra las entradas de días pasados y recicla los avisos no
+  // aprovechados para que la siguiente cancelación los vuelva a avisar.
+  const { expired: waitlistExpired } = await expireStaleWaitlist();
+  const { recycled: waitlistRecycled } = await recycleNotifiedWaitlist();
   return NextResponse.json({
     ...result,
     autoClosed,
     trialsDegraded,
     purged,
+    waitlistExpired,
+    waitlistRecycled,
   });
 }
 

@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
   adminRemoveWaitlistEntry,
+  expireStaleWaitlist,
   getBusinessWaitlist,
   joinWaitlist,
   leaveWaitlist,
   notifyWaitlistForFreedSlot,
+  recycleNotifiedWaitlist,
 } from "../waitlist";
 import { createAppointment, cancelAppointment } from "../appointments";
 import { DomainError } from "../errors";
@@ -202,5 +204,67 @@ describe("lista de espera (BD)", () => {
     const res = await adminRemoveWaitlistEntry(a.businessId, entry.id);
     expect(res).toEqual({ deleted: true });
     expect(await prisma.waitlistEntry.count()).toBe(0);
+  });
+
+  it("al reservar se quita la entrada de lista de espera de ese servicio y día", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    const clientId = await seedClient();
+    await joinWaitlist({ businessId, serviceId, clientId, desiredDate: DAY, now: NOW });
+
+    await createAppointment({
+      businessId,
+      serviceId,
+      clientId,
+      startAt: slotAt(DAY, "10:00"),
+      now: NOW,
+    });
+
+    // La reserva cubre lo que esperaba: su entrada desaparece.
+    expect(await prisma.waitlistEntry.count({ where: { clientId } })).toBe(0);
+  });
+
+  it("expireStaleWaitlist borra las entradas de días pasados y conserva las futuras", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    const clientId = await seedClient();
+    // Futura (se conserva) y pasada (se borra), insertada directa para saltar la
+    // validación de "día no pasado" de joinWaitlist.
+    await joinWaitlist({ businessId, serviceId, clientId, desiredDate: DAY, now: NOW });
+    await prisma.waitlistEntry.create({
+      data: { businessId, serviceId, clientId, desiredDate: "2026-06-10", status: "WAITING" },
+    });
+
+    const res = await expireStaleWaitlist(NOW);
+    expect(res.expired).toBe(1);
+    const remaining = await prisma.waitlistEntry.findMany();
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].desiredDate).toBe(DAY);
+  });
+
+  it("recycleNotifiedWaitlist reactiva avisos futuros pasado el cooldown, no los recientes", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    const c1 = await seedClient();
+    const c2 = await seedClient();
+    // Avisado hace 3 h (fuera de cooldown) → se recicla.
+    await prisma.waitlistEntry.create({
+      data: {
+        businessId, serviceId, clientId: c1, desiredDate: DAY, status: "NOTIFIED",
+        notifiedAt: new Date(NOW.getTime() - 3 * 60 * 60_000),
+      },
+    });
+    // Avisado hace 10 min (dentro de cooldown) → NO se recicla.
+    await prisma.waitlistEntry.create({
+      data: {
+        businessId, serviceId, clientId: c2, desiredDate: DAY, status: "NOTIFIED",
+        notifiedAt: new Date(NOW.getTime() - 10 * 60_000),
+      },
+    });
+
+    const res = await recycleNotifiedWaitlist(NOW);
+    expect(res.recycled).toBe(1);
+    const recycled = await prisma.waitlistEntry.findFirstOrThrow({ where: { clientId: c1 } });
+    expect(recycled.status).toBe("WAITING");
+    expect(recycled.notifiedAt).toBeNull();
+    const kept = await prisma.waitlistEntry.findFirstOrThrow({ where: { clientId: c2 } });
+    expect(kept.status).toBe("NOTIFIED");
   });
 });

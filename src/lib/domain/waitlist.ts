@@ -9,6 +9,9 @@ import { isValidDateISO, toLocalDateISO } from "@/lib/domain/dates";
 
 const MAX_ACTIVE_PER_CLIENT = 20; // antiabuso: tope de entradas vivas por cliente
 const ACTIVE_STATUSES = ["WAITING", "NOTIFIED"] as const;
+// Cortesía tras avisar de un hueco antes de reciclar el aviso no aprovechado.
+const NOTIFIED_RECYCLE_MS = 2 * 60 * 60_000;
+const DAY_MS = 24 * 60 * 60_000;
 
 function baseUrl(): string {
   return (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
@@ -331,4 +334,72 @@ export async function notifyWaitlistForFreedSlot(
     });
     return { notified: 0 };
   }
+}
+
+/**
+ * Al reservar, el cliente ya no espera ese servicio ese día: se borran sus
+ * entradas vivas que coincidan. Evita que siga viéndose "en lista de espera"
+ * tras reservar y que un reciclado le vuelva a avisar de algo que ya cubrió.
+ * Mejor esfuerzo: nunca rompe la reserva.
+ */
+export async function fulfillWaitlistOnBooking(params: {
+  clientId: string;
+  businessId: string;
+  serviceId: string;
+  desiredDate: string;
+}): Promise<void> {
+  try {
+    await prisma.waitlistEntry.deleteMany({
+      where: {
+        clientId: params.clientId,
+        businessId: params.businessId,
+        serviceId: params.serviceId,
+        desiredDate: params.desiredDate,
+        status: { in: [...ACTIVE_STATUSES] },
+      },
+    });
+  } catch (error) {
+    logError("waitlist.fulfill.failed", error, { clientId: params.clientId });
+  }
+}
+
+/**
+ * Borra las entradas de días ya pasados (WAITING o NOTIFIED). desiredDate es una
+ * fecha local del negocio; se compara contra "ayer" en UTC para no borrar una
+ * entrada que aún sea "hoy" en alguna zona horaria. Se invoca desde el cron.
+ */
+export async function expireStaleWaitlist(
+  now = new Date(),
+): Promise<{ expired: number }> {
+  const cutoff = toLocalDateISO(new Date(now.getTime() - DAY_MS), "UTC");
+  const res = await prisma.waitlistEntry.deleteMany({
+    where: {
+      desiredDate: { lt: cutoff },
+      status: { in: [...ACTIVE_STATUSES] },
+    },
+  });
+  return { expired: res.count };
+}
+
+/**
+ * Recicla los avisos no aprovechados: una entrada NOTIFIED cuyo aviso se envió
+ * hace más de NOTIFIED_RECYCLE_MS y cuyo día sigue en el futuro vuelve a
+ * WAITING, para que la siguiente cancelación de ese día la vuelva a avisar. El
+ * cooldown evita reavisos en cadena; fulfillWaitlistOnBooking garantiza que los
+ * que ya reservaron no se reciclan. Se invoca desde el cron.
+ */
+export async function recycleNotifiedWaitlist(
+  now = new Date(),
+): Promise<{ recycled: number }> {
+  const cooldownBefore = new Date(now.getTime() - NOTIFIED_RECYCLE_MS);
+  const todayUTC = toLocalDateISO(now, "UTC");
+  const res = await prisma.waitlistEntry.updateMany({
+    where: {
+      status: "NOTIFIED",
+      notifiedAt: { lt: cooldownBefore },
+      desiredDate: { gte: todayUTC },
+    },
+    data: { status: "WAITING", notifiedAt: null },
+  });
+  return { recycled: res.count };
 }
