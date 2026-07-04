@@ -24,9 +24,9 @@ const nextConfig: NextConfig = {
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
           // No filtrar destinos a terceros por DNS-prefetch.
           { key: "X-DNS-Prefetch-Control", value: "off" },
-          // (No se añade Content-Security-Policy aquí: una CSP estricta en Next
-          // requiere nonces por request para los scripts de hidratación y hay
-          // que afinarla por app; queda como endurecimiento posterior.)
+          // La Content-Security-Policy se emite en src/proxy.ts (necesita
+          // un nonce por request); report-only por defecto, CSP_ENFORCE=true
+          // para forzarla. Ver SECURITY.md.
         ],
       },
     ];

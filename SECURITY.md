@@ -13,9 +13,21 @@ Se aplican a todas las rutas desde `next.config.ts`:
 - `X-DNS-Prefetch-Control: off`
 - `poweredByHeader: false` (no se expone `X-Powered-By`)
 
-**Pendiente:** una `Content-Security-Policy` estricta. En Next requiere nonces por
-request para los scripts de hidratación y debe afinarse por app, así que se deja
-como endurecimiento posterior para no romper la hidratación.
+### Content-Security-Policy
+
+`src/proxy.ts` genera un **nonce por request** y emite una CSP. Next lee la
+CSP de las cabeceras de la petición y añade el nonce a sus scripts, así que
+`script-src` va estricto (`'nonce-…' 'strict-dynamic'`) sin allowlist de hosts.
+`style-src` incluye `'unsafe-inline'` porque la app usa estilos en línea
+(`style={{…}}`), que no admiten nonce. `frame-src`/`connect-src` abren lo justo
+para **Stripe Elements** (`js.stripe.com`, `api.stripe.com`, `hooks.stripe.com`).
+
+Por defecto va en **report-only**: no bloquea, solo reporta las violaciones a
+`/api/csp-report`, que las loguea (y las reenvía al sink de errores). Es el paso
+seguro para observar qué rompería antes de forzarla — importante porque Stripe.js
+se carga en cliente y no se puede ejercitar en los tests de aquí. Para
+**forzarla** (bloquear) pon `CSP_ENFORCE=true`; **valida antes en staging** con
+el flujo de pago real.
 
 ## Captura de errores / alertas
 
