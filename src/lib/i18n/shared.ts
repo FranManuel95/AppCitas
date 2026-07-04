@@ -178,6 +178,10 @@ const es = {
     networkError: "Error de red",
     availabilityError: "No se pudo cargar la disponibilidad",
     bookingError: "No se pudo crear la reserva",
+    waitlistJoin: "Avísame si se libera un hueco",
+    waitlistJoining: "Apuntando…",
+    waitlistDone: "Te avisaremos si se libera un hueco ese día.",
+    waitlistError: "No se pudo apuntar a la lista de espera.",
     // Mensajes de error de dominio por código (se localizan en el cliente en
     // vez de mostrar el mensaje del servidor, que va en español).
     errors: {
@@ -232,6 +236,11 @@ const es = {
     rescheduleError: "No se pudo cambiar la cita",
     rescheduleWindowNote: "Solo dentro del plazo de cancelación gratuita",
     noSlotsThatDay: "Sin huecos ese día",
+    waitlistTitle: "Lista de espera",
+    waitlistWaiting: "A la espera",
+    waitlistFreed: "Hay hueco · Reservar",
+    waitlistLeave: "Quitarme",
+    waitlistLeaving: "Quitando…",
   },
   myData: {
     title: "Mis datos",
@@ -772,6 +781,10 @@ const en: Dict = {
     networkError: "Network error",
     availabilityError: "Could not load availability",
     bookingError: "Could not create the booking",
+    waitlistJoin: "Notify me if a slot frees up",
+    waitlistJoining: "Joining…",
+    waitlistDone: "We'll let you know if a slot frees up that day.",
+    waitlistError: "Couldn't join the waitlist.",
     errors: {
       SLOT_TAKEN: "Someone just booked this slot. Please pick another.",
       SLOT_UNAVAILABLE: "That time is no longer available. Please pick another.",
@@ -824,6 +837,11 @@ const en: Dict = {
     rescheduleError: "Could not change the appointment",
     rescheduleWindowNote: "Only within the free-cancellation window",
     noSlotsThatDay: "No slots that day",
+    waitlistTitle: "Waitlist",
+    waitlistWaiting: "Waiting",
+    waitlistFreed: "Slot available · Book",
+    waitlistLeave: "Leave",
+    waitlistLeaving: "Leaving…",
   },
   myData: {
     title: "My data",

@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 // Botón para borrarse de una entrada de la lista de espera (en "Mis citas").
-export function WaitlistLeaveButton({ entryId }: { entryId: string }) {
+export function WaitlistLeaveButton({
+  entryId,
+  labels,
+}: {
+  entryId: string;
+  labels: { leave: string; leaving: string };
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +31,7 @@ export function WaitlistLeaveButton({ entryId }: { entryId: string }) {
       disabled={loading}
       className="text-sm font-medium text-ink-muted transition-colors hover:text-danger-strong disabled:opacity-60"
     >
-      {loading ? "Quitando…" : "Quitarme"}
+      {loading ? labels.leaving : labels.leave}
     </button>
   );
 }

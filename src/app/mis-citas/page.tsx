@@ -280,7 +280,7 @@ export default async function MyAppointmentsPage() {
 
         {waitlist.length > 0 && (
           <section className="mt-10">
-            <SectionHeader as="h2" title="Lista de espera" />
+            <SectionHeader as="h2" title={t.myAppointments.waitlistTitle} />
             <div className="mt-4 space-y-3">
               {waitlist.map((w) => (
                 <Card
@@ -310,12 +310,20 @@ export default async function MyAppointmentsPage() {
                           size: "sm",
                         })}
                       >
-                        Hay hueco · Reservar
+                        {t.myAppointments.waitlistFreed}
                       </Link>
                     ) : (
-                      <Badge tone="neutral">A la espera</Badge>
+                      <Badge tone="neutral">
+                        {t.myAppointments.waitlistWaiting}
+                      </Badge>
                     )}
-                    <WaitlistLeaveButton entryId={w.id} />
+                    <WaitlistLeaveButton
+                      entryId={w.id}
+                      labels={{
+                        leave: t.myAppointments.waitlistLeave,
+                        leaving: t.myAppointments.waitlistLeaving,
+                      }}
+                    />
                   </div>
                 </Card>
               ))}
