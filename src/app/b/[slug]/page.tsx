@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Star,
 } from "lucide-react";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth/session";
 import { getBusinessReviewSummary } from "@/lib/domain/reviews";
@@ -24,7 +25,60 @@ import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 
+// La página sigue siendo dinámica (usa cookies para sesión e idioma), pero el
+// árbol de datos público del negocio —lo caro (servicios, horario, equipo,
+// bonos, reseñas)— se sirve desde caché de datos con revalidación a 60 s. Así
+// los hits de una página de negocio popular no consultan la BD en cada visita;
+// una edición del negocio tarda ≤60 s en reflejarse (mismo criterio que la
+// landing). La invalidación instantánea por tag queda pendiente hasta que la
+// API de caché de Next 16 (revalidateTag/updateTag) se estabilice.
 export const dynamic = "force-dynamic";
+const REVALIDATE_SECONDS = 60;
+
+// Datos públicos del negocio (nada dependiente del usuario), cacheados por slug.
+function getPublicBusinessData(slug: string) {
+  return unstable_cache(
+    async () => {
+      const business = await prisma.business.findFirst({
+        where: { slug, active: true },
+        include: {
+          services: { where: { active: true }, orderBy: { priceCents: "asc" } },
+          hours: { orderBy: { openTime: "asc" } },
+          staff: {
+            where: { active: true },
+            select: { id: true, name: true, color: true },
+            orderBy: { name: "asc" },
+          },
+          packages: {
+            where: { active: true, service: { active: true } },
+            include: { service: { select: { name: true, priceCents: true } } },
+            orderBy: { priceCents: "asc" },
+          },
+        },
+      });
+      if (!business) return null;
+
+      const [reviewSummary, reviews] = await Promise.all([
+        getBusinessReviewSummary(business.id),
+        prisma.review.findMany({
+          where: { businessId: business.id },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true,
+            client: { select: { name: true } },
+          },
+        }),
+      ]);
+      return { business, reviewSummary, reviews };
+    },
+    ["public-business", slug],
+    { revalidate: REVALIDATE_SECONDS },
+  )();
+}
 
 export async function generateMetadata({
   params,
@@ -56,43 +110,12 @@ export default async function BusinessPage({
 }) {
   const { slug } = await params;
   const { locale, t } = await getDict();
-  const [business, user] = await Promise.all([
-    prisma.business.findFirst({
-      where: { slug, active: true },
-      include: {
-        services: { where: { active: true }, orderBy: { priceCents: "asc" } },
-        hours: { orderBy: { openTime: "asc" } },
-        staff: {
-          where: { active: true },
-          select: { id: true, name: true, color: true },
-          orderBy: { name: "asc" },
-        },
-        packages: {
-          where: { active: true, service: { active: true } },
-          include: { service: { select: { name: true, priceCents: true } } },
-          orderBy: { priceCents: "asc" },
-        },
-      },
-    }),
+  const [data, user] = await Promise.all([
+    getPublicBusinessData(slug),
     getSessionUser(),
   ]);
-  if (!business) notFound();
-
-  const [reviewSummary, reviews] = await Promise.all([
-    getBusinessReviewSummary(business.id),
-    prisma.review.findMany({
-      where: { businessId: business.id },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      select: {
-        id: true,
-        rating: true,
-        comment: true,
-        createdAt: true,
-        client: { select: { name: true } },
-      },
-    }),
-  ]);
+  if (!data) notFound();
+  const { business, reviewSummary, reviews } = data;
 
   const ratingAverage = new Intl.NumberFormat(intlLocale(locale), {
     minimumFractionDigits: 1,
