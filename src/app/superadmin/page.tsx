@@ -1,8 +1,16 @@
 import Link from "next/link";
-import { Clock, Sparkles, Store } from "lucide-react";
+import {
+  BarChart3,
+  CalendarCheck,
+  CreditCard,
+  Sparkles,
+  Store,
+} from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/auth/guards";
 import { effectivePlan } from "@/lib/domain/plans";
+import { getPlatformMetrics } from "@/lib/domain/platform";
+import { formatCents } from "@/lib/money";
 import { StatTile } from "@/components/ui/stat-tile";
 import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -61,14 +69,10 @@ export default async function SuperAdminPage({
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.pagina) || 1);
 
-  // Tarjetas con counts agregados y tabla paginada: la página no carga todos
-  // los negocios de la plataforma (crece con cada alta).
-  const [total, proActive, trialing, businesses] = await Promise.all([
-    prisma.business.count(),
-    prisma.business.count({
-      where: { plan: "pro", subscriptionStatus: "active" },
-    }),
-    prisma.business.count({ where: { subscriptionStatus: "trialing" } }),
+  // Métricas agregadas + tabla paginada: la página no carga todos los negocios
+  // de la plataforma (crece con cada alta).
+  const [metrics, businesses] = await Promise.all([
+    getPlatformMetrics(),
     prisma.business.findMany({
       orderBy: { createdAt: "desc" },
       select: {
@@ -87,7 +91,23 @@ export default async function SuperAdminPage({
       take: PAGE_SIZE,
     }),
   ]);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(metrics.totalBusinesses / PAGE_SIZE));
+
+  // Serie mensual combinada (mismas claves de mes en ambas listas).
+  const monthly = metrics.newBusinessesByMonth.map((b, i) => ({
+    month: b.month,
+    newBusinesses: b.count,
+    appointments: metrics.appointmentsByMonth[i]?.count ?? 0,
+  }));
+  const monthLabel = (key: string) => {
+    const [y, m] = key.split("-").map(Number);
+    return new Intl.DateTimeFormat("es-ES", {
+      month: "short",
+      year: "2-digit",
+      timeZone: "UTC",
+    }).format(new Date(Date.UTC(y, m - 1, 1)));
+  };
+  const maxAppointments = Math.max(1, ...monthly.map((r) => r.appointments));
 
   return (
     <div className="space-y-6">
@@ -97,28 +117,78 @@ export default async function SuperAdminPage({
         description="Todos los negocios y el estado de su suscripción SaaS."
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          icon={CreditCard}
+          tone="success"
+          label="MRR estimado"
+          value={formatCents(metrics.mrrCents, "EUR")}
+          hint={`${metrics.proActive} Pro activos × ${formatCents(2900, "EUR")}`}
+        />
         <StatTile
           icon={Store}
           tone="brand"
           label="Negocios"
-          value={String(total)}
-          hint="Total en la plataforma"
+          value={String(metrics.totalBusinesses)}
+          hint={`${metrics.activeBusinesses} activos · ${metrics.suspendedBusinesses} suspendidos`}
         />
         <StatTile
           icon={Sparkles}
-          tone="success"
-          label="Pro activos"
-          value={String(proActive)}
-          hint="Con suscripción de pago activa"
+          tone="info"
+          label="Pro activos / En prueba"
+          value={`${metrics.proActive} / ${metrics.trialing}`}
+          hint={`${metrics.pastDue} con pago pendiente`}
         />
         <StatTile
-          icon={Clock}
-          tone="info"
-          label="En prueba"
-          value={String(trialing)}
-          hint="Periodo de prueba en curso"
+          icon={CalendarCheck}
+          tone="brand"
+          label="Citas este mes"
+          value={String(metrics.appointmentsThisMonth)}
+          hint={`${metrics.totalAppointments} en total (histórico)`}
         />
+      </div>
+
+      <div className="rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-5">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+          <BarChart3 className="h-4 w-4 text-ink-muted" aria-hidden />
+          Últimos 6 meses
+        </h2>
+        <table className="mt-3 w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs uppercase tracking-wide text-ink-muted">
+              <th className="pb-2 font-medium">Mes</th>
+              <th className="pb-2 text-right font-medium">Altas</th>
+              <th className="pb-2 pl-4 font-medium">Citas</th>
+            </tr>
+          </thead>
+          <tbody>
+            {monthly.map((row) => (
+              <tr key={row.month} className="border-t border-border">
+                <td className="py-2 capitalize text-ink-soft">
+                  {monthLabel(row.month)}
+                </td>
+                <td className="py-2 text-right tabular-nums text-ink">
+                  {row.newBusinesses}
+                </td>
+                <td className="py-2 pl-4">
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="h-2 rounded-full bg-brand-500"
+                      style={{
+                        width: `${Math.round((row.appointments / maxAppointments) * 100)}%`,
+                        minWidth: row.appointments > 0 ? "0.5rem" : "0",
+                      }}
+                      aria-hidden
+                    />
+                    <span className="tabular-nums text-ink-soft">
+                      {row.appointments}
+                    </span>
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {businesses.length > 0 ? (

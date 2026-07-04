@@ -75,4 +75,15 @@ test.describe("capa SaaS", () => {
     });
     expect(res.ok()).toBeTruthy();
   });
+
+  test("el super-admin ve el dashboard de métricas de plataforma", async ({
+    page,
+  }) => {
+    await login(page, SUPER);
+    await page.goto("/superadmin");
+    // Métricas agregadas + serie mensual.
+    await expect(page.getByText("MRR estimado")).toBeVisible();
+    await expect(page.getByText("Citas este mes")).toBeVisible();
+    await expect(page.getByText("Últimos 6 meses")).toBeVisible();
+  });
 });
