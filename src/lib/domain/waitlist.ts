@@ -134,6 +134,69 @@ export async function leaveWaitlist(entryId: string, clientId: string) {
   return { deleted: true };
 }
 
+/**
+ * Vista del NEGOCIO: entradas vivas (WAITING/NOTIFIED) de hoy en adelante,
+ * ordenadas por día y servicio. Las de días ya pasados no se muestran (la
+ * demanda caducó). Incluye contacto del cliente para que el negocio pueda
+ * avisar manualmente si quiere.
+ */
+export async function getBusinessWaitlist(businessId: string, now = new Date()) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { timezone: true },
+  });
+  // Comparación lexicográfica de "YYYY-MM-DD" = cronológica.
+  const todayISO = business
+    ? toLocalDateISO(now, business.timezone)
+    : "0000-00-00";
+
+  return prisma.waitlistEntry.findMany({
+    where: {
+      businessId,
+      status: { in: [...ACTIVE_STATUSES] },
+      desiredDate: { gte: todayISO },
+    },
+    orderBy: [
+      { desiredDate: "asc" },
+      { serviceId: "asc" },
+      { createdAt: "asc" },
+    ],
+    select: {
+      id: true,
+      desiredDate: true,
+      status: true,
+      notifiedAt: true,
+      createdAt: true,
+      service: { select: { id: true, name: true } },
+      staff: { select: { name: true } },
+      client: { select: { name: true, email: true, phone: true } },
+    },
+  });
+}
+
+/**
+ * El negocio elimina una entrada de SU lista de espera (aislamiento por
+ * businessId: no puede tocar entradas de otro negocio).
+ */
+export async function adminRemoveWaitlistEntry(
+  businessId: string,
+  entryId: string,
+) {
+  const entry = await prisma.waitlistEntry.findFirst({
+    where: { id: entryId, businessId },
+    select: { id: true },
+  });
+  if (!entry) {
+    throw new DomainError(
+      "Entrada de lista de espera no encontrada",
+      "WAITLIST_NOT_FOUND",
+      404,
+    );
+  }
+  await prisma.waitlistEntry.delete({ where: { id: entryId } });
+  return { deleted: true };
+}
+
 /** Entradas vivas de un cliente, con nombres de negocio/servicio para la UI. */
 export async function listClientWaitlist(clientId: string) {
   return prisma.waitlistEntry.findMany({

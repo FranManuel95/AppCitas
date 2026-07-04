@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
+  adminRemoveWaitlistEntry,
+  getBusinessWaitlist,
   joinWaitlist,
   leaveWaitlist,
   notifyWaitlistForFreedSlot,
@@ -156,5 +158,49 @@ describe("lista de espera (BD)", () => {
       where: { clientId: waiter },
     });
     expect(entry.status).toBe("NOTIFIED");
+  });
+
+  it("getBusinessWaitlist trae las entradas vivas y futuras del negocio, no de otros ni de días pasados", async () => {
+    const a = await seedBusiness();
+    const b = await seedBusiness();
+    const c1 = await seedClient();
+    const c2 = await seedClient();
+
+    // Futura en A (cuenta) y otra futura en A de otro cliente (cuenta).
+    await joinWaitlist({ businessId: a.businessId, serviceId: a.serviceId, clientId: c1, desiredDate: DAY, now: NOW });
+    await joinWaitlist({ businessId: a.businessId, serviceId: a.serviceId, clientId: c2, desiredDate: "2026-07-20", now: NOW });
+    // Entrada en B (no debe salir en A).
+    await joinWaitlist({ businessId: b.businessId, serviceId: b.serviceId, clientId: c1, desiredDate: DAY, now: NOW });
+    // Entrada de día pasado en A (insertada directamente): no debe salir.
+    await prisma.waitlistEntry.create({
+      data: {
+        businessId: a.businessId,
+        serviceId: a.serviceId,
+        clientId: c1,
+        desiredDate: "2026-06-15",
+        status: "WAITING",
+      },
+    });
+
+    const list = await getBusinessWaitlist(a.businessId, NOW);
+    expect(list).toHaveLength(2);
+    expect(list.every((e) => e.desiredDate >= "2026-07-10")).toBe(true);
+    expect(list[0].client.name).toBeDefined();
+  });
+
+  it("adminRemoveWaitlistEntry borra la del propio negocio; una ajena da 404", async () => {
+    const a = await seedBusiness();
+    const b = await seedBusiness();
+    const clientId = await seedClient();
+    const entry = await joinWaitlist({ businessId: a.businessId, serviceId: a.serviceId, clientId, desiredDate: DAY, now: NOW });
+
+    // El negocio B no puede borrar una entrada de A.
+    await expect(
+      adminRemoveWaitlistEntry(b.businessId, entry.id),
+    ).rejects.toMatchObject({ code: "WAITLIST_NOT_FOUND" });
+
+    const res = await adminRemoveWaitlistEntry(a.businessId, entry.id);
+    expect(res).toEqual({ deleted: true });
+    expect(await prisma.waitlistEntry.count()).toBe(0);
   });
 });

@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Clock,
   CreditCard,
+  Hourglass,
   LayoutDashboard,
   Settings,
   Users,
@@ -28,6 +29,7 @@ const ICONS = {
   promociones: BadgePercent,
   horario: Clock,
   notificaciones: Bell,
+  espera: Hourglass,
   ajustes: Settings,
   plan: CreditCard,
 } satisfies Record<string, LucideIcon>;
