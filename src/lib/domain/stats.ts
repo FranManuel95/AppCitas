@@ -2,10 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { addDaysISO, toLocalDateISO, weekdayOfDateISO, wallTimeToUtc } from "./dates";
 import { BLOCKING_STATUSES, type AppointmentStatus } from "./types";
 
-// Agregados del dashboard. Se calculan en JS sobre una única consulta acotada
-// por fecha (índice businessId+startAt): portable entre SQLite y PostgreSQL.
-// Si un negocio acumulase cientos de miles de citas, estos agregados se
-// materializarían con GROUP BY nativo o una tabla de resumen.
+// Agregados del dashboard, calculados EN LA BASE DE DATOS (groupBy/count/sum
+// sobre los índices businessId+startAt y businessId+status+startAt). Las filas
+// transferidas son O(estados×12 + servicios + clientes + citas del mes actual),
+// independientes del histórico total: el dashboard escala aunque el negocio
+// acumule cientos de miles de citas. Portable entre SQLite y PostgreSQL (API
+// Prisma, sin SQL crudo).
 
 export interface MonthlyPoint {
   month: string; // "YYYY-MM"
@@ -64,7 +66,8 @@ export async function getDashboardStats(
   });
   const tz = business.timezone;
 
-  // Últimos 12 meses naturales (incluido el actual) + citas futuras
+  // Últimos 12 meses naturales (incluido el actual) + citas futuras. Cada mes
+  // se materializa como intervalo UTC [inicio, fin) según la zona del negocio.
   const currentMonth = monthOf(now, tz);
   const months: string[] = [];
   {
@@ -76,25 +79,79 @@ export async function getDashboardStats(
       );
     }
   }
-  const windowStart = wallTimeToUtc(`${months[0]}-01`, "00:00", tz);
+  const monthStartOf = (month: string) =>
+    wallTimeToUtc(`${month}-01`, "00:00", tz);
+  const nextMonthOf = (month: string) => {
+    const [y, m] = month.split("-").map(Number);
+    const d = new Date(Date.UTC(y, m, 1)); // mes+1 (Date normaliza)
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  };
+  const windowStart = monthStartOf(months[0]);
+  const currentMonthStart = monthStartOf(currentMonth);
+  const currentMonthEnd = monthStartOf(nextMonthOf(currentMonth));
 
-  const [appointments, packageSales] = await Promise.all([
-    prisma.appointment.findMany({
+  const [
+    statusRows,
+    serviceRows,
+    clientRows,
+    upcomingConfirmed,
+    perMonthRows,
+    currentMonthBlocking,
+    packageSales,
+    serviceInfo,
+  ] = await Promise.all([
+    // Desglose por estado de toda la ventana (incluye citas futuras)
+    prisma.appointment.groupBy({
+      by: ["status"],
       where: { businessId, startAt: { gte: windowStart } },
-      select: {
-        startAt: true,
-        endAt: true,
-        status: true,
-        chargedCents: true,
-        clientId: true,
-        serviceId: true,
-        service: { select: { name: true, color: true } },
+      _count: { _all: true },
+    }),
+    // Uso e ingreso por servicio (para el top 5)
+    prisma.appointment.groupBy({
+      by: ["serviceId"],
+      where: { businessId, startAt: { gte: windowStart } },
+      _count: { _all: true },
+      _sum: { chargedCents: true },
+    }),
+    // Clientes únicos: una fila estrecha por cliente, no por cita
+    prisma.appointment.groupBy({
+      by: ["clientId"],
+      where: { businessId, startAt: { gte: windowStart } },
+    }),
+    prisma.appointment.count({
+      where: { businessId, status: "CONFIRMED", startAt: { gt: now } },
+    }),
+    // Serie mensual: 12 agregados acotados por [inicio, fin) de cada mes
+    Promise.all(
+      months.map((month) =>
+        prisma.appointment.groupBy({
+          by: ["status"],
+          where: {
+            businessId,
+            startAt: { gte: monthStartOf(month), lt: monthStartOf(nextMonthOf(month)) },
+          },
+          _count: { _all: true },
+          _sum: { chargedCents: true },
+        }),
+      ),
+    ),
+    // Ocupación: solo las citas que bloquean agenda del mes ACTUAL (acotado)
+    prisma.appointment.findMany({
+      where: {
+        businessId,
+        status: { in: [...BLOCKING_STATUSES] },
+        startAt: { gte: currentMonthStart, lt: currentMonthEnd },
       },
-      orderBy: { startAt: "asc" },
+      select: { startAt: true, endAt: true },
     }),
     prisma.clientPackage.findMany({
       where: { businessId, createdAt: { gte: windowStart } },
       select: { createdAt: true, pricePaidCents: true },
+    }),
+    // Nombre y color de los servicios del negocio (para etiquetar el top 5)
+    prisma.service.findMany({
+      where: { businessId },
+      select: { id: true, name: true, color: true },
     }),
   ]);
 
@@ -113,61 +170,52 @@ export async function getDashboardStats(
       },
     ]),
   );
-  const byService = new Map<string, ServiceStat>();
-  const statusCount = new Map<AppointmentStatus, number>();
-  const clients = new Set<string>();
 
   let monthRevenueCents = 0;
   let monthAppointments = 0;
   let monthLateCancellations = 0;
   let monthLateChargesCents = 0;
-  let upcomingConfirmed = 0;
+
+  months.forEach((month, i) => {
+    const point = byMonth.get(month)!;
+    for (const row of perMonthRows[i]) {
+      const status = row.status as AppointmentStatus;
+      const count = row._count._all;
+      const charged = row._sum.chargedCents ?? 0;
+      point.total += count;
+      point.revenueCents += charged;
+      if (status === "COMPLETED") point.completed += count;
+      if (status === "CANCELLED") point.cancelled += count;
+      if (status === "CANCELLED_LATE") point.cancelledLate += count;
+      if (status === "NO_SHOW") point.noShow += count;
+
+      if (month === currentMonth) {
+        monthRevenueCents += charged;
+        monthAppointments += count;
+        if (status === "CANCELLED_LATE" || status === "NO_SHOW") {
+          monthLateCancellations += count;
+          monthLateChargesCents += charged;
+        }
+      }
+    }
+  });
+
   let monthBookedMinutes = 0;
-
-  for (const a of appointments) {
-    const status = a.status as AppointmentStatus;
-    const month = monthOf(a.startAt, tz);
-    clients.add(a.clientId);
-    statusCount.set(status, (statusCount.get(status) ?? 0) + 1);
-
-    const point = byMonth.get(month);
-    if (point) {
-      point.total += 1;
-      point.revenueCents += a.chargedCents;
-      if (status === "COMPLETED") point.completed += 1;
-      if (status === "CANCELLED") point.cancelled += 1;
-      if (status === "CANCELLED_LATE") point.cancelledLate += 1;
-      if (status === "NO_SHOW") point.noShow += 1;
-    }
-
-    const svc = byService.get(a.serviceId) ?? {
-      serviceId: a.serviceId,
-      name: a.service.name,
-      color: a.service.color,
-      count: 0,
-      revenueCents: 0,
-    };
-    svc.count += 1;
-    svc.revenueCents += a.chargedCents;
-    byService.set(a.serviceId, svc);
-
-    if (month === currentMonth) {
-      monthRevenueCents += a.chargedCents;
-      monthAppointments += 1;
-      if (status === "CANCELLED_LATE" || status === "NO_SHOW") {
-        monthLateCancellations += 1;
-        monthLateChargesCents += a.chargedCents;
-      }
-      if (BLOCKING_STATUSES.includes(status)) {
-        monthBookedMinutes +=
-          (a.endAt.getTime() - a.startAt.getTime()) / 60_000;
-      }
-    }
-
-    if (status === "CONFIRMED" && a.startAt.getTime() > now.getTime()) {
-      upcomingConfirmed += 1;
-    }
+  for (const a of currentMonthBlocking) {
+    monthBookedMinutes += (a.endAt.getTime() - a.startAt.getTime()) / 60_000;
   }
+
+  const serviceLabel = new Map(serviceInfo.map((s) => [s.id, s]));
+  const topServices: ServiceStat[] = serviceRows
+    .map((row) => ({
+      serviceId: row.serviceId,
+      name: serviceLabel.get(row.serviceId)?.name ?? "(servicio eliminado)",
+      color: serviceLabel.get(row.serviceId)?.color ?? "#94a3b8",
+      count: row._count._all,
+      revenueCents: row._sum.chargedCents ?? 0,
+    }))
+    .sort((a, b) => b.revenueCents - a.revenueCents)
+    .slice(0, 5);
 
   // Venta de bonos: ingreso del mes en que se compran
   for (const sale of packageSales) {
@@ -226,14 +274,12 @@ export async function getDashboardStats(
       monthOpenMinutes > 0
         ? Math.min(100, Math.round((monthBookedMinutes / monthOpenMinutes) * 100))
         : 0,
-    uniqueClients: clients.size,
+    uniqueClients: clientRows.length,
     monthly: [...byMonth.values()],
-    topServices: [...byService.values()]
-      .sort((a, b) => b.revenueCents - a.revenueCents)
-      .slice(0, 5),
-    statusBreakdown: [...statusCount.entries()].map(([status, count]) => ({
-      status,
-      count,
+    topServices,
+    statusBreakdown: statusRows.map((row) => ({
+      status: row.status as AppointmentStatus,
+      count: row._count._all,
     })),
   };
 }
