@@ -6,7 +6,8 @@ import { createPortalSession } from "@/lib/billing";
 // POST /api/billing/portal — abre (o simula) el portal de facturación de Stripe
 // para gestionar o cancelar la suscripción del negocio.
 export const POST = apiHandler(async () => {
-  const admin = await apiRequireBusinessAdmin();
+  // allowSuspended: gestionar/regularizar el pago debe seguir disponible.
+  const admin = await apiRequireBusinessAdmin({ allowSuspended: true });
 
   const baseUrl = process.env.APP_BASE_URL ?? "http://localhost:3000";
   const { url } = await createPortalSession({

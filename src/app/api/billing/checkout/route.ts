@@ -6,7 +6,8 @@ import { createCheckoutSession } from "@/lib/billing";
 // POST /api/billing/checkout — inicia (o simula) la suscripción Pro del negocio
 // y devuelve la URL a la que redirigir al administrador.
 export const POST = apiHandler(async () => {
-  const admin = await apiRequireBusinessAdmin();
+  // allowSuspended: un negocio suspendido debe poder pagar para reactivarse.
+  const admin = await apiRequireBusinessAdmin({ allowSuspended: true });
 
   const baseUrl = process.env.APP_BASE_URL ?? "http://localhost:3000";
   const { url } = await createCheckoutSession({

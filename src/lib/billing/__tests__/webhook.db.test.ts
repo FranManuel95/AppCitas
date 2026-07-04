@@ -61,6 +61,7 @@ describe("handleStripeWebhook (BD)", () => {
     const { businessId } = await seedBusiness();
     const sub = subscription({ id: "sub_1", status: "active", businessId });
     stripeMock.event = subscriptionEvent("evt_active", sub);
+    stripeMock.subscription = sub; // el handler re-recupera el estado actual
 
     await handleStripeWebhook("{}", "sig");
 
@@ -75,6 +76,7 @@ describe("handleStripeWebhook (BD)", () => {
     const { businessId } = await seedBusiness();
     const sub = subscription({ id: "sub_2", status: "canceled", businessId });
     stripeMock.event = subscriptionEvent("evt_canceled", sub);
+    stripeMock.subscription = sub;
 
     await handleStripeWebhook("{}", "sig");
 
@@ -87,6 +89,7 @@ describe("handleStripeWebhook (BD)", () => {
     const { businessId } = await seedBusiness();
     const sub = subscription({ id: "sub_3", status: "past_due", businessId });
     stripeMock.event = subscriptionEvent("evt_pastdue", sub);
+    stripeMock.subscription = sub;
 
     await handleStripeWebhook("{}", "sig");
 
@@ -100,6 +103,7 @@ describe("handleStripeWebhook (BD)", () => {
     const { businessId } = await seedBusiness();
     const sub = subscription({ id: "sub_4", status: "active", businessId });
     stripeMock.event = subscriptionEvent("evt_dup", sub);
+    stripeMock.subscription = sub;
 
     await handleStripeWebhook("{}", "sig");
     // Se altera el negocio a un valor centinela; si el 2º evento re-procesara,
@@ -114,5 +118,30 @@ describe("handleStripeWebhook (BD)", () => {
     const biz = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
     expect(biz.subscriptionStatus).toBe("centinela");
     expect(await prisma.processedWebhookEvent.count()).toBe(1);
+  });
+
+  it("evento fuera de orden: un `updated` viejo (snapshot active) no re-activa un negocio ya cancelado", async () => {
+    const { businessId } = await seedBusiness();
+    // El snapshot del evento dice "active" (es un evento anterior que llega
+    // tarde), pero el estado REAL de la suscripción en Stripe es "canceled".
+    const staleSnapshot = subscription({
+      id: "sub_5",
+      status: "active",
+      businessId,
+    });
+    const liveState = subscription({
+      id: "sub_5",
+      status: "canceled",
+      businessId,
+    });
+    stripeMock.event = subscriptionEvent("evt_stale", staleSnapshot);
+    stripeMock.subscription = liveState; // lo que devuelve el retrieve
+
+    await handleStripeWebhook("{}", "sig");
+
+    // Se aplica el estado real (canceled/free), no el snapshot desordenado.
+    const biz = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
+    expect(biz.subscriptionStatus).toBe("canceled");
+    expect(biz.plan).toBe("free");
   });
 });

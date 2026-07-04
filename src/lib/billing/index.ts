@@ -24,6 +24,22 @@ export function isBillingConfigured(): boolean {
   return !!process.env.STRIPE_SECRET_KEY;
 }
 
+/**
+ * La simulación del modo dev (activar Pro / cancelar sin pasar por Stripe) NUNCA
+ * debe ejecutarse en producción: allí, la ausencia de STRIPE_SECRET_KEY es un
+ * error de despliegue, no un upgrade gratis para cada negocio. Se aborta con un
+ * error duro, mismo criterio que el cron de notificaciones (jobs/notifications).
+ */
+function assertSimulationAllowed(): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new DomainError(
+      "La facturación no está configurada en este entorno",
+      "BILLING_NOT_CONFIGURED",
+      503,
+    );
+  }
+}
+
 export interface CheckoutParams {
   businessId: string;
   ownerEmail: string;
@@ -53,6 +69,7 @@ export async function createCheckoutSession(
   const { businessId, ownerEmail, successUrl, cancelUrl } = params;
 
   if (!isBillingConfigured()) {
+    assertSimulationAllowed();
     // Activación simulada: marca Pro y una renovación a 30 días.
     await prisma.business.update({
       where: { id: businessId },
@@ -108,6 +125,7 @@ export async function createPortalSession(
   const { businessId, returnUrl } = params;
 
   if (!isBillingConfigured()) {
+    assertSimulationAllowed();
     const business = await prisma.business.findUniqueOrThrow({
       where: { id: businessId },
       select: { plan: true },
@@ -197,10 +215,17 @@ export async function handleStripeWebhook(
     case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
+      const snapshot = event.data.object as Stripe.Subscription;
+      // Stripe no garantiza el orden de entrega: un `updated` viejo (snapshot
+      // "active") puede llegar tras un `deleted` y re-activaría Pro si confiamos
+      // en el snapshot. Recuperamos el estado ACTUAL de la suscripción y
+      // aplicamos ese; así el resultado no depende del orden de los eventos.
+      const subscription = await stripe().subscriptions.retrieve(snapshot.id);
       await applySubscription(
         subscription,
-        subscription.metadata?.businessId ?? null,
+        subscription.metadata?.businessId ??
+          snapshot.metadata?.businessId ??
+          null,
       );
       break;
     }

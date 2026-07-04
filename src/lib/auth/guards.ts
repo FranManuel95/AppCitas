@@ -28,12 +28,29 @@ export async function apiRequireUser(): Promise<SessionUser> {
   return user;
 }
 
-export async function apiRequireBusinessAdmin(): Promise<
-  SessionUser & { businessId: string }
-> {
+export async function apiRequireBusinessAdmin(
+  opts: { allowSuspended?: boolean } = {},
+): Promise<SessionUser & { businessId: string }> {
   const user = await apiRequireUser();
   if (!ADMIN_ROLES.includes(user.role) || !user.businessId) {
     throw new DomainError("Acceso restringido al negocio", "FORBIDDEN", 403);
+  }
+  // Un negocio suspendido por la plataforma (Business.active=false) no puede
+  // operar el back-office: se bloquean todas las mutaciones/exportaciones. Las
+  // rutas de facturación (checkout/portal) pasan allowSuspended para que el
+  // dueño pueda regularizar el pago y reactivarse.
+  if (!opts.allowSuspended) {
+    const business = await prisma.business.findUnique({
+      where: { id: user.businessId },
+      select: { active: true },
+    });
+    if (business && !business.active) {
+      throw new DomainError(
+        "Este negocio está suspendido",
+        "BUSINESS_SUSPENDED",
+        403,
+      );
+    }
   }
   return user as SessionUser & { businessId: string };
 }

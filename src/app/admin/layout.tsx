@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, ExternalLink, LogOut } from "lucide-react";
+import { CalendarDays, CreditCard, ExternalLink, LogOut, Ban } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { getDict } from "@/lib/i18n";
@@ -47,7 +47,7 @@ export default async function AdminLayout({
   const [business, account, { locale, t }] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
-      select: { name: true, slug: true },
+      select: { name: true, slug: true, active: true },
     }),
     prisma.user.findUnique({
       where: { id: admin.id },
@@ -118,6 +118,28 @@ export default async function AdminLayout({
         <div className="mx-auto w-full max-w-6xl">
           {account && !account.emailVerifiedAt && (
             <VerifyEmailBanner email={admin.email} />
+          )}
+          {!business.active && (
+            <div
+              role="alert"
+              className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger-strong"
+            >
+              <span className="flex min-w-0 items-start gap-2.5">
+                <Ban className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <p>
+                  Tu negocio está suspendido. No puedes hacer cambios ni recibir
+                  reservas hasta reactivarlo. Regulariza tu suscripción para
+                  volver a operar.
+                </p>
+              </span>
+              <Link
+                href="/admin/plan"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-danger/40 bg-surface px-3 py-1.5 text-xs font-medium text-danger-strong shadow-xs transition-colors hover:border-danger/70"
+              >
+                <CreditCard className="h-3.5 w-3.5" aria-hidden />
+                Ir a mi plan
+              </Link>
+            </div>
           )}
           {children}
         </div>
