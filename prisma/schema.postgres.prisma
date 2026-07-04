@@ -369,6 +369,10 @@ model Appointment {
   @@index([clientId, startAt])
   @@index([businessId, status, startAt])
   @@index([staffId, startAt])
+  // Cupo mensual del plan: se cuenta por createdAt DENTRO de la transacción de
+  // reserva (bajo el advisory lock); sin este índice escanearía el histórico
+  // completo del negocio en el camino caliente.
+  @@index([businessId, createdAt])
 }
 
 // Reseña post-cita: solo el cliente de una cita COMPLETED, una por cita.
@@ -397,6 +401,9 @@ model RateLimitCounter {
   count       Int    @default(1)
 
   @@id([key, windowStart])
+  // La limpieza del cron borra por windowStart < corte; el PK compuesto no
+  // sirve para ese rango (windowStart es la 2ª columna).
+  @@index([windowStart])
 }
 
 // Outbox de notificaciones: cada mensaje se persiste y un worker/cron lo
