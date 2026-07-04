@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { CardSetup } from "./card-setup";
+import { WaitlistJoinButton } from "./waitlist-join-button";
 
 type BookingDict = Dict["booking"];
 
@@ -424,9 +425,19 @@ export function BookingWizard({
                 </div>
               )}
               {!loadingSlots && slots && slots.length === 0 && (
-                <p className="rounded-lg bg-surface-3 px-3 py-2.5 text-sm text-ink-muted">
-                  {t.noSlots}
-                </p>
+                <div className="space-y-2.5">
+                  <p className="rounded-lg bg-surface-3 px-3 py-2.5 text-sm text-ink-muted">
+                    {t.noSlots}
+                  </p>
+                  {isLoggedIn && serviceId && (
+                    <WaitlistJoinButton
+                      businessId={business.id}
+                      serviceId={serviceId}
+                      dateISO={dateISO}
+                      staffId={staffId || undefined}
+                    />
+                  )}
+                </div>
               )}
               {!loadingSlots && slots && slots.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">

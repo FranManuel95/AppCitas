@@ -19,6 +19,7 @@ import {
 import { BLOCKING_STATUSES, type AppointmentStatus } from "./types";
 import { lockBusinessForBooking } from "./locks";
 import { assertAppointmentWithinPlanTx } from "./plans";
+import { notifyWaitlistForFreedSlot } from "./waitlist";
 import {
   couponDiscountCents,
   couponRejection,
@@ -474,6 +475,16 @@ export async function cancelAppointment(params: {
     outcome.chargedCents,
     now,
   );
+
+  // Se ha liberado el hueco: avisar a la lista de espera de ese servicio y día
+  // (en la zona del negocio). Mejor esfuerzo, no rompe la cancelación.
+  await notifyWaitlistForFreedSlot({
+    businessId: appointment.businessId,
+    serviceId: appointment.serviceId,
+    staffId: appointment.staffId,
+    desiredDate: toLocalDateISO(appointment.startAt, appointment.business.timezone),
+    now,
+  });
 
   return { appointment: updated, outcome, collection };
 }

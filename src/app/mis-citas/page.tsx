@@ -3,12 +3,15 @@ import {
   CalendarDays,
   CalendarX2,
   Clock,
+  Hourglass,
   Star,
   Store,
   User,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/guards";
+import { listClientWaitlist } from "@/lib/domain/waitlist";
+import { WaitlistLeaveButton } from "@/components/waitlist-leave-button";
 import { SiteHeader } from "@/components/site-header";
 import { StatusBadge } from "@/components/status-badge";
 import { CancelAppointmentButton } from "@/components/cancel-appointment-button";
@@ -32,7 +35,7 @@ export default async function MyAppointmentsPage() {
   const user = await requireUser();
   const { locale, t } = await getDict();
 
-  const [account, myPackages] = await Promise.all([
+  const [account, myPackages, waitlist] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.id },
       select: { emailVerifiedAt: true },
@@ -46,7 +49,17 @@ export default async function MyAppointmentsPage() {
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
+    listClientWaitlist(user.id),
   ]);
+
+  function formatDayISO(dateISO: string) {
+    // desiredDate es una fecha de calendario; se formatea en UTC para no
+    // desplazarla por la zona del navegador.
+    return new Intl.DateTimeFormat(intlLocale(locale), {
+      dateStyle: "long",
+      timeZone: "UTC",
+    }).format(new Date(`${dateISO}T00:00:00Z`));
+  }
 
   const appointments = await prisma.appointment.findMany({
     where: { clientId: user.id },
@@ -261,6 +274,51 @@ export default async function MyAppointmentsPage() {
                   </Card>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {waitlist.length > 0 && (
+          <section className="mt-10">
+            <SectionHeader as="h2" title="Lista de espera" />
+            <div className="mt-4 space-y-3">
+              {waitlist.map((w) => (
+                <Card
+                  key={w.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-4"
+                >
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 font-medium text-ink">
+                      <Hourglass
+                        className="h-4 w-4 shrink-0 text-ink-muted"
+                        aria-hidden
+                      />
+                      {w.service.name}{" "}
+                      <span className="text-ink-muted">·</span> {w.business.name}
+                    </p>
+                    <p className="mt-1 pl-6 text-sm text-ink-muted">
+                      {formatDayISO(w.desiredDate)}
+                      {w.staff ? ` · ${w.staff.name}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    {w.status === "NOTIFIED" ? (
+                      <Link
+                        href={`/b/${w.business.slug}/reservar?servicio=${w.service.id}`}
+                        className={buttonClasses({
+                          variant: "primary",
+                          size: "sm",
+                        })}
+                      >
+                        Hay hueco · Reservar
+                      </Link>
+                    ) : (
+                      <Badge tone="neutral">A la espera</Badge>
+                    )}
+                    <WaitlistLeaveButton entryId={w.id} />
+                  </div>
+                </Card>
+              ))}
             </div>
           </section>
         )}

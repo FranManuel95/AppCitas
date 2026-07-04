@@ -106,6 +106,35 @@ CREATE INDEX IF NOT EXISTS "Business_name_trgm_idx" ON "Business" USING GIN ("na
 CREATE INDEX IF NOT EXISTS "Business_description_trgm_idx" ON "Business" USING GIN ("description" gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS "Business_address_trgm_idx" ON "Business" USING GIN ("address" gin_trgm_ops);
 
+-- ── (11) Lista de espera ─────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS "WaitlistEntry" (
+    "id" TEXT NOT NULL,
+    "businessId" TEXT NOT NULL,
+    "serviceId" TEXT NOT NULL,
+    "clientId" TEXT NOT NULL,
+    "staffId" TEXT,
+    "desiredDate" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'WAITING',
+    "notifiedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "WaitlistEntry_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "WaitlistEntry_businessId_serviceId_desiredDate_status_idx" ON "WaitlistEntry"("businessId", "serviceId", "desiredDate", "status");
+CREATE INDEX IF NOT EXISTS "WaitlistEntry_clientId_status_idx" ON "WaitlistEntry"("clientId", "status");
+DO $$ BEGIN
+  ALTER TABLE "WaitlistEntry" ADD CONSTRAINT "WaitlistEntry_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "Business"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER TABLE "WaitlistEntry" ADD CONSTRAINT "WaitlistEntry_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER TABLE "WaitlistEntry" ADD CONSTRAINT "WaitlistEntry_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER TABLE "WaitlistEntry" ADD CONSTRAINT "WaitlistEntry_staffId_fkey" FOREIGN KEY ("staffId") REFERENCES "StaffMember"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+ALTER TABLE "WaitlistEntry" ENABLE ROW LEVEL SECURITY;
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -118,7 +147,8 @@ FROM (VALUES
   ('20260703170000_consented_at'),
   ('20260704000000_subscription_default_canceled'),
   ('20260704150000_hot_path_indexes'),
-  ('20260704160000_search_trgm_indexes')
+  ('20260704160000_search_trgm_indexes'),
+  ('20260704170000_waitlist')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m
