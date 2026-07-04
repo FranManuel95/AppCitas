@@ -7,6 +7,7 @@ import {
   Star,
   Store,
 } from "lucide-react";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getDict } from "@/lib/i18n";
 import { SiteHeader } from "@/components/site-header";
@@ -18,6 +19,74 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Select } from "@/components/ui/field";
 
 export const dynamic = "force-dynamic";
+
+// La landing es la página anónima más visitada: la vista SIN filtros (la
+// portada típica) y la lista de categorías se sirven desde caché de datos con
+// revalidación a 60 s, en vez de consultar la BD en cada hit. Las búsquedas
+// con filtros siguen consultando en vivo (el espacio de términos no es
+// cacheable). Un negocio recién dado de alta tarda ≤60 s en aparecer.
+const REVALIDATE_SECONDS = 60;
+
+function businessListQuery(q: string, cat: string, searchTerms: string[]) {
+  return prisma.business.findMany({
+    where: {
+      active: true,
+      ...(cat ? { category: cat } : {}),
+      ...(q
+        ? {
+            OR: searchTerms.flatMap((term) => [
+              { name: { contains: term } },
+              { description: { contains: term } },
+              { address: { contains: term } },
+            ]),
+          }
+        : {}),
+    },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      description: true,
+      category: true,
+      address: true,
+      _count: { select: { services: { where: { active: true } } } },
+    },
+    orderBy: { createdAt: "asc" },
+    take: 30,
+  });
+}
+
+function reviewStatsQuery(businessIds: string[]) {
+  if (businessIds.length === 0) return Promise.resolve([]);
+  return prisma.review.groupBy({
+    by: ["businessId"],
+    where: { businessId: { in: businessIds } },
+    _avg: { rating: true },
+    _count: { _all: true },
+  });
+}
+
+const getCachedCategories = unstable_cache(
+  () =>
+    prisma.business.findMany({
+      where: { active: true },
+      select: { category: true },
+      distinct: ["category"],
+      orderBy: { category: "asc" },
+    }),
+  ["landing-categories"],
+  { revalidate: REVALIDATE_SECONDS },
+);
+
+const getCachedDefaultListing = unstable_cache(
+  async () => {
+    const businesses = await businessListQuery("", "", []);
+    const reviewStats = await reviewStatsQuery(businesses.map((b) => b.id));
+    return { businesses, reviewStats };
+  },
+  ["landing-default-listing"],
+  { revalidate: REVALIDATE_SECONDS },
+);
 
 export default async function HomePage({
   searchParams,
@@ -35,49 +104,16 @@ export default async function HomePage({
   // minúsculas (deduplicado) para cubrir también los acentos en mayúscula.
   const searchTerms = Array.from(new Set([q, q.toLowerCase()]));
 
-  const [categories, businesses] = await Promise.all([
-    prisma.business.findMany({
-      where: { active: true },
-      select: { category: true },
-      distinct: ["category"],
-      orderBy: { category: "asc" },
-    }),
-    prisma.business.findMany({
-      where: {
-        active: true,
-        ...(cat ? { category: cat } : {}),
-        ...(q
-          ? {
-              OR: searchTerms.flatMap((term) => [
-                { name: { contains: term } },
-                { description: { contains: term } },
-                { address: { contains: term } },
-              ]),
-            }
-          : {}),
-      },
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        description: true,
-        category: true,
-        address: true,
-        _count: { select: { services: { where: { active: true } } } },
-      },
-      orderBy: { createdAt: "asc" },
-      take: 30,
-    }),
+  const [categories, { businesses, reviewStats }] = await Promise.all([
+    getCachedCategories(),
+    hasFilters
+      ? businessListQuery(q, cat, searchTerms).then(async (businesses) => ({
+          businesses,
+          reviewStats: await reviewStatsQuery(businesses.map((b) => b.id)),
+        }))
+      : getCachedDefaultListing(),
   ]);
 
-  const reviewStats = businesses.length
-    ? await prisma.review.groupBy({
-        by: ["businessId"],
-        where: { businessId: { in: businesses.map((b) => b.id) } },
-        _avg: { rating: true },
-        _count: { _all: true },
-      })
-    : [];
   const ratingByBusiness = new Map(
     reviewStats.map((r) => [
       r.businessId,

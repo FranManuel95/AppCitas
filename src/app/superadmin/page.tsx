@@ -50,32 +50,44 @@ function renewalCell(b: {
   return "—";
 }
 
-export default async function SuperAdminPage() {
+const PAGE_SIZE = 50;
+
+export default async function SuperAdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pagina?: string }>;
+}) {
   await requireSuperAdmin();
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp.pagina) || 1);
 
-  const businesses = await prisma.business.findMany({
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      plan: true,
-      subscriptionStatus: true,
-      active: true,
-      trialEndsAt: true,
-      planRenewsAt: true,
-      createdAt: true,
-      _count: { select: { appointments: true } },
-    },
-  });
-
-  const total = businesses.length;
-  const proActive = businesses.filter(
-    (b) => b.plan === "pro" && b.subscriptionStatus === "active",
-  ).length;
-  const trialing = businesses.filter(
-    (b) => b.subscriptionStatus === "trialing",
-  ).length;
+  // Tarjetas con counts agregados y tabla paginada: la página no carga todos
+  // los negocios de la plataforma (crece con cada alta).
+  const [total, proActive, trialing, businesses] = await Promise.all([
+    prisma.business.count(),
+    prisma.business.count({
+      where: { plan: "pro", subscriptionStatus: "active" },
+    }),
+    prisma.business.count({ where: { subscriptionStatus: "trialing" } }),
+    prisma.business.findMany({
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        plan: true,
+        subscriptionStatus: true,
+        active: true,
+        trialEndsAt: true,
+        planRenewsAt: true,
+        createdAt: true,
+        _count: { select: { appointments: true } },
+      },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="space-y-6">
@@ -178,6 +190,32 @@ export default async function SuperAdminPage() {
           title="Aún no hay negocios"
           description="Cuando alguien cree su negocio aparecerá aquí con su estado de suscripción."
         />
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-ink-soft">
+          <span>
+            Página {page} de {totalPages}
+          </span>
+          <span className="flex gap-2">
+            {page > 1 && (
+              <Link
+                href={`/superadmin?pagina=${page - 1}`}
+                className="rounded-lg border border-border bg-surface px-3 py-1.5 shadow-xs transition-colors hover:bg-surface-3"
+              >
+                Anterior
+              </Link>
+            )}
+            {page < totalPages && (
+              <Link
+                href={`/superadmin?pagina=${page + 1}`}
+                className="rounded-lg border border-border bg-surface px-3 py-1.5 shadow-xs transition-colors hover:bg-surface-3"
+              >
+                Siguiente
+              </Link>
+            )}
+          </span>
+        </div>
       )}
     </div>
   );
