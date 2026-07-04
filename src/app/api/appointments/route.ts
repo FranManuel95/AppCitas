@@ -6,7 +6,6 @@ import { apiRequireUser } from "@/lib/auth/guards";
 import { createAppointment } from "@/lib/domain/appointments";
 import { cancellationDeadline } from "@/lib/domain/cancellation";
 import { enforceUserRateLimit } from "@/lib/rate-limit";
-import { assertWithinPlan } from "@/lib/domain/plans";
 
 const createSchema = z.object({
   businessId: z.string().min(1),
@@ -32,9 +31,9 @@ export const POST = apiHandler(async (request: Request) => {
   });
   const data = createSchema.parse(await request.json());
 
-  // Límite del plan del negocio: citas al mes (402 si lo supera).
-  await assertWithinPlan(data.businessId, "createAppointment");
-
+  // El límite de citas/mes del plan se comprueba dentro de la transacción de
+  // createAppointment (bajo el advisory lock), no aquí, para cerrar la carrera
+  // entre reservas simultáneas.
   if (data.phone) {
     await prisma.user.update({
       where: { id: user.id },

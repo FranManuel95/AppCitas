@@ -1,5 +1,8 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { DomainError } from "@/lib/domain/errors";
+import { BLOCKING_STATUSES } from "@/lib/domain/types";
+import { toLocalDateISO, wallTimeToUtc } from "@/lib/domain/dates";
 
 /**
  * Planes SaaS que la plataforma cobra a cada NEGOCIO (B2B). No confundir con el
@@ -62,18 +65,45 @@ export interface PlanUsage {
   monthlyAppointments: number;
 }
 
+// Una cita cuenta para el cupo mensual solo si sigue "viva": las canceladas
+// (CANCELLED/CANCELLED_LATE) y los no-shows no penalizan al negocio. Si no,
+// reservar y cancelar 50 veces bloquearía la 51ª reserva legítima.
+const QUOTA_STATUSES = [...BLOCKING_STATUSES]; // CONFIRMED, COMPLETED
+
+/**
+ * Inicio del mes natural EN LA ZONA DEL NEGOCIO, como instante UTC. Contar por
+ * mes UTC (como antes) desplaza el corte ~1-2 h respecto al mes local cerca de
+ * medianoche del día 1 y mete/saca alguna cita del cubo equivocado.
+ */
+function monthStartInTz(now: Date, timezone: string): Date {
+  const todayISO = toLocalDateISO(now, timezone); // "YYYY-MM-DD" local
+  const firstOfMonthISO = `${todayISO.slice(0, 8)}01`; // "YYYY-MM-01"
+  return wallTimeToUtc(firstOfMonthISO, "00:00", timezone);
+}
+
 /** Uso actual del negocio frente a los límites del plan. */
 export async function getPlanUsage(
   businessId: string,
   now = new Date(),
+  timezone?: string,
 ): Promise<PlanUsage> {
-  const monthStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
-  );
+  const tz =
+    timezone ??
+    (
+      await prisma.business.findUniqueOrThrow({
+        where: { id: businessId },
+        select: { timezone: true },
+      })
+    ).timezone;
+  const monthStart = monthStartInTz(now, tz);
   const [staff, monthlyAppointments] = await Promise.all([
     prisma.staffMember.count({ where: { businessId, active: true } }),
     prisma.appointment.count({
-      where: { businessId, createdAt: { gte: monthStart } },
+      where: {
+        businessId,
+        createdAt: { gte: monthStart },
+        status: { in: QUOTA_STATUSES },
+      },
     }),
   ]);
   return { staff, monthlyAppointments };
@@ -90,10 +120,10 @@ export async function assertWithinPlan(
 ): Promise<void> {
   const business = await prisma.business.findUniqueOrThrow({
     where: { id: businessId },
-    select: { plan: true, subscriptionStatus: true },
+    select: { plan: true, subscriptionStatus: true, timezone: true },
   });
   const plan = effectivePlan(business);
-  const usage = await getPlanUsage(businessId, now);
+  const usage = await getPlanUsage(businessId, now, business.timezone);
 
   if (action === "addStaff" && plan.limits.staff !== null) {
     if (usage.staff >= plan.limits.staff) {
@@ -116,6 +146,43 @@ export async function assertWithinPlan(
         402,
       );
     }
+  }
+}
+
+/**
+ * Comprobación AUTORITATIVA del cupo mensual de citas, hecha DENTRO de la
+ * transacción de reserva (tras el advisory lock de lockBusinessForBooking).
+ * Cierra la carrera TOCTOU del chequeo de ruta: dos reservas simultáneas ya no
+ * pueden leer ambas usage=49 y colarse las dos. Si el plan efectivo no tiene
+ * límite mensual (Pro), no consulta el conteo.
+ */
+export async function assertAppointmentWithinPlanTx(
+  tx: Prisma.TransactionClient,
+  businessId: string,
+  now = new Date(),
+): Promise<void> {
+  const business = await tx.business.findUniqueOrThrow({
+    where: { id: businessId },
+    select: { plan: true, subscriptionStatus: true, timezone: true },
+  });
+  const plan = effectivePlan(business);
+  const limit = plan.limits.monthlyAppointments;
+  if (limit === null) return;
+
+  const monthStart = monthStartInTz(now, business.timezone);
+  const count = await tx.appointment.count({
+    where: {
+      businessId,
+      createdAt: { gte: monthStart },
+      status: { in: QUOTA_STATUSES },
+    },
+  });
+  if (count >= limit) {
+    throw new DomainError(
+      `Tu plan ${plan.name} permite ${limit} citas al mes. Mejora a Pro para quitar el límite.`,
+      "PLAN_LIMIT_APPOINTMENTS",
+      402,
+    );
   }
 }
 

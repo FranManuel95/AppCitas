@@ -75,8 +75,10 @@ ALTER TABLE "Business"
   ADD COLUMN IF NOT EXISTS "planRenewsAt" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "platformStripeCustomerId" TEXT,
   ADD COLUMN IF NOT EXISTS "platformStripeSubscriptionId" TEXT,
-  ADD COLUMN IF NOT EXISTS "subscriptionStatus" TEXT NOT NULL DEFAULT 'trialing',
+  ADD COLUMN IF NOT EXISTS "subscriptionStatus" TEXT NOT NULL DEFAULT 'canceled',
   ADD COLUMN IF NOT EXISTS "trialEndsAt" TIMESTAMP(3);
+-- Si la columna ya existía con el default antiguo ('trialing'), corrígelo.
+ALTER TABLE "Business" ALTER COLUMN "subscriptionStatus" SET DEFAULT 'canceled';
 
 -- ── (6) Idempotencia de webhooks de Stripe ─────────────────────────────────
 CREATE TABLE IF NOT EXISTS "ProcessedWebhookEvent" (
@@ -91,6 +93,9 @@ ALTER TABLE "ProcessedWebhookEvent" ENABLE ROW LEVEL SECURITY;
 -- ── (7) Evidencia de consentimiento (RGPD) ─────────────────────────────────
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "consentedAt" TIMESTAMP(3);
 
+-- ── (8) Default de subscriptionStatus → 'canceled' ─────────────────────────
+-- (ya aplicado arriba con el ALTER; este bloque solo documenta la migración 8)
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -100,7 +105,8 @@ FROM (VALUES
   ('20260703082903_reviews'),
   ('20260703120017_saas_subscription'),
   ('20260703163600_processed_webhook_event'),
-  ('20260703170000_consented_at')
+  ('20260703170000_consented_at'),
+  ('20260704000000_subscription_default_canceled')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

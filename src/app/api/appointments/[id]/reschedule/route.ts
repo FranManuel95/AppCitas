@@ -30,7 +30,7 @@ export const POST = apiHandler(
 
     const appointment = await prisma.appointment.findUnique({
       where: { id },
-      select: { businessId: true },
+      select: { businessId: true, clientId: true },
     });
     if (!appointment) {
       throw new DomainError("Cita no encontrada", "APPOINTMENT_NOT_FOUND", 404);
@@ -39,6 +39,13 @@ export const POST = apiHandler(
     const actorIsBusinessAdmin =
       ADMIN_ROLES.includes(user.role) &&
       user.businessId === appointment.businessId;
+
+    // No filtrar la existencia entre tenants: si la cita no es del cliente ni
+    // de su negocio, 404 (no 403), igual que la ruta admin. Sin esto, 403 vs
+    // 404 revelaba si un id ajeno existe.
+    if (!actorIsBusinessAdmin && appointment.clientId !== user.id) {
+      throw new DomainError("Cita no encontrada", "APPOINTMENT_NOT_FOUND", 404);
+    }
 
     const updated = await rescheduleAppointment({
       appointmentId: id,

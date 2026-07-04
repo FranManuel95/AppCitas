@@ -24,12 +24,13 @@ export interface SeededBusiness {
 export async function seedBusiness(opts?: {
   priceCents?: number;
   durationMinutes?: number;
+  timezone?: string;
 }): Promise<SeededBusiness> {
   const business = await prisma.business.create({
     data: {
       slug: uniq("biz"),
       name: "Negocio de prueba",
-      timezone: "UTC",
+      timezone: opts?.timezone ?? "UTC",
       currency: "EUR",
       active: true,
       slotGranularityMinutes: 60,

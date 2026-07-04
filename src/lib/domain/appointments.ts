@@ -18,6 +18,7 @@ import {
 } from "./dates";
 import { BLOCKING_STATUSES, type AppointmentStatus } from "./types";
 import { lockBusinessForBooking } from "./locks";
+import { assertAppointmentWithinPlanTx } from "./plans";
 import {
   couponDiscountCents,
   couponRejection,
@@ -276,6 +277,9 @@ export async function createAppointment(params: {
     // solapamiento: bajo READ COMMITTED el findFirst no ve las inserciones de
     // otra transacción en vuelo. No-op en SQLite. Ver src/lib/domain/locks.ts.
     await lockBusinessForBooking(tx, businessId);
+    // Cupo del plan comprobado bajo el lock (no en la ruta): así el conteo ve
+    // las reservas concurrentes ya confirmadas y no se cuelan dos en el límite.
+    await assertAppointmentWithinPlanTx(tx, businessId, now);
     const conflict = await tx.appointment.findFirst({
       where: {
         businessId,

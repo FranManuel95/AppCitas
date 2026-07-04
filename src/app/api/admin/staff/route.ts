@@ -59,7 +59,11 @@ export const POST = apiHandler(async (request: Request) => {
       color: data.color ?? "#0ea5e9",
       hours: { create: data.hours ?? [] },
       services: {
-        create: (data.serviceIds ?? []).map((serviceId) => ({ serviceId })),
+        // Dedupe: StaffService tiene PK compuesto (staffId, serviceId); ids
+        // repetidos violarían el índice único (P2002 → 500).
+        create: [...new Set(data.serviceIds ?? [])].map((serviceId) => ({
+          serviceId,
+        })),
       },
     },
     include: { hours: true, services: { select: { serviceId: true } } },

@@ -63,7 +63,11 @@ export const PATCH = apiHandler(
       if (data.serviceIds) {
         await tx.staffService.deleteMany({ where: { staffId: id } });
         await tx.staffService.createMany({
-          data: data.serviceIds.map((serviceId) => ({ staffId: id, serviceId })),
+          // Dedupe: ids repetidos violarían el PK compuesto (P2002 → 500).
+          data: [...new Set(data.serviceIds)].map((serviceId) => ({
+            staffId: id,
+            serviceId,
+          })),
         });
       }
       return tx.staffMember.update({

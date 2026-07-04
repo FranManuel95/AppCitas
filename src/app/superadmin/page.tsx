@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Clock, Sparkles, Store } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/auth/guards";
-import { planFor } from "@/lib/domain/plans";
+import { effectivePlan } from "@/lib/domain/plans";
 import { StatTile } from "@/components/ui/stat-tile";
 import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -141,8 +141,15 @@ export default async function SuperAdminPage() {
                     <p className="mt-0.5 text-xs text-ink-muted">/{b.slug}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge tone={b.plan === "pro" ? "brand" : "neutral"}>
-                      {planFor(b.plan).name}
+                    {/* Plan EFECTIVO: un past_due con plan "pro" almacenado ya
+                        no tiene las capacidades Pro, así que no debe mostrarse
+                        como Pro. */}
+                    <Badge
+                      tone={
+                        effectivePlan(b).id === "pro" ? "brand" : "neutral"
+                      }
+                    >
+                      {effectivePlan(b).name}
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
