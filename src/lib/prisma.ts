@@ -17,10 +17,24 @@ function pgPoolMax(): number {
   return Number.isFinite(raw) && raw > 0 ? raw : 1;
 }
 
+// Con max=1, si una instancia sirve varias peticiones a la vez (Vercel Fluid /
+// in-function concurrency), las que no tienen conexión esperan a pool.connect().
+// pg espera indefinidamente por defecto (0). Con un tope, un connect encolado
+// falla rápido y con un error claro en vez de colgar la petición. Configurable
+// con PG_CONNECT_TIMEOUT_MS (0 = comportamiento pg por defecto, sin tope).
+function pgConnectTimeoutMs(): number {
+  const raw = Number(process.env.PG_CONNECT_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw >= 0 ? raw : 10_000;
+}
+
 function createClient() {
   const url = process.env.DATABASE_URL ?? "file:./dev.db";
   const adapter = url.startsWith("postgres")
-    ? new PrismaPg({ connectionString: url, max: pgPoolMax() })
+    ? new PrismaPg({
+        connectionString: url,
+        max: pgPoolMax(),
+        connectionTimeoutMillis: pgConnectTimeoutMs(),
+      })
     : new PrismaBetterSqlite3({ url });
   return new PrismaClient({ adapter });
 }

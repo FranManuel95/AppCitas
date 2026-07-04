@@ -34,11 +34,17 @@ test.describe("aislamiento entre negocios", () => {
     res = await page.request.delete(`/api/admin/services/${serviceA}`);
     expect(notFound, "DELETE servicio ajeno").toContain(res.status());
 
-    // Editar empleado ajeno
+    // Editar / borrar / invitar empleado ajeno
     res = await page.request.patch(`/api/admin/staff/${staffA}`, {
       data: { name: "Hackeado" },
     });
     expect(notFound, "PATCH empleado ajeno").toContain(res.status());
+    res = await page.request.delete(`/api/admin/staff/${staffA}`);
+    expect(notFound, "DELETE empleado ajeno").toContain(res.status());
+    res = await page.request.post(`/api/admin/staff/${staffA}/access`, {
+      data: {},
+    });
+    expect(notFound, "POST invitar empleado ajeno").toContain(res.status());
 
     // Editar / borrar cupón ajeno
     res = await page.request.patch(`/api/admin/coupons/${couponA}`, {
@@ -82,6 +88,26 @@ test.describe("aislamiento entre negocios", () => {
       data: { name: "Empleado Fuga", serviceIds: [serviceA.id] },
     });
     expect([404, 403], "crear staff con servicio ajeno").toContain(
+      res.status(),
+    );
+  });
+
+  test("el admin de B no puede editar su propio empleado con un servicio de A", async ({
+    page,
+  }) => {
+    // El vector de "editar" (PATCH): B tiene un empleado legítimo y le vincula un
+    // serviceId de A. Debe fallar en assertServicesOwned, no colarse por ser B
+    // el dueño del empleado.
+    await login(page, ADMIN_B);
+    const a = getBusiness("estudio-aurora");
+    const b = getBusiness("barberia-norte");
+    const serviceA = getService(a.id, "Consulta inicial");
+    const staffB = firstIdForBusiness("StaffMember", b.id); // empleado propio
+
+    const res = await page.request.patch(`/api/admin/staff/${staffB}`, {
+      data: { serviceIds: [serviceA.id] },
+    });
+    expect([404, 403], "editar staff propio con servicio ajeno").toContain(
       res.status(),
     );
   });

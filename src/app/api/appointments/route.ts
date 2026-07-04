@@ -5,7 +5,7 @@ import { apiHandler } from "@/lib/api";
 import { apiRequireUser } from "@/lib/auth/guards";
 import { createAppointment } from "@/lib/domain/appointments";
 import { cancellationDeadline } from "@/lib/domain/cancellation";
-import { enforceRateLimit } from "@/lib/rate-limit";
+import { enforceUserRateLimit } from "@/lib/rate-limit";
 import { assertWithinPlan } from "@/lib/domain/plans";
 
 const createSchema = z.object({
@@ -26,12 +26,10 @@ export const POST = apiHandler(async (request: Request) => {
   const user = await apiRequireUser();
   // Antiabuso de la reserva (por usuario): tope generoso para no molestar al
   // uso legítimo pero frenar bucles automatizados.
-  await enforceRateLimit(
-    request,
-    "booking",
-    { limit: 30, windowMs: 60 * 60_000 },
-    user.id,
-  );
+  await enforceUserRateLimit(user.id, "booking", {
+    limit: 30,
+    windowMs: 60 * 60_000,
+  });
   const data = createSchema.parse(await request.json());
 
   // Límite del plan del negocio: citas al mes (402 si lo supera).

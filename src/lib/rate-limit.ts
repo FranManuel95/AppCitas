@@ -93,7 +93,18 @@ export function clientIp(request: Request): string {
   return request.headers.get("x-real-ip") ?? "unknown";
 }
 
+function rateLimitError(retryAfterSeconds: number): DomainError {
+  return new DomainError(
+    `Demasiados intentos. Vuelve a intentarlo en ${retryAfterSeconds} segundos.`,
+    "RATE_LIMITED",
+    429,
+  );
+}
+
 // Lanza DomainError 429 si se supera el límite (el apiHandler la serializa).
+// Clave por IP: para endpoints ANÓNIMOS (login, registro, confirmación por
+// token) donde no hay identidad estable. `extraKey` afina el cubo (p. ej. el
+// email en el login) pero la IP sigue en la clave.
 export async function enforceRateLimit(
   request: Request,
   scope: string,
@@ -102,13 +113,22 @@ export async function enforceRateLimit(
 ): Promise<void> {
   const key = `${scope}:${clientIp(request)}${extraKey ? `:${extraKey}` : ""}`;
   const result = await checkRateLimit(key, rule);
-  if (!result.ok) {
-    throw new DomainError(
-      `Demasiados intentos. Vuelve a intentarlo en ${result.retryAfterSeconds} segundos.`,
-      "RATE_LIMITED",
-      429,
-    );
-  }
+  if (!result.ok) throw rateLimitError(result.retryAfterSeconds);
+}
+
+/**
+ * Antiabuso por IDENTIDAD (usuario autenticado): la clave es `scope:user:<id>`
+ * y NO incluye la IP. Así, rotar de IP (CGNAT, handoff wifi↔móvil, VPN, pool de
+ * proxies) no resetea el cupo, que era el agujero de keyear por IP+usuario.
+ * Para endpoints anónimos usar enforceRateLimit (por IP).
+ */
+export async function enforceUserRateLimit(
+  userId: string,
+  scope: string,
+  rule: RateLimitRule,
+): Promise<void> {
+  const result = await checkRateLimit(`${scope}:user:${userId}`, rule);
+  if (!result.ok) throw rateLimitError(result.retryAfterSeconds);
 }
 
 /**

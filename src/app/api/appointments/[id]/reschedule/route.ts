@@ -6,7 +6,7 @@ import { rescheduleAppointment } from "@/lib/domain/appointments";
 import { ADMIN_ROLES } from "@/lib/domain/types";
 import { prisma } from "@/lib/prisma";
 import { DomainError } from "@/lib/domain/errors";
-import { enforceRateLimit } from "@/lib/rate-limit";
+import { enforceUserRateLimit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
   startAt: z.iso.datetime(),
@@ -22,12 +22,10 @@ export const POST = apiHandler(
   ) => {
     const { id } = await params;
     const user = await apiRequireUser();
-    await enforceRateLimit(
-      request,
-      "reschedule",
-      { limit: 30, windowMs: 60 * 60_000 },
-      user.id,
-    );
+    await enforceUserRateLimit(user.id, "reschedule", {
+      limit: 30,
+      windowMs: 60 * 60_000,
+    });
     const { startAt } = bodySchema.parse(await request.json());
 
     const appointment = await prisma.appointment.findUnique({

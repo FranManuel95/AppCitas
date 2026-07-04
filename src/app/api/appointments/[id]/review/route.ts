@@ -3,7 +3,7 @@ import { z } from "zod";
 import { apiHandler } from "@/lib/api";
 import { apiRequireUser } from "@/lib/auth/guards";
 import { createReview } from "@/lib/domain/reviews";
-import { enforceRateLimit } from "@/lib/rate-limit";
+import { enforceUserRateLimit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
   rating: z.number().int().min(1).max(5),
@@ -19,14 +19,12 @@ export const POST = apiHandler(
   ) => {
     const { id } = await params;
     const user = await apiRequireUser();
-    // Por usuario (no por IP): dos clientes tras la misma IP NAT no comparten
-    // cupo.
-    await enforceRateLimit(
-      request,
-      "review",
-      { limit: 10, windowMs: 3_600_000 },
-      user.id,
-    );
+    // Por usuario (no por IP): rotar de IP no resetea el cupo y dos clientes
+    // tras la misma IP NAT no comparten cupo.
+    await enforceUserRateLimit(user.id, "review", {
+      limit: 10,
+      windowMs: 3_600_000,
+    });
     const { rating, comment } = bodySchema.parse(await request.json());
 
     const review = await createReview({

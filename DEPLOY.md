@@ -80,6 +80,16 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
      @prisma/adapter-pg contra Postgres real. Además, deja `PG_POOL_MAX=1`
      (valor por defecto): cada instancia serverless abre así una sola
      conexión al pooler; sin tope, muchas instancias concurrentes lo agotan.
+     - **Importante con concurrencia in-function** (Vercel *Fluid Compute*,
+       activo por defecto en proyectos nuevos): una misma instancia caliente
+       atiende varias peticiones a la vez y comparten el pool. Con `PG_POOL_MAX=1`
+       todas se serializan en una conexión y, si una transacción larga la
+       retiene, las demás pueden agotar el `maxWait` de Prisma (P2028). Elige una
+       de dos: (a) fija la concurrencia de las funciones a 1 y mantén
+       `PG_POOL_MAX=1` (óptimo con el transaction pooler), o (b) sube
+       `PG_POOL_MAX` al nivel de concurrencia esperado por instancia y dimensiona
+       el pooler de Supabase acorde. `PG_CONNECT_TIMEOUT_MS` (10 s por defecto)
+       hace que un `connect` encolado falle rápido en vez de colgar la petición.
    - **VPS/Docker (procesos persistentes)** → la del *Session pooler* o la
      conexión directa (puerto 5432).
    - **Migraciones y seed** (`prisma migrate deploy`, `db:seed`) → siempre la
