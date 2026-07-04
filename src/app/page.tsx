@@ -27,6 +27,10 @@ export const dynamic = "force-dynamic";
 // cacheable). Un negocio recién dado de alta tarda ≤60 s en aparecer.
 const REVALIDATE_SECONDS = 60;
 
+// Búsqueda por nombre/descripción/dirección con LIKE '%término%'. En PostgreSQL
+// la aceleran los índices GIN de trigramas (pg_trgm) de la migración 10, así que
+// no hace un seq scan aunque haya miles de negocios; en SQLite dev es un LIKE
+// normal. La query es idéntica en ambos proveedores (portable).
 function businessListQuery(q: string, cat: string, searchTerms: string[]) {
   return prisma.business.findMany({
     where: {

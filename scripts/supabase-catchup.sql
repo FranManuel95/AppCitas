@@ -100,6 +100,12 @@ ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "consentedAt" TIMESTAMP(3);
 CREATE INDEX IF NOT EXISTS "Appointment_businessId_createdAt_idx" ON "Appointment"("businessId", "createdAt");
 CREATE INDEX IF NOT EXISTS "RateLimitCounter_windowStart_idx" ON "RateLimitCounter"("windowStart");
 
+-- ── (10) Índices de trigramas para la búsqueda de la landing ─────────────────
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS "Business_name_trgm_idx" ON "Business" USING GIN ("name" gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS "Business_description_trgm_idx" ON "Business" USING GIN ("description" gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS "Business_address_trgm_idx" ON "Business" USING GIN ("address" gin_trgm_ops);
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -111,7 +117,8 @@ FROM (VALUES
   ('20260703163600_processed_webhook_event'),
   ('20260703170000_consented_at'),
   ('20260704000000_subscription_default_canceled'),
-  ('20260704150000_hot_path_indexes')
+  ('20260704150000_hot_path_indexes'),
+  ('20260704160000_search_trgm_indexes')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m
