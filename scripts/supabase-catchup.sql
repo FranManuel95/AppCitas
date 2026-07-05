@@ -1,8 +1,11 @@
 -- ============================================================================
 -- AppCitas · Catch-up idempotente para Supabase (pegar en SQL Editor y RUN)
 -- ============================================================================
--- Aplica TODAS las migraciones posteriores al bootstrap inicial (2 → 7) de una
--- sola vez. Es IDEMPOTENTE: usa IF NOT EXISTS y comprobaciones, así que puedes
+-- Aplica TODAS las migraciones posteriores al bootstrap inicial (2 → 11) de una
+-- sola vez: rate limit, autocierre/2º recordatorio, reseñas, suscripción SaaS,
+-- idempotencia de webhooks, consentimiento (RGPD), default de suscripción,
+-- índices de camino caliente, trigramas de búsqueda y lista de espera.
+-- Es IDEMPOTENTE: usa IF NOT EXISTS y comprobaciones, así que puedes
 -- ejecutarlo aunque ya tengas algunas aplicadas — solo añade lo que falte.
 --
 -- Requisito: el esquema base (scripts/supabase-bootstrap.sql, migración
