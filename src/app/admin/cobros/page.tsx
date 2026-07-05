@@ -1,6 +1,10 @@
 import { Banknote, Info } from "lucide-react";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
-import { getConnectSummary, isConnectConfigured } from "@/lib/billing/connect";
+import {
+  getConnectSummary,
+  isConnectConfigured,
+  refreshConnectAccount,
+} from "@/lib/billing/connect";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
@@ -15,9 +19,19 @@ const STATUS: Record<string, { label: string; tone: BadgeTone }> = {
   active: { label: "Activa", tone: "success" },
 };
 
-export default async function CobrosPage() {
+export default async function CobrosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ estado?: string }>;
+}) {
   const admin = await requireBusinessAdmin();
-  const summary = await getConnectSummary(admin.businessId);
+  const { estado } = await searchParams;
+  // Al volver del onboarding (?estado=ok) se consulta el estado a Stripe por si
+  // el webhook aún no llegó; el resto de las veces basta con el estado guardado.
+  const summary =
+    estado === "ok"
+      ? await refreshConnectAccount(admin.businessId)
+      : await getConnectSummary(admin.businessId);
   const status = STATUS[summary.status] ?? STATUS.none;
   const simulated = !isConnectConfigured();
 

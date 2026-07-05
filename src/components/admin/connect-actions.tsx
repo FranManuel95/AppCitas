@@ -1,8 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { AlertCircle, Banknote, CheckCircle2, Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  AlertCircle,
+  Banknote,
+  CheckCircle2,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -16,6 +22,7 @@ export function ConnectActions({
   chargesEnabled: boolean;
   connected: boolean;
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const estado = searchParams.get("estado");
   const [busy, setBusy] = useState(false);
@@ -36,6 +43,26 @@ export function ConnectActions({
         return;
       }
       window.location.href = json.url;
+    } catch {
+      setError("No se ha podido conectar, inténtalo de nuevo.");
+      setBusy(false);
+    }
+  }
+
+  // Respaldo del webhook: consulta a Stripe el estado actual y recarga la vista.
+  async function refresh() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/connect/refresh", { method: "POST" });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(json.error ?? "No se ha podido actualizar, inténtalo de nuevo.");
+        setBusy(false);
+        return;
+      }
+      router.refresh();
+      setBusy(false);
     } catch {
       setError("No se ha podido conectar, inténtalo de nuevo.");
       setBusy(false);
@@ -68,14 +95,28 @@ export function ConnectActions({
         </div>
       )}
 
-      <Button variant={chargesEnabled ? "secondary" : "primary"} onClick={go} disabled={busy}>
-        {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        ) : (
-          <Banknote className="h-4 w-4" aria-hidden />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant={chargesEnabled ? "secondary" : "primary"}
+          onClick={go}
+          disabled={busy}
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Banknote className="h-4 w-4" aria-hidden />
+          )}
+          {label}
+        </Button>
+
+        {/* Fallback si el webhook no actualizó el estado tras verificar. */}
+        {connected && !chargesEnabled && (
+          <Button variant="ghost" onClick={refresh} disabled={busy}>
+            <RefreshCw className="h-4 w-4" aria-hidden />
+            Actualizar estado
+          </Button>
         )}
-        {label}
-      </Button>
+      </div>
     </div>
   );
 }

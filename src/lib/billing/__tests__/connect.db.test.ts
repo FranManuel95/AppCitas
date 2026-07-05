@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   getConnectSummary,
   platformFeeCents,
+  refreshConnectAccount,
   startConnectOnboarding,
   syncConnectAccount,
 } from "../connect";
@@ -75,6 +76,25 @@ describe("Stripe Connect (BD)", () => {
     } as Stripe.Account);
     expect((await getConnectSummary(businessId)).chargesEnabled).toBe(false);
     expect((await getConnectSummary(businessId)).status).toBe("pending");
+  });
+
+  it("refreshConnectAccount en dev: sin cuenta 'none', tras onboarding 'active'", async () => {
+    const { businessId } = await seedBusiness();
+    // Sin cuenta no hay nada que consultar a Stripe.
+    expect(await refreshConnectAccount(businessId)).toMatchObject({
+      connected: false,
+      status: "none",
+    });
+    // La cuenta simulada (dev_) no llama a Stripe y refleja el estado guardado.
+    await startConnectOnboarding({
+      businessId,
+      ownerEmail: "dueno@negocio.com",
+      refreshUrl: "http://x/refresh",
+      returnUrl: "http://x/return",
+    });
+    const summary = await refreshConnectAccount(businessId);
+    expect(summary.chargesEnabled).toBe(true);
+    expect(summary.status).toBe("active");
   });
 
   it("platformFeeCents: 0 por defecto, porcentual y acotado", () => {

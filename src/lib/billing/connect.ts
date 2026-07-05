@@ -145,3 +145,40 @@ export async function syncConnectAccount(account: Stripe.Account): Promise<void>
     },
   });
 }
+
+/**
+ * Consulta a Stripe el estado actual de la cuenta conectada del negocio y lo
+ * sincroniza. Es el respaldo del webhook account.updated: se invoca al volver
+ * del onboarding y desde el botón "Actualizar estado" del panel, para que el
+ * negocio no se quede en "pendiente" si el webhook no llegó. Sin cuenta real
+ * (sin conectar o en modo simulado) devuelve el resumen actual sin llamar a
+ * Stripe.
+ */
+export async function refreshConnectAccount(
+  businessId: string,
+): Promise<ConnectSummary> {
+  const business = await prisma.business.findUniqueOrThrow({
+    where: { id: businessId },
+    select: {
+      stripeAccountId: true,
+      stripeAccountStatus: true,
+      stripeChargesEnabled: true,
+    },
+  });
+
+  if (
+    !business.stripeAccountId ||
+    !isConnectConfigured() ||
+    business.stripeAccountId.startsWith("dev_")
+  ) {
+    return {
+      connected: !!business.stripeAccountId,
+      chargesEnabled: business.stripeChargesEnabled,
+      status: business.stripeAccountStatus,
+    };
+  }
+
+  const account = await stripe().accounts.retrieve(business.stripeAccountId);
+  await syncConnectAccount(account);
+  return getConnectSummary(businessId);
+}
