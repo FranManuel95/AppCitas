@@ -453,6 +453,7 @@ export async function cancelAppointment(params: {
   // Cobro automático del cargo con la tarjeta guardada (si la hay)
   const collection = await collectAppointmentCharge({
     appointmentId,
+    businessId: appointment.businessId,
     clientId: appointment.clientId,
     amountCents: outcome.chargedCents,
     currency: appointment.business.currency,
@@ -763,6 +764,7 @@ export async function setAppointmentStatus(params: {
   if (status === "NO_SHOW" && appointment.paymentStatus === "NONE") {
     collection = await collectAppointmentCharge({
       appointmentId,
+      businessId,
       clientId: appointment.clientId,
       amountCents: chargedCents,
       currency: appointment.business.currency,

@@ -118,6 +118,15 @@ model Business {
   platformStripeCustomerId     String?
   platformStripeSubscriptionId String?
 
+  // Stripe Connect: cuenta conectada del negocio para RECIBIR los cobros B2C
+  // (no-show/cancelación) directamente en su banco. Sin cuenta activa, el cargo
+  // cae en la cuenta de la plataforma (comportamiento anterior).
+  // stripeAccountStatus: none|pending|active. chargesEnabled lo marca Stripe
+  // cuando la cuenta ya puede aceptar cobros (webhook account.updated).
+  stripeAccountId      String?
+  stripeAccountStatus  String  @default("none")
+  stripeChargesEnabled Boolean @default(false)
+
   // Facturación de recibos: NIF/CIF y % de IVA a desglosar (0 = sin desglose)
   taxId      String?
   taxPercent Int     @default(0)

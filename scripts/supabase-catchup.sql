@@ -143,6 +143,12 @@ ALTER TABLE "WaitlistEntry" ENABLE ROW LEVEL SECURITY;
 -- ── (12) Forma de pago de la cita (efectivo / tarjeta) ──────────────────────
 ALTER TABLE "Appointment" ADD COLUMN IF NOT EXISTS "paymentMethod" TEXT;
 
+-- ── (13) Stripe Connect: cuenta conectada del negocio ───────────────────────
+ALTER TABLE "Business"
+  ADD COLUMN IF NOT EXISTS "stripeAccountId" TEXT,
+  ADD COLUMN IF NOT EXISTS "stripeAccountStatus" TEXT NOT NULL DEFAULT 'none',
+  ADD COLUMN IF NOT EXISTS "stripeChargesEnabled" BOOLEAN NOT NULL DEFAULT false;
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -157,7 +163,8 @@ FROM (VALUES
   ('20260704150000_hot_path_indexes'),
   ('20260704160000_search_trgm_indexes'),
   ('20260704170000_waitlist'),
-  ('20260705120000_payment_method')
+  ('20260705120000_payment_method'),
+  ('20260705130000_stripe_connect')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

@@ -8,6 +8,11 @@ export interface ChargeParams {
   currency: string;
   description: string;
   metadata?: Record<string, string>;
+  // Stripe Connect: cuenta conectada del negocio a la que enviar el cobro y
+  // comisión de la plataforma. Sin destino, el cargo cae en la cuenta de la
+  // plataforma (comportamiento anterior).
+  destinationAccountId?: string;
+  applicationFeeCents?: number;
 }
 
 export interface ChargeResult {

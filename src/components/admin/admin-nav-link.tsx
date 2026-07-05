@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BadgePercent,
+  Banknote,
   Bell,
   Briefcase,
   CalendarDays,
@@ -32,6 +33,7 @@ const ICONS = {
   espera: Hourglass,
   ajustes: Settings,
   plan: CreditCard,
+  cobros: Banknote,
 } satisfies Record<string, LucideIcon>;
 
 export type AdminNavIcon = keyof typeof ICONS;

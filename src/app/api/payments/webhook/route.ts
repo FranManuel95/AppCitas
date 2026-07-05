@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { claimWebhookEvent } from "@/lib/webhooks/idempotency";
+import { syncConnectAccount } from "@/lib/billing/connect";
 import { logError } from "@/lib/logger";
 
 // POST /api/payments/webhook — eventos de Stripe (verificados por firma).
@@ -37,6 +38,18 @@ export async function POST(request: Request) {
   const fresh = await claimWebhookEvent(event.id, event.type);
   if (!fresh) {
     return NextResponse.json({ received: true, duplicate: true });
+  }
+
+  // Stripe Connect: la cuenta conectada del negocio cambió de estado (terminó
+  // el onboarding, ya puede aceptar cobros, etc.). Sincroniza chargesEnabled.
+  if (event.type === "account.updated") {
+    const account = event.data.object as Stripe.Account;
+    try {
+      await syncConnectAccount(account);
+    } catch (error) {
+      logError("payments.webhook.account", error, { accountId: account.id });
+    }
+    return NextResponse.json({ received: true });
   }
 
   if (

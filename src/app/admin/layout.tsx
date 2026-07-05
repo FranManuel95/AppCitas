@@ -34,8 +34,9 @@ function buildNav(
       icon: "notificaciones",
     },
     { href: "/admin/ajustes", label: nav.ajustes, icon: "ajustes" },
-    // "Plan" va literal: el diccionario admin.nav no tiene clave para esta
-    // sección nueva (i18n queda fuera del alcance de esta capa de facturación).
+    // "Plan" y "Cobros" van literales: el diccionario admin.nav no tiene clave
+    // para estas secciones (i18n queda fuera del alcance de la capa de pagos).
+    { href: "/admin/cobros", label: "Cobros", icon: "cobros" },
     { href: "/admin/plan", label: "Plan", icon: "plan" },
   ];
 }

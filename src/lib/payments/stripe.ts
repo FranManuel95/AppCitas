@@ -59,6 +59,17 @@ export const stripeProvider: PaymentProvider = {
         return { ok: false, error: "El cliente no tiene tarjeta guardada" };
       }
 
+      // Con cuenta conectada del negocio (Connect), el cobro se envía a su
+      // cuenta y la plataforma retiene su comisión (destination charge).
+      const connect = params.destinationAccountId
+        ? {
+            transfer_data: { destination: params.destinationAccountId },
+            ...(params.applicationFeeCents && params.applicationFeeCents > 0
+              ? { application_fee_amount: params.applicationFeeCents }
+              : {}),
+          }
+        : {};
+
       // Cobro off-session: el cliente aceptó la política al reservar
       const intent = await stripe().paymentIntents.create({
         amount: params.amountCents,
@@ -69,6 +80,7 @@ export const stripeProvider: PaymentProvider = {
         confirm: true,
         description: params.description,
         metadata: params.metadata,
+        ...connect,
       });
       return { ok: intent.status === "succeeded", ref: intent.id };
     } catch (error) {
