@@ -4,6 +4,15 @@ export interface SendResult {
   error?: string;
 }
 
+// Contexto del negocio remitente. El canal de email lo usa para que el correo
+// salga con el NOMBRE del negocio como remitente y su email como Reply-To
+// (el dominio de envío sigue siendo el verificado de la plataforma, por
+// entregabilidad). SMS/WhatsApp lo ignoran.
+export interface SendOptions {
+  fromName?: string | null;
+  replyTo?: string | null;
+}
+
 export interface Channel {
   readonly key: "EMAIL" | "SMS" | "WHATSAPP";
   isConfigured(): boolean;
@@ -11,6 +20,7 @@ export interface Channel {
     recipient: string,
     subject: string | null,
     body: string,
+    options?: SendOptions,
   ): Promise<SendResult>;
 }
 

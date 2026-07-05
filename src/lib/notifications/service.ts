@@ -293,6 +293,27 @@ export async function processDueNotifications(
   let failed = 0;
   let skipped = 0;
 
+  // El email sale con el nombre del negocio como remitente y su email como
+  // Reply-To. Se cachea por negocio para no repetir la consulta en el lote.
+  const senderCache = new Map<
+    string,
+    { fromName: string | null; replyTo: string | null }
+  >();
+  async function senderFor(businessId: string) {
+    const cached = senderCache.get(businessId);
+    if (cached) return cached;
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { name: true, email: true },
+    });
+    const sender = {
+      fromName: business?.name ?? null,
+      replyTo: business?.email ?? null,
+    };
+    senderCache.set(businessId, sender);
+    return sender;
+  }
+
   for (const n of due) {
     // Claim atómico: solo un proceso gana la transición PENDING→SENDING de esta
     // fila; el resto ve count 0 y la salta, evitando envíos duplicados.
@@ -334,7 +355,9 @@ export async function processDueNotifications(
       continue;
     }
 
-    const result = await channel.send(n.recipient, n.subject, n.body);
+    const options =
+      n.channel === "EMAIL" ? await senderFor(n.businessId) : undefined;
+    const result = await channel.send(n.recipient, n.subject, n.body, options);
     if (result.ok) {
       await prisma.notification.update({
         where: { id: n.id },
