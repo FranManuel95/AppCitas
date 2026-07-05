@@ -574,6 +574,10 @@ const es = {
       paymentSimulated: "cobro simulado (entorno de pruebas)",
       paymentUncollected: "pendiente / cobrado en persona",
       paymentChargeFailed: "cargo rechazado — gestionar en persona",
+      paymentMethod: "Forma de pago: {method}",
+      methodCash: "efectivo",
+      methodCardTerminal: "tarjeta (datáfono)",
+      methodCardOnline: "tarjeta (online)",
       print: "Imprimir / guardar PDF",
     },
     onboarding: {
@@ -594,7 +598,8 @@ const es = {
       noAppointmentsThatDay: "No tienes citas este día.",
     },
     actions: {
-      complete: "Completar",
+      completeCash: "Completar · efectivo",
+      completeCard: "Completar · tarjeta",
       noShow: "No presentado",
       cancelNoCharge: "Cancelar (sin cargo)",
       revert: "Revertir",
@@ -1173,6 +1178,10 @@ const en: Dict = {
       paymentSimulated: "simulated charge (test environment)",
       paymentUncollected: "pending / collected in person",
       paymentChargeFailed: "charge declined — handle in person",
+      paymentMethod: "Payment method: {method}",
+      methodCash: "cash",
+      methodCardTerminal: "card (terminal)",
+      methodCardOnline: "card (online)",
       print: "Print / save PDF",
     },
     onboarding: {
@@ -1193,7 +1202,8 @@ const en: Dict = {
       noAppointmentsThatDay: "You have no appointments this day.",
     },
     actions: {
-      complete: "Complete",
+      completeCash: "Complete · cash",
+      completeCard: "Complete · card",
       noShow: "No-show",
       cancelNoCharge: "Cancel (no charge)",
       revert: "Revert",

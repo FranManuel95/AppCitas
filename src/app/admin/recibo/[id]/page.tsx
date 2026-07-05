@@ -192,6 +192,18 @@ export default async function ReceiptPage({
                         : t.admin.common.emptyValue,
             })}
           </p>
+          {appointment.paymentMethod && (
+            <p className="mt-1 text-xs text-ink-muted">
+              {fmt(r.paymentMethod, {
+                method:
+                  appointment.paymentMethod === "CASH"
+                    ? r.methodCash
+                    : appointment.paymentMethod === "CARD_TERMINAL"
+                      ? r.methodCardTerminal
+                      : r.methodCardOnline,
+              })}
+            </p>
+          )}
         </div>
       </Card>
     </div>

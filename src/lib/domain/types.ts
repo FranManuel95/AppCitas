@@ -12,6 +12,15 @@ export const APPOINTMENT_STATUSES = [
 ] as const;
 export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
 
+// Forma de pago de una cita cobrada. CARD_ONLINE la fija el sistema al cobrar
+// un no-show con la tarjeta guardada; las otras las registra el negocio a mano.
+export const PAYMENT_METHODS = ["CASH", "CARD_TERMINAL", "CARD_ONLINE"] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+// Las que el negocio elige al completar una cita (cobro presencial en el local).
+export const IN_PERSON_PAYMENT_METHODS = ["CASH", "CARD_TERMINAL"] as const;
+export type InPersonPaymentMethod = (typeof IN_PERSON_PAYMENT_METHODS)[number];
+
 // Estados que ocupan hueco en la agenda (una cita cancelada libera su hueco)
 export const BLOCKING_STATUSES: AppointmentStatus[] = ["CONFIRMED", "COMPLETED"];
 

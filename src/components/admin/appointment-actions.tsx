@@ -2,18 +2,25 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Check, RotateCcw, UserX, X } from "lucide-react";
+import { Banknote, CreditCard, RotateCcw, UserX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Dict } from "@/lib/i18n/shared";
 
 export type AppointmentActionsLabels = Pick<
   Dict["admin"]["actions"],
-  "complete" | "noShow" | "cancelNoCharge" | "revert" | "updateError" | "cancelError"
+  | "completeCash"
+  | "completeCard"
+  | "noShow"
+  | "cancelNoCharge"
+  | "revert"
+  | "updateError"
+  | "cancelError"
 >;
 
 // Valores por defecto (español) para las páginas que aún no pasan `labels`.
 const DEFAULT_LABELS: AppointmentActionsLabels = {
-  complete: "Completar",
+  completeCash: "Completar · efectivo",
+  completeCard: "Completar · tarjeta",
   noShow: "No presentado",
   cancelNoCharge: "Cancelar (sin cargo)",
   revert: "Revertir",
@@ -44,13 +51,15 @@ export function AppointmentActions({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function setStatus(next: string) {
+  async function setStatus(next: string, paymentMethod?: string) {
     setBusy(true);
     setError(null);
     const res = await fetch(`${endpointBase}/${appointmentId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: next }),
+      body: JSON.stringify(
+        paymentMethod ? { status: next, paymentMethod } : { status: next },
+      ),
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -84,10 +93,19 @@ export function AppointmentActions({
             variant="secondary"
             size="sm"
             disabled={busy}
-            onClick={() => setStatus("COMPLETED")}
+            onClick={() => setStatus("COMPLETED", "CASH")}
           >
-            <Check className="h-3.5 w-3.5" aria-hidden />
-            {labels.complete}
+            <Banknote className="h-3.5 w-3.5" aria-hidden />
+            {labels.completeCash}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={busy}
+            onClick={() => setStatus("COMPLETED", "CARD_TERMINAL")}
+          >
+            <CreditCard className="h-3.5 w-3.5" aria-hidden />
+            {labels.completeCard}
           </Button>
           <Button
             variant="secondary"

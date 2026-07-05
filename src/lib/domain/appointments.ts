@@ -16,7 +16,11 @@ import {
   toLocalDateISO,
   wallTimeToUtc,
 } from "./dates";
-import { BLOCKING_STATUSES, type AppointmentStatus } from "./types";
+import {
+  BLOCKING_STATUSES,
+  type AppointmentStatus,
+  type InPersonPaymentMethod,
+} from "./types";
 import { lockBusinessForBooking } from "./locks";
 import { assertAppointmentWithinPlanTx } from "./plans";
 import {
@@ -714,6 +718,9 @@ export async function setAppointmentStatus(params: {
   appointmentId: string;
   businessId: string;
   status: AppointmentStatus;
+  // Forma de cobro presencial elegida por el negocio al completar (CASH por
+  // defecto). Se ignora en los demás estados.
+  paymentMethod?: InPersonPaymentMethod;
   now?: Date;
 }) {
   const { appointmentId, businessId, status } = params;
@@ -767,6 +774,21 @@ export async function setAppointmentStatus(params: {
     collection = { paymentStatus: "NONE", paymentRef: null };
   }
 
+  // Forma de pago registrada según el desenlace:
+  //  - COMPLETED  → cobro presencial (efectivo por defecto, o el que indique el negocio)
+  //  - NO_SHOW / CANCELLED_LATE → CARD_ONLINE solo si el cargo se cobró con tarjeta
+  //  - CONFIRMED / CANCELLED → sin cobro, se limpia
+  let paymentMethod: InPersonPaymentMethod | "CARD_ONLINE" | null = null;
+  if (status === "COMPLETED") {
+    paymentMethod = params.paymentMethod ?? "CASH";
+  } else if (status === "NO_SHOW" || status === "CANCELLED_LATE") {
+    paymentMethod =
+      collection.paymentStatus === "CHARGED" ||
+      collection.paymentStatus === "SIMULATED"
+        ? "CARD_ONLINE"
+        : null;
+  }
+
   const updated = await prisma.appointment.update({
     where: { id: appointmentId },
     data: {
@@ -774,6 +796,7 @@ export async function setAppointmentStatus(params: {
       chargedCents,
       paymentStatus: collection.paymentStatus,
       paymentRef: collection.paymentRef,
+      paymentMethod,
       cancelledAt:
         status === "CANCELLED" || status === "CANCELLED_LATE"
           ? (appointment.cancelledAt ?? now)

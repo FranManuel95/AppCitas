@@ -40,7 +40,7 @@ describe("setAppointmentStatus (BD)", () => {
     return { businessId, serviceId, clientId, appt };
   }
 
-  it("COMPLETED registra el precio como cobrado (en persona)", async () => {
+  it("COMPLETED registra el precio como cobrado (efectivo por defecto)", async () => {
     const { appt, businessId } = await makeAppointment();
     const updated = await setAppointmentStatus({
       appointmentId: appt.id,
@@ -50,6 +50,21 @@ describe("setAppointmentStatus (BD)", () => {
     });
     expect(updated.status).toBe("COMPLETED");
     expect(updated.chargedCents).toBe(2000);
+    // Sin indicar método, se asume cobro en efectivo.
+    expect(updated.paymentMethod).toBe("CASH");
+  });
+
+  it("COMPLETED con tarjeta física registra CARD_TERMINAL", async () => {
+    const { appt, businessId } = await makeAppointment();
+    const updated = await setAppointmentStatus({
+      appointmentId: appt.id,
+      businessId,
+      status: "COMPLETED",
+      paymentMethod: "CARD_TERMINAL",
+      now: NOW,
+    });
+    expect(updated.chargedCents).toBe(2000);
+    expect(updated.paymentMethod).toBe("CARD_TERMINAL");
   });
 
   it("NO_SHOW sin tarjeta: aplica la comisión (UNCOLLECTED) y avisa al cliente", async () => {
@@ -63,6 +78,8 @@ describe("setAppointmentStatus (BD)", () => {
     expect(updated.status).toBe("NO_SHOW");
     expect(updated.chargedCents).toBe(1000); // 50 % de 2000
     expect(updated.paymentStatus).toBe("UNCOLLECTED");
+    // Sin cobro online no se registra forma de pago (lo gestiona el negocio).
+    expect(updated.paymentMethod).toBeNull();
 
     // Antes se cobraba en silencio; ahora hay aviso de no-show.
     const notif = await prisma.notification.findFirst({
@@ -86,6 +103,8 @@ describe("setAppointmentStatus (BD)", () => {
     });
     expect(updated.chargedCents).toBe(1000);
     expect(updated.paymentStatus).toBe("SIMULATED");
+    // El cobro online del no-show queda marcado como tarjeta (online).
+    expect(updated.paymentMethod).toBe("CARD_ONLINE");
   });
 
   it("CANCELLED no cobra y marca cancelledAt", async () => {
@@ -100,11 +119,12 @@ describe("setAppointmentStatus (BD)", () => {
     expect(updated.cancelledAt).not.toBeNull();
   });
 
-  it("revertir a CONFIRMED limpia cargo, estado de pago y cancelación", async () => {
+  it("revertir a CONFIRMED limpia cargo, estado de pago, método y cancelación", async () => {
     const { appt, businessId } = await makeAppointment({
       status: "NO_SHOW",
       chargedCents: 1000,
       paymentStatus: "SIMULATED",
+      paymentMethod: "CARD_ONLINE",
     });
     const updated = await setAppointmentStatus({
       appointmentId: appt.id,
@@ -114,6 +134,7 @@ describe("setAppointmentStatus (BD)", () => {
     });
     expect(updated.chargedCents).toBe(0);
     expect(updated.paymentStatus).toBe("NONE");
+    expect(updated.paymentMethod).toBeNull();
     expect(updated.cancelledAt).toBeNull();
   });
 

@@ -362,6 +362,11 @@ model Appointment {
   paymentStatus String  @default("NONE")
   paymentRef    String?
 
+  // Forma en que se cobró: CASH | CARD_TERMINAL | CARD_ONLINE (null si aún no cobrada).
+  // CASH/CARD_TERMINAL las registra el negocio al completar (cobro presencial);
+  // CARD_ONLINE la fija el sistema cuando el no-show se cobra con la tarjeta guardada.
+  paymentMethod String?
+
   notifications Notification[]
 
   createdAt DateTime @default(now())
