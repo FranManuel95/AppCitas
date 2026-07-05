@@ -6,6 +6,7 @@ import type { Channel } from "./channels/types";
 import {
   bookingConfirmedMessage,
   cancellationMessage,
+  noShowMessage,
   reminderMessage,
   type AppointmentMessageContext,
 } from "./templates";
@@ -220,6 +221,37 @@ export async function enqueueCancellationNotifications(
     appointmentId: appointment.id,
     channel: d.channel,
     template: "CANCELLED",
+    recipient: d.recipient,
+    subject: message.subject,
+    body: message.body,
+    scheduledFor: now,
+  }));
+  if (rows.length > 0) {
+    await prisma.notification.createMany({ data: rows });
+  }
+}
+
+// Al marcar no-show: se anulan los recordatorios pendientes y se avisa al
+// cliente de la ausencia y del cargo aplicado (si lo hubo).
+export async function enqueueNoShowNotification(
+  appointmentId: string,
+  chargedCents: number,
+  now = new Date(),
+): Promise<void> {
+  await prisma.notification.updateMany({
+    where: { appointmentId, status: "PENDING" },
+    data: { status: "SKIPPED", lastError: "No presentado" },
+  });
+
+  const appointment = await loadAppointment(appointmentId);
+  if (!appointment) return;
+
+  const message = noShowMessage(messageContext(appointment), chargedCents);
+  const rows = enabledDeliveries(appointment).map((d) => ({
+    businessId: appointment.businessId,
+    appointmentId: appointment.id,
+    channel: d.channel,
+    template: "NO_SHOW",
     recipient: d.recipient,
     subject: message.subject,
     body: message.body,

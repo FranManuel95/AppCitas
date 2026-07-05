@@ -82,3 +82,20 @@ export function cancellationMessage(
       `${ctx.businessName} (${when}) ha quedado cancelada.\n${chargeLine}`,
   };
 }
+
+export function noShowMessage(
+  ctx: AppointmentMessageContext,
+  chargedCents: number,
+): { subject: string; body: string } {
+  const when = formatDateTime(ctx.startAt, ctx.timezone);
+  const chargeLine =
+    chargedCents > 0
+      ? `Se ha aplicado un cargo por no presentarse de ${formatCents(chargedCents, ctx.currency)}.`
+      : "No se ha aplicado ningún cargo por esta ausencia.";
+  return {
+    subject: `No presentado · ${ctx.businessName}`,
+    body:
+      `Hola ${ctx.clientName}, constas como no presentado/a en tu cita de ` +
+      `${ctx.serviceName} en ${ctx.businessName} (${when}).\n${chargeLine}`,
+  };
+}

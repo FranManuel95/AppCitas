@@ -32,6 +32,7 @@ import { collectAppointmentCharge } from "@/lib/payments/collect";
 import {
   enqueueBookingNotifications,
   enqueueCancellationNotifications,
+  enqueueNoShowNotification,
 } from "@/lib/notifications/service";
 
 interface AvailabilityContext {
@@ -713,8 +714,10 @@ export async function setAppointmentStatus(params: {
   appointmentId: string;
   businessId: string;
   status: AppointmentStatus;
+  now?: Date;
 }) {
   const { appointmentId, businessId, status } = params;
+  const now = params.now ?? new Date();
 
   const appointment = await prisma.appointment.findFirst({
     where: { id: appointmentId, businessId },
@@ -764,7 +767,7 @@ export async function setAppointmentStatus(params: {
     collection = { paymentStatus: "NONE", paymentRef: null };
   }
 
-  return prisma.appointment.update({
+  const updated = await prisma.appointment.update({
     where: { id: appointmentId },
     data: {
       status,
@@ -773,7 +776,7 @@ export async function setAppointmentStatus(params: {
       paymentRef: collection.paymentRef,
       cancelledAt:
         status === "CANCELLED" || status === "CANCELLED_LATE"
-          ? (appointment.cancelledAt ?? new Date())
+          ? (appointment.cancelledAt ?? now)
           : null,
     },
     include: {
@@ -781,6 +784,13 @@ export async function setAppointmentStatus(params: {
       client: { select: { id: true, name: true, email: true } },
     },
   });
+
+  // Avisar al cliente de la ausencia y del cargo (antes se cobraba en silencio).
+  if (status === "NO_SHOW") {
+    await enqueueNoShowNotification(appointmentId, chargedCents, now);
+  }
+
+  return updated;
 }
 
 // Confirmación de asistencia desde el enlace del recordatorio.
