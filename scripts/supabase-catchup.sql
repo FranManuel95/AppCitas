@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
     "applied_steps_count" INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT "_prisma_migrations_pkey" PRIMARY KEY ("id")
 );
+-- Misma postura que el resto: RLS activo (idempotente, no molesta si ya lo está).
+ALTER TABLE "_prisma_migrations" ENABLE ROW LEVEL SECURITY;
 
 -- ── (2) Contador de rate limiting ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "RateLimitCounter" (
