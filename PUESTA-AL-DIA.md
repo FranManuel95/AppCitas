@@ -62,18 +62,18 @@ historial está resumido en **un solo script idempotente**.
    ```
    scripts/supabase-catchup.sql
    ```
-   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→13):
+   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→18):
    rate limit, autocierre y 2º recordatorio, reseñas, suscripción SaaS,
-   idempotencia de webhooks de Stripe, consentimiento RGPD, índices de
-   rendimiento, búsqueda por trigramas, lista de espera, **forma de pago de la
-   cita** (efectivo/tarjeta) y **la cuenta conectada de Stripe Connect** (para
-   que los cobros lleguen a cada negocio).
+   idempotencia de webhooks, consentimiento RGPD, índices, búsqueda por
+   trigramas, lista de espera, forma de pago, Stripe Connect, **señal al
+   reservar**, **descuento de última hora**, **modo privado del marketplace**,
+   **notas de cliente (CRM)** y **campañas de marketing**.
    Es **idempotente**: usa `IF NOT EXISTS`, así que da igual cuánto tuvieras ya
    aplicado; solo añade lo que falte y no rompe nada si lo ejecutas dos veces.
 
-   > **¿Ya lo pegaste antes?** Vuelve a pegarlo: al ser idempotente solo añadirá
-   > las migraciones nuevas (12 forma de pago y 13 Stripe Connect) sin tocar el
-   > resto.
+   > **¿Ya lo pegaste antes?** Vuelve a pegarlo: al ser idempotente solo añade
+   > las migraciones que te falten (las últimas: 14 señal, 15 última hora,
+   > 16 marketplace privado, 17 notas CRM y 18 campañas) sin tocar el resto.
 
 3. **(Opcional) Datos de demostración** — si quieres 2 negocios de ejemplo con
    citas para probar, pega después:
@@ -183,8 +183,13 @@ probablemente no tengas puestas:
 - `PG_POOL_MAX`, `PG_CONNECT_TIMEOUT_MS` — escalabilidad del pool.
 - `STRIPE_PRICE_PRO` — cobro de la suscripción del negocio (capa SaaS).
 - `STRIPE_PLATFORM_FEE_PERCENT` — tu comisión sobre los cobros de cada negocio (Stripe Connect).
+- `WHATSAPP_CLOUD_TOKEN` + `WHATSAPP_CLOUD_PHONE_ID` — WhatsApp por la **API oficial de Meta** (recomendada; sustituye a UltraMsg/Evolution sin riesgo de baneo).
 - `ERROR_WEBHOOK_URL`, `CSP_ENFORCE` — observabilidad y seguridad.
 - Todo el grupo `LEGAL_*` — datos del titular para las páginas legales.
+
+> **Sin variables nuevas obligatorias**: la señal, el descuento de última hora,
+> el modo privado, el CRM y las campañas se activan desde el panel del negocio
+> (Ajustes/Marketing), no con variables de entorno.
 
 ---
 
