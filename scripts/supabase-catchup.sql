@@ -157,6 +157,25 @@ ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "lastMinuteDiscountPercent" INTE
 
 -- ── (16) Modo privado del marketplace ────────────────────────────────────────
 ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "listedInMarketplace" BOOLEAN NOT NULL DEFAULT true;
+
+-- ── (17) Notas privadas de cliente (CRM) ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS "ClientNote" (
+    "id" TEXT NOT NULL,
+    "businessId" TEXT NOT NULL,
+    "clientId" TEXT NOT NULL,
+    "authorName" TEXT,
+    "text" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ClientNote_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "ClientNote_businessId_clientId_createdAt_idx" ON "ClientNote"("businessId", "clientId", "createdAt");
+DO $$ BEGIN
+  ALTER TABLE "ClientNote" ADD CONSTRAINT "ClientNote_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "Business"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER TABLE "ClientNote" ADD CONSTRAINT "ClientNote_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+ALTER TABLE "ClientNote" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Appointment"
   ADD COLUMN IF NOT EXISTS "depositCents" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS "depositStatus" TEXT NOT NULL DEFAULT 'NONE',
@@ -180,7 +199,8 @@ FROM (VALUES
   ('20260705130000_stripe_connect'),
   ('20260706090000_booking_deposit'),
   ('20260706100000_last_minute_discount'),
-  ('20260706110000_marketplace_privacy')
+  ('20260706110000_marketplace_privacy'),
+  ('20260706120000_client_notes')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

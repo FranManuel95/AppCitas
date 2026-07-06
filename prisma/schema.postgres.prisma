@@ -45,6 +45,7 @@ model User {
   packages     ClientPackage[]
   auditLogs    AuditLog[]
   waitlist     WaitlistEntry[]
+  clientNotes  ClientNote[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -161,6 +162,7 @@ model Business {
   clientPackages ClientPackage[]
   reviews        Review[]
   waitlist       WaitlistEntry[]
+  clientNotes    ClientNote[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -518,4 +520,20 @@ model ProcessedWebhookEvent {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// Nota privada del negocio sobre un cliente (CRM): preferencias, avisos,
+// historial cualitativo. Solo visible para el negocio que la escribió.
+model ClientNote {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  // Nombre de quien la escribió (snapshot; sin FK para sobrevivir a bajas)
+  authorName String?
+  text       String
+  createdAt  DateTime @default(now())
+
+  @@index([businessId, clientId, createdAt])
 }

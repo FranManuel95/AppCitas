@@ -23,6 +23,7 @@ function buildNav(
     { href: "/admin/agenda", label: nav.agenda, icon: "agenda" },
     { href: "/admin/citas", label: nav.citas, icon: "citas" },
     // "Lista de espera" va literal (el diccionario admin.nav no tiene clave).
+    { href: "/admin/clientes", label: "Clientes", icon: "clientes" },
     { href: "/admin/lista-espera", label: "Lista de espera", icon: "espera" },
     { href: "/admin/equipo", label: nav.equipo, icon: "equipo" },
     { href: "/admin/servicios", label: nav.servicios, icon: "servicios" },
