@@ -19,6 +19,7 @@ interface BusinessSettings {
   email: string | null;
   cancellationWindowHours: number;
   lateCancellationFeePercent: number;
+  lastMinuteDiscountPercent: number;
   slotGranularityMinutes: number;
   maxAdvanceBookingDays: number;
   minNoticeMinutes: number;
@@ -77,6 +78,7 @@ export function SettingsForm({
         email: str("email") || null,
         cancellationWindowHours: num("cancellationWindowHours"),
         lateCancellationFeePercent: num("lateCancellationFeePercent"),
+        lastMinuteDiscountPercent: num("lastMinuteDiscountPercent"),
         slotGranularityMinutes: num("slotGranularityMinutes"),
         maxAdvanceBookingDays: num("maxAdvanceBookingDays"),
         minNoticeMinutes: num("minNoticeMinutes"),
@@ -200,6 +202,21 @@ export function SettingsForm({
               max={100}
               required
               defaultValue={business.lateCancellationFeePercent}
+            />
+          </Field>
+          <Field
+            label={labels.lastMinuteLabel}
+            htmlFor="settings-last-minute"
+            hint={labels.lastMinuteHint}
+          >
+            <Input
+              id="settings-last-minute"
+              name="lastMinuteDiscountPercent"
+              type="number"
+              min={0}
+              max={90}
+              required
+              defaultValue={business.lastMinuteDiscountPercent}
             />
           </Field>
           <Field

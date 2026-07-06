@@ -41,6 +41,7 @@ export default async function SettingsPage() {
           email: business.email,
           cancellationWindowHours: business.cancellationWindowHours,
           lateCancellationFeePercent: business.lateCancellationFeePercent,
+          lastMinuteDiscountPercent: business.lastMinuteDiscountPercent,
           slotGranularityMinutes: business.slotGranularityMinutes,
           maxAdvanceBookingDays: business.maxAdvanceBookingDays,
           minNoticeMinutes: business.minNoticeMinutes,

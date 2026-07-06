@@ -125,6 +125,8 @@ const es = {
       "Cancelación gratuita hasta {hours} horas antes de la cita. Pasado ese plazo se cobrará el {percent}% del precio del servicio.",
     depositPolicy:
       "Al reservar se cobra una señal del {percent}% que se descuenta del cargo (y se devuelve si cancelas en plazo).",
+    lastMinutePolicy:
+      "Las citas que empiezan en menos de 24 h tienen un {percent}% de descuento de última hora.",
   },
   booking: {
     back: "←",
@@ -171,6 +173,8 @@ const es = {
       "Cancelación gratuita hasta {hours} h antes. Después se cobra el {percent}% del servicio.",
     depositLine:
       "Señal al reservar: {percent}% ({amount}). Se cobra ahora con tu tarjeta y se devuelve si cancelas en plazo.",
+    lastMinuteLine:
+      "¡Descuento de última hora! −{percent}%: pagarás {amount}.",
     confirmedTitle: "¡Cita confirmada!",
     confirmedWith: " con {staff}",
     confirmedNotice:
@@ -522,6 +526,9 @@ const es = {
         "Cancelar con menos antelación genera cargo. 24 = un día.",
       lateFeeLabel: "Cargo por cancelación tardía (%)",
       lateFeeHint: "Porcentaje del precio del servicio. 100 = importe íntegro.",
+      lastMinuteLabel: "Descuento de última hora (%, 0 = sin descuento)",
+      lastMinuteHint:
+        "Se aplica solo a reservas que empiezan en menos de 24 horas: convierte los huecos que se quedarían vacíos en ingresos. No se acumula con cupones ni bonos.",
       slotGranularityLabel: "Granularidad de huecos (minutos)",
       minNoticeLabel: "Antelación mínima (minutos)",
       maxAdvanceLabel: "Reserva máxima con antelación (días)",
@@ -742,6 +749,8 @@ const en: Dict = {
       "Free cancellation up to {hours} hours before the appointment. After that, {percent}% of the service price is charged.",
     depositPolicy:
       "A {percent}% deposit is charged at booking, deducted from any fee (and refunded if you cancel within the window).",
+    lastMinutePolicy:
+      "Appointments starting within 24 h get a {percent}% last-minute discount.",
   },
   booking: {
     back: "←",
@@ -788,6 +797,8 @@ const en: Dict = {
       "Free cancellation up to {hours} h before. After that, {percent}% of the service is charged.",
     depositLine:
       "Booking deposit: {percent}% ({amount}). Charged now to your card and refunded if you cancel within the window.",
+    lastMinuteLine:
+      "Last-minute discount! −{percent}%: you will pay {amount}.",
     confirmedTitle: "Appointment confirmed!",
     confirmedWith: " with {staff}",
     confirmedNotice:
@@ -1135,6 +1146,9 @@ const en: Dict = {
         "Cancelling with less notice incurs a charge. 24 = one day.",
       lateFeeLabel: "Late cancellation charge (%)",
       lateFeeHint: "Percentage of the service price. 100 = the full amount.",
+      lastMinuteLabel: "Last-minute discount (%, 0 = off)",
+      lastMinuteHint:
+        "Applies only to bookings starting within 24 hours: turns slots that would go empty into revenue. Not stackable with coupons or packs.",
       slotGranularityLabel: "Slot granularity (minutes)",
       minNoticeLabel: "Minimum notice (minutes)",
       maxAdvanceLabel: "Maximum advance booking (days)",

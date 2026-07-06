@@ -70,6 +70,7 @@ interface BookingWizardProps {
     maxAdvanceBookingDays: number;
     requireCardToBook: boolean;
     depositPercent: number;
+    lastMinuteDiscountPercent: number;
   };
   services: ServiceOption[];
   staff: StaffOption[];
@@ -641,6 +642,29 @@ export function BookingWizard({
                 </p>
               )}
             </dl>
+            {/* Descuento de última hora: si el hueco elegido empieza en <24 h */}
+            {business.lastMinuteDiscountPercent > 0 &&
+              !usePackageId &&
+              !couponCode.trim() &&
+              service &&
+              selectedSlot &&
+              new Date(selectedSlot.startAt).getTime() - Date.now() <=
+                24 * 3_600_000 && (
+                <p className="mt-4 rounded-lg bg-success-soft px-3 py-2 text-xs text-success-strong">
+                  {fmt(t.lastMinuteLine, {
+                    percent: business.lastMinuteDiscountPercent,
+                    amount: formatCents(
+                      service.priceCents -
+                        Math.round(
+                          (service.priceCents *
+                            business.lastMinuteDiscountPercent) /
+                            100,
+                        ),
+                      business.currency,
+                    ),
+                  })}
+                </p>
+              )}
             {/* Señal al reservar: se cobra en el acto con la tarjeta guardada */}
             {business.depositPercent > 0 && !usePackageId && service && (
               <p className="mt-4 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700">

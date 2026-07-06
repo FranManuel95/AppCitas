@@ -151,6 +151,9 @@ ALTER TABLE "Business"
 
 -- ── (14) Señal (prepago) al reservar ─────────────────────────────────────────
 ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "depositPercent" INTEGER NOT NULL DEFAULT 0;
+
+-- ── (15) Descuento de última hora ────────────────────────────────────────────
+ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "lastMinuteDiscountPercent" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "Appointment"
   ADD COLUMN IF NOT EXISTS "depositCents" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS "depositStatus" TEXT NOT NULL DEFAULT 'NONE',
@@ -172,7 +175,8 @@ FROM (VALUES
   ('20260704170000_waitlist'),
   ('20260705120000_payment_method'),
   ('20260705130000_stripe_connect'),
-  ('20260706090000_booking_deposit')
+  ('20260706090000_booking_deposit'),
+  ('20260706100000_last_minute_discount')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

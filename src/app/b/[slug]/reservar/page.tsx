@@ -70,6 +70,7 @@ export default async function BookingPage({
               maxAdvanceBookingDays: business.maxAdvanceBookingDays,
               requireCardToBook: business.requireCardToBook,
               depositPercent: business.depositPercent,
+              lastMinuteDiscountPercent: business.lastMinuteDiscountPercent,
             }}
             services={business.services.map((s) => ({
               id: s.id,

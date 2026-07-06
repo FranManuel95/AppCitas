@@ -14,6 +14,8 @@ const updateSchema = z.object({
   // Política de reservas y cancelación
   cancellationWindowHours: z.number().int().min(0).max(24 * 30).optional(),
   lateCancellationFeePercent: z.number().int().min(0).max(100).optional(),
+  // Descuento automático de última hora (reservas que empiezan en <24 h)
+  lastMinuteDiscountPercent: z.number().int().min(0).max(90).optional(),
   slotGranularityMinutes: z.number().int().min(5).max(120).optional(),
   maxAdvanceBookingDays: z.number().int().min(1).max(365).optional(),
   minNoticeMinutes: z.number().int().min(0).max(60 * 24 * 7).optional(),

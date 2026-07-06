@@ -265,6 +265,7 @@ export async function notifyWaitlistForFreedSlot(
         notifyByEmail: true,
         notifyBySms: true,
         notifyByWhatsapp: true,
+        lastMinuteDiscountPercent: true,
       },
     });
     const service = await prisma.service.findUnique({
@@ -276,6 +277,13 @@ export async function notifyWaitlistForFreedSlot(
     const url = `${baseUrl()}/b/${business.slug}/reservar?servicio=${slot.serviceId}`;
     const subject = `Se ha liberado un hueco en ${business.name}`;
     const body = `¡Buenas noticias! Se ha liberado un hueco para "${service.name}" en ${business.name} el ${slot.desiredDate}. Reserva antes de que lo cojan: ${url}`;
+    // Gancho de última hora: si el negocio lo tiene activo, el aviso lo anuncia
+    // (las citas que empiezan en menos de 24 h llevan ese % de descuento).
+    const discountNote =
+      business.lastMinuteDiscountPercent > 0
+        ? ` Además, las citas que empiezan en menos de 24 h tienen un ${business.lastMinuteDiscountPercent}% de descuento de última hora.`
+        : "";
+    const fullBody = body + discountNote;
 
     const rows: Array<{
       businessId: string;
@@ -306,7 +314,7 @@ export async function notifyWaitlistForFreedSlot(
           template: "WAITLIST_SLOT_FREED",
           recipient: d.recipient,
           subject,
-          body,
+          body: fullBody,
           scheduledFor: now,
         });
       }

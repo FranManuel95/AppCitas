@@ -206,6 +206,10 @@ export async function getAvailability(params: {
   return slotsFromContext(ctx);
 }
 
+// Ventana del "descuento de última hora": reservas que empiezan dentro de
+// estas horas reciben el % configurado por el negocio.
+export const LAST_MINUTE_WINDOW_HOURS = 24;
+
 export async function createAppointment(params: {
   businessId: string;
   serviceId: string;
@@ -238,7 +242,7 @@ export async function createAppointment(params: {
 
   const businessRow = await prisma.business.findFirst({
     where: { id: businessId, active: true },
-    select: { timezone: true },
+    select: { timezone: true, lastMinuteDiscountPercent: true },
   });
   if (!businessRow) {
     throw new DomainError("Negocio no encontrado", "BUSINESS_NOT_FOUND", 404);
@@ -363,6 +367,22 @@ export async function createAppointment(params: {
         where: { id: coupon!.id },
         data: { timesRedeemed: { increment: 1 } },
       });
+    }
+
+    // Descuento de última hora: si el negocio lo tiene activo y la cita
+    // empieza en menos de LAST_MINUTE_WINDOW_HOURS, se aplica automáticamente.
+    // No se acumula con cupones ni bonos (esas promos tienen prioridad).
+    if (
+      !usedPackageId &&
+      !couponId &&
+      businessRow.lastMinuteDiscountPercent > 0 &&
+      startAt.getTime() - now.getTime() <=
+        LAST_MINUTE_WINDOW_HOURS * 3_600_000
+    ) {
+      discountCents = Math.round(
+        (priceCents * businessRow.lastMinuteDiscountPercent) / 100,
+      );
+      priceCents -= discountCents;
     }
 
     return tx.appointment.create({

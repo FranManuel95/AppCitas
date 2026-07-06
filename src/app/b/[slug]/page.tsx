@@ -367,6 +367,11 @@ export default async function BusinessPage({
                       fmt(t.business.depositPolicy, {
                         percent: business.depositPercent,
                       })}
+                  {business.lastMinuteDiscountPercent > 0 &&
+                    " " +
+                      fmt(t.business.lastMinutePolicy, {
+                        percent: business.lastMinuteDiscountPercent,
+                      })}
                 </p>
               </Card>
             </aside>
