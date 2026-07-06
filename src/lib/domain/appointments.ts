@@ -32,7 +32,12 @@ import {
   couponRejection,
   packageRejection,
 } from "./promotions";
-import { collectAppointmentCharge } from "@/lib/payments/collect";
+import {
+  collectAppointmentCharge,
+  collectBookingDeposit,
+  refundCollectedPayment,
+} from "@/lib/payments/collect";
+import { logError } from "@/lib/logger";
 import {
   enqueueBookingNotifications,
   enqueueCancellationNotifications,
@@ -383,6 +388,62 @@ export async function createAppointment(params: {
     });
   });
 
+  // Señal al reservar (si el negocio la exige y el cliente tiene tarjeta
+  // guardada). El cargo es una llamada externa, así que va FUERA de la
+  // transacción; si la tarjeta lo rechaza, la reserva se deshace por completo
+  // (cita + promoción) para no dejar una cita confirmada sin su señal.
+  let depositCents = 0;
+  let depositStatus = "NONE";
+  let depositRef: string | null = null;
+  const depositDue = Math.round(
+    (appointment.priceCents * appointment.business.depositPercent) / 100,
+  );
+  if (depositDue > 0) {
+    const deposit = await collectBookingDeposit({
+      appointmentId: appointment.id,
+      businessId,
+      clientId,
+      amountCents: depositDue,
+      currency: appointment.business.currency,
+      description: `Señal · ${appointment.service.name} · ${appointment.business.name}`,
+    });
+    if (deposit.depositStatus === "FAILED") {
+      await prisma.$transaction([
+        prisma.appointment.delete({ where: { id: appointment.id } }),
+        ...(appointment.couponId
+          ? [
+              prisma.coupon.update({
+                where: { id: appointment.couponId },
+                data: { timesRedeemed: { decrement: 1 } },
+              }),
+            ]
+          : []),
+        ...(appointment.clientPackageId
+          ? [
+              prisma.clientPackage.update({
+                where: { id: appointment.clientPackageId },
+                data: { remainingSessions: { increment: 1 } },
+              }),
+            ]
+          : []),
+      ]);
+      throw new DomainError(
+        "Tu tarjeta rechazó el cobro de la señal; la reserva no se ha creado",
+        "DEPOSIT_FAILED",
+        402,
+      );
+    }
+    if (deposit.depositStatus !== "NONE") {
+      depositCents = depositDue;
+      depositStatus = deposit.depositStatus;
+      depositRef = deposit.depositRef;
+      await prisma.appointment.update({
+        where: { id: appointment.id },
+        data: { depositCents, depositStatus, depositRef },
+      });
+    }
+  }
+
   // Confirmación inmediata + recordatorio programado (outbox)
   await enqueueBookingNotifications(appointment.id, now);
 
@@ -395,7 +456,7 @@ export async function createAppointment(params: {
     desiredDate: dateISO,
   });
 
-  return appointment;
+  return { ...appointment, depositCents, depositStatus, depositRef };
 }
 
 export async function cancelAppointment(params: {
@@ -450,15 +511,50 @@ export async function cancelAppointment(params: {
           appointment.priceCents,
         );
 
-  // Cobro automático del cargo con la tarjeta guardada (si la hay)
-  const collection = await collectAppointmentCharge({
-    appointmentId,
-    businessId: appointment.businessId,
-    clientId: appointment.clientId,
-    amountCents: outcome.chargedCents,
-    currency: appointment.business.currency,
-    description: `Cancelación tardía · ${appointment.service.name} · ${appointment.business.name}`,
-  });
+  // Señal cobrada al reservar (si la hubo): en cancelación tardía se descuenta
+  // del cargo; en plazo (o si cancela el negocio) se reembolsa íntegra.
+  const depositTaken =
+    appointment.depositStatus === "CHARGED" ||
+    appointment.depositStatus === "SIMULATED"
+      ? appointment.depositCents
+      : 0;
+
+  let collection: { paymentStatus: string; paymentRef: string | null } = {
+    paymentStatus: "NONE",
+    paymentRef: null,
+  };
+  let depositStatusAfter = appointment.depositStatus;
+
+  if (outcome.late) {
+    const remaining = Math.max(0, outcome.chargedCents - depositTaken);
+    if (remaining > 0) {
+      // Cobro automático del resto del cargo con la tarjeta guardada
+      collection = await collectAppointmentCharge({
+        appointmentId,
+        businessId: appointment.businessId,
+        clientId: appointment.clientId,
+        amountCents: remaining,
+        currency: appointment.business.currency,
+        description: `Cancelación tardía · ${appointment.service.name} · ${appointment.business.name}`,
+      });
+    } else if (outcome.chargedCents > 0 && depositTaken > 0) {
+      // La señal ya cubre el cargo completo: cobrado desde la reserva.
+      collection = {
+        paymentStatus: appointment.depositStatus,
+        paymentRef: appointment.depositRef,
+      };
+    }
+  } else if (depositTaken > 0 && appointment.depositRef) {
+    const refund = await refundCollectedPayment(appointment.depositRef);
+    if (refund.ok) {
+      depositStatusAfter = "REFUNDED";
+    } else {
+      // El reembolso se gestiona a mano: queda registrado para diagnóstico.
+      logError("payments.deposit.refund", new Error("Reembolso de señal fallido"), {
+        appointmentId,
+      });
+    }
+  }
 
   // Cita pagada con bono: si la cancelación es en plazo (o cancela el
   // negocio) se devuelve la sesión; si es tardía, la sesión se pierde —
@@ -475,6 +571,7 @@ export async function cancelAppointment(params: {
         cancelledAt: now,
         paymentStatus: collection.paymentStatus,
         paymentRef: collection.paymentRef,
+        depositStatus: depositStatusAfter,
       },
       include: { service: true, business: true },
     }),
@@ -756,20 +853,35 @@ export async function setAppointmentStatus(params: {
       break;
   }
 
-  // El no-show intenta cobrarse automáticamente con la tarjeta guardada
+  // El no-show intenta cobrarse automáticamente con la tarjeta guardada.
+  // La señal cobrada al reservar (si la hubo) se descuenta del cargo.
+  const depositTaken =
+    appointment.depositStatus === "CHARGED" ||
+    appointment.depositStatus === "SIMULATED"
+      ? appointment.depositCents
+      : 0;
   let collection = {
     paymentStatus: appointment.paymentStatus,
     paymentRef: appointment.paymentRef,
   };
   if (status === "NO_SHOW" && appointment.paymentStatus === "NONE") {
-    collection = await collectAppointmentCharge({
-      appointmentId,
-      businessId,
-      clientId: appointment.clientId,
-      amountCents: chargedCents,
-      currency: appointment.business.currency,
-      description: `No presentado · ${appointment.service.name} · ${appointment.business.name}`,
-    });
+    const remaining = Math.max(0, chargedCents - depositTaken);
+    if (remaining > 0) {
+      collection = await collectAppointmentCharge({
+        appointmentId,
+        businessId,
+        clientId: appointment.clientId,
+        amountCents: remaining,
+        currency: appointment.business.currency,
+        description: `No presentado · ${appointment.service.name} · ${appointment.business.name}`,
+      });
+    } else if (chargedCents > 0 && depositTaken > 0) {
+      // La señal ya cubre el cargo completo: cobrado desde la reserva.
+      collection = {
+        paymentStatus: appointment.depositStatus,
+        paymentRef: appointment.depositRef,
+      };
+    }
   }
   if (status === "CONFIRMED") {
     // Revertir a confirmada limpia el resultado de cobro registrado

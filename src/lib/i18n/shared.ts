@@ -123,6 +123,8 @@ const es = {
     policyTitle: "Política de cancelación",
     policyText:
       "Cancelación gratuita hasta {hours} horas antes de la cita. Pasado ese plazo se cobrará el {percent}% del precio del servicio.",
+    depositPolicy:
+      "Al reservar se cobra una señal del {percent}% que se descuenta del cargo (y se devuelve si cancelas en plazo).",
   },
   booking: {
     back: "←",
@@ -167,6 +169,8 @@ const es = {
     packagePrice: "Bono",
     policyShort:
       "Cancelación gratuita hasta {hours} h antes. Después se cobra el {percent}% del servicio.",
+    depositLine:
+      "Señal al reservar: {percent}% ({amount}). Se cobra ahora con tu tarjeta y se devuelve si cancelas en plazo.",
     confirmedTitle: "¡Cita confirmada!",
     confirmedWith: " con {staff}",
     confirmedNotice:
@@ -545,6 +549,9 @@ const es = {
       requireCardLabel: "Exigir tarjeta guardada para reservar",
       requireCardHint:
         "Permite cobrar automáticamente el cargo por cancelación tardía o no-show. Requiere Stripe configurado en el servidor; sin tarjeta guardada, el cargo queda registrado para cobrarlo en persona.",
+      depositLabel: "Señal al reservar (% del precio, 0 = sin señal)",
+      depositHint:
+        "Se cobra en el momento de reservar con la tarjeta guardada. Se devuelve si el cliente cancela en plazo y se descuenta del cargo por cancelación tardía o no presentado. Requiere exigir tarjeta para reservar.",
       saved: "Ajustes guardados",
       save: "Guardar ajustes",
       securityTitle: "Seguridad de la cuenta",
@@ -578,6 +585,8 @@ const es = {
       methodCash: "efectivo",
       methodCardTerminal: "tarjeta (datáfono)",
       methodCardOnline: "tarjeta (online)",
+      depositLine: "Señal pagada online al reservar: {amount}.",
+      depositRefunded: "(devuelta al cancelar en plazo)",
       print: "Imprimir / guardar PDF",
     },
     onboarding: {
@@ -731,6 +740,8 @@ const en: Dict = {
     policyTitle: "Cancellation policy",
     policyText:
       "Free cancellation up to {hours} hours before the appointment. After that, {percent}% of the service price is charged.",
+    depositPolicy:
+      "A {percent}% deposit is charged at booking, deducted from any fee (and refunded if you cancel within the window).",
   },
   booking: {
     back: "←",
@@ -775,6 +786,8 @@ const en: Dict = {
     packagePrice: "Pack",
     policyShort:
       "Free cancellation up to {hours} h before. After that, {percent}% of the service is charged.",
+    depositLine:
+      "Booking deposit: {percent}% ({amount}). Charged now to your card and refunded if you cancel within the window.",
     confirmedTitle: "Appointment confirmed!",
     confirmedWith: " with {staff}",
     confirmedNotice:
@@ -1149,6 +1162,9 @@ const en: Dict = {
       requireCardLabel: "Require a saved card to book",
       requireCardHint:
         "Allows charging the late cancellation or no-show fee automatically. Requires Stripe configured on the server; without a saved card, the charge is recorded to be collected in person.",
+      depositLabel: "Booking deposit (% of price, 0 = none)",
+      depositHint:
+        "Charged at booking time to the saved card. Refunded if the client cancels within the window, and deducted from the late-cancellation/no-show fee. Requires the saved-card setting.",
       saved: "Settings saved",
       save: "Save settings",
       securityTitle: "Account security",
@@ -1182,6 +1198,8 @@ const en: Dict = {
       methodCash: "cash",
       methodCardTerminal: "card (terminal)",
       methodCardOnline: "card (online)",
+      depositLine: "Deposit paid online at booking: {amount}.",
+      depositRefunded: "(refunded on in-window cancellation)",
       print: "Print / save PDF",
     },
     onboarding: {

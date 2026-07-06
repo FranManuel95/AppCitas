@@ -23,6 +23,7 @@ interface BusinessSettings {
   maxAdvanceBookingDays: number;
   minNoticeMinutes: number;
   requireCardToBook: boolean;
+  depositPercent: number;
   remindersEnabled: boolean;
   reminderHoursBefore: number;
   reminder2HoursBefore: number | null;
@@ -80,6 +81,7 @@ export function SettingsForm({
         maxAdvanceBookingDays: num("maxAdvanceBookingDays"),
         minNoticeMinutes: num("minNoticeMinutes"),
         requireCardToBook: bool("requireCardToBook"),
+        depositPercent: num("depositPercent"),
         remindersEnabled: bool("remindersEnabled"),
         reminderHoursBefore: num("reminderHoursBefore"),
         // Vacío = segundo recordatorio desactivado
@@ -357,6 +359,19 @@ export function SettingsForm({
             label={labels.requireCardLabel}
           />
           <p className="text-xs text-ink-muted">{labels.requireCardHint}</p>
+          <Field label={labels.depositLabel} htmlFor="settings-deposit-percent">
+            <Input
+              id="settings-deposit-percent"
+              name="depositPercent"
+              type="number"
+              min={0}
+              max={100}
+              required
+              defaultValue={business.depositPercent}
+              className="max-w-32"
+            />
+          </Field>
+          <p className="text-xs text-ink-muted">{labels.depositHint}</p>
         </div>
       </Card>
 

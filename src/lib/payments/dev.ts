@@ -26,9 +26,19 @@ export const devProvider: PaymentProvider = {
   },
 
   async charge(params: ChargeParams): Promise<ChargeResult> {
+    // Afordancia de pruebas: un customer que contenga "declined" rechaza el
+    // cargo, para poder ensayar los flujos de fallo (señal, no-show) sin Stripe.
+    if (params.customerId.includes("declined")) {
+      return { ok: false, error: "Tarjeta rechazada (simulada)" };
+    }
     console.log(
       `[payments:dev] cargo simulado de ${params.amountCents} ${params.currency} a ${params.customerId} — ${params.description}`,
     );
     return { ok: true, ref: `dev_pi_${++counter}`, simulated: true };
+  },
+
+  async refund(chargeRef) {
+    console.log(`[payments:dev] reembolso simulado del cargo ${chargeRef}`);
+    return { ok: true, ref: `dev_re_${++counter}`, simulated: true };
   },
 };

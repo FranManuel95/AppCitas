@@ -22,6 +22,13 @@ export interface ChargeResult {
   simulated?: boolean;
 }
 
+export interface RefundResult {
+  ok: boolean;
+  ref?: string;
+  error?: string;
+  simulated?: boolean;
+}
+
 export interface PaymentProvider {
   readonly name: string;
   isConfigured(): boolean;
@@ -33,6 +40,9 @@ export interface PaymentProvider {
   createSetupIntent(customerId: string): Promise<{ clientSecret: string }>;
   hasSavedCard(customerId: string): Promise<boolean>;
   charge(params: ChargeParams): Promise<ChargeResult>;
+  // Reembolso íntegro de un cargo previo (por su referencia). Lo usa la señal
+  // al reservar cuando el cliente cancela dentro del plazo.
+  refund(chargeRef: string): Promise<RefundResult>;
 }
 
 import { stripeProvider } from "./stripe";

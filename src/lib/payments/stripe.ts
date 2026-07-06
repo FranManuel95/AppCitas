@@ -89,4 +89,28 @@ export const stripeProvider: PaymentProvider = {
       return { ok: false, error: message };
     }
   },
+
+  async refund(chargeRef) {
+    // Con Connect (destination charge), reverse_transfer recupera también la
+    // parte transferida al negocio; en un cargo normal ese parámetro es
+    // inválido, así que se reintenta sin él.
+    try {
+      const refund = await stripe().refunds.create({
+        payment_intent: chargeRef,
+        reverse_transfer: true,
+      });
+      return { ok: refund.status !== "failed", ref: refund.id };
+    } catch {
+      try {
+        const refund = await stripe().refunds.create({
+          payment_intent: chargeRef,
+        });
+        return { ok: refund.status !== "failed", ref: refund.id };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Error de Stripe";
+        return { ok: false, error: message };
+      }
+    }
+  },
 };

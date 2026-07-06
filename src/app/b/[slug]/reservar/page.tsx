@@ -69,6 +69,7 @@ export default async function BookingPage({
               lateCancellationFeePercent: business.lateCancellationFeePercent,
               maxAdvanceBookingDays: business.maxAdvanceBookingDays,
               requireCardToBook: business.requireCardToBook,
+              depositPercent: business.depositPercent,
             }}
             services={business.services.map((s) => ({
               id: s.id,

@@ -66,3 +66,73 @@ export async function collectAppointmentCharge(params: {
     paymentRef: result.ref ?? null,
   };
 }
+
+export interface DepositOutcome {
+  // NONE | CHARGED | SIMULATED | FAILED
+  depositStatus: string;
+  depositRef: string | null;
+}
+
+// Señal al reservar: se cobra en el acto con la tarjeta guardada del cliente.
+// Sin tarjeta no hay señal (NONE, la reserva sigue; el negocio debería exigir
+// tarjeta con requireCardToBook). Un cargo rechazado devuelve FAILED y el
+// llamador deshace la reserva. Mismo enrutado Connect que el resto de cobros.
+export async function collectBookingDeposit(params: {
+  appointmentId: string;
+  businessId: string;
+  clientId: string;
+  amountCents: number;
+  currency: string;
+  description: string;
+}): Promise<DepositOutcome> {
+  const { appointmentId, businessId, clientId, amountCents, currency, description } =
+    params;
+  if (amountCents <= 0) {
+    return { depositStatus: "NONE", depositRef: null };
+  }
+
+  const client = await prisma.user.findUniqueOrThrow({
+    where: { id: clientId },
+    select: { stripeCustomerId: true },
+  });
+  if (!client.stripeCustomerId) {
+    return { depositStatus: "NONE", depositRef: null };
+  }
+
+  const business = await prisma.business.findUniqueOrThrow({
+    where: { id: businessId },
+    select: { stripeAccountId: true, stripeChargesEnabled: true },
+  });
+  const routed =
+    business.stripeAccountId && business.stripeChargesEnabled
+      ? {
+          destinationAccountId: business.stripeAccountId,
+          applicationFeeCents: platformFeeCents(amountCents),
+        }
+      : {};
+
+  const result = await getPaymentProvider().charge({
+    customerId: client.stripeCustomerId,
+    amountCents,
+    currency,
+    description,
+    metadata: { appointmentId, kind: "deposit" },
+    ...routed,
+  });
+
+  if (!result.ok) {
+    return { depositStatus: "FAILED", depositRef: result.ref ?? null };
+  }
+  return {
+    depositStatus: result.simulated ? "SIMULATED" : "CHARGED",
+    depositRef: result.ref ?? null,
+  };
+}
+
+// Reembolso íntegro de un cargo previo (señal al cancelar en plazo).
+export async function refundCollectedPayment(
+  chargeRef: string,
+): Promise<{ ok: boolean }> {
+  const result = await getPaymentProvider().refund(chargeRef);
+  return { ok: result.ok };
+}

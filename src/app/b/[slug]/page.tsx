@@ -362,6 +362,11 @@ export default async function BusinessPage({
                     hours: business.cancellationWindowHours,
                     percent: business.lateCancellationFeePercent,
                   })}
+                  {business.depositPercent > 0 &&
+                    " " +
+                      fmt(t.business.depositPolicy, {
+                        percent: business.depositPercent,
+                      })}
                 </p>
               </Card>
             </aside>

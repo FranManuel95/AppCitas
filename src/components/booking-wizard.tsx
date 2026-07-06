@@ -69,6 +69,7 @@ interface BookingWizardProps {
     lateCancellationFeePercent: number;
     maxAdvanceBookingDays: number;
     requireCardToBook: boolean;
+    depositPercent: number;
   };
   services: ServiceOption[];
   staff: StaffOption[];
@@ -640,6 +641,20 @@ export function BookingWizard({
                 </p>
               )}
             </dl>
+            {/* Señal al reservar: se cobra en el acto con la tarjeta guardada */}
+            {business.depositPercent > 0 && !usePackageId && service && (
+              <p className="mt-4 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700">
+                {fmt(t.depositLine, {
+                  percent: business.depositPercent,
+                  amount: formatCents(
+                    Math.round(
+                      (service.priceCents * business.depositPercent) / 100,
+                    ),
+                    business.currency,
+                  ),
+                })}
+              </p>
+            )}
             <p className="mt-4 rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning-strong">
               {fmt(t.policyShort, {
                 hours: business.cancellationWindowHours,

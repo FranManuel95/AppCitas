@@ -45,6 +45,7 @@ export default async function SettingsPage() {
           maxAdvanceBookingDays: business.maxAdvanceBookingDays,
           minNoticeMinutes: business.minNoticeMinutes,
           requireCardToBook: business.requireCardToBook,
+          depositPercent: business.depositPercent,
           remindersEnabled: business.remindersEnabled,
           reminderHoursBefore: business.reminderHoursBefore,
           reminder2HoursBefore: business.reminder2HoursBefore,

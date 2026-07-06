@@ -91,6 +91,12 @@ model Business {
   // tardías automáticamente). Requiere pasarela configurada.
   requireCardToBook Boolean @default(false)
 
+  // Señal (prepago) al reservar: % del precio que se cobra en el momento con
+  // la tarjeta guardada (0 = sin señal). Se reembolsa si se cancela en plazo y
+  // se descuenta del cargo por cancelación tardía / no-show. Tiene sentido
+  // junto a requireCardToBook (sin tarjeta guardada no hay señal que cobrar).
+  depositPercent Int @default(0)
+
   // Recordatorios y canales de notificación
   remindersEnabled    Boolean @default(true)
   reminderHoursBefore Int     @default(26)
@@ -373,6 +379,13 @@ model Appointment {
   // CASH/CARD_TERMINAL las registra el negocio al completar (cobro presencial);
   // CARD_ONLINE la fija el sistema cuando el no-show se cobra con la tarjeta guardada.
   paymentMethod String?
+
+  // Señal cobrada al reservar (si el negocio la exige):
+  // depositStatus: NONE | CHARGED | SIMULATED | REFUNDED
+  // Se reembolsa al cancelar en plazo; en tardía/no-show se descuenta del cargo.
+  depositCents  Int     @default(0)
+  depositStatus String  @default("NONE")
+  depositRef    String?
 
   notifications Notification[]
 

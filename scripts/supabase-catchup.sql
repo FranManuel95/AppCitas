@@ -149,6 +149,13 @@ ALTER TABLE "Business"
   ADD COLUMN IF NOT EXISTS "stripeAccountStatus" TEXT NOT NULL DEFAULT 'none',
   ADD COLUMN IF NOT EXISTS "stripeChargesEnabled" BOOLEAN NOT NULL DEFAULT false;
 
+-- ── (14) Señal (prepago) al reservar ─────────────────────────────────────────
+ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "depositPercent" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Appointment"
+  ADD COLUMN IF NOT EXISTS "depositCents" INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "depositStatus" TEXT NOT NULL DEFAULT 'NONE',
+  ADD COLUMN IF NOT EXISTS "depositRef" TEXT;
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -164,7 +171,8 @@ FROM (VALUES
   ('20260704160000_search_trgm_indexes'),
   ('20260704170000_waitlist'),
   ('20260705120000_payment_method'),
-  ('20260705130000_stripe_connect')
+  ('20260705130000_stripe_connect'),
+  ('20260706090000_booking_deposit')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

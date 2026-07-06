@@ -19,6 +19,8 @@ const updateSchema = z.object({
   minNoticeMinutes: z.number().int().min(0).max(60 * 24 * 7).optional(),
   // Pagos
   requireCardToBook: z.boolean().optional(),
+  // Señal (prepago) al reservar: % del precio, 0 = desactivada
+  depositPercent: z.number().int().min(0).max(100).optional(),
   // Recordatorios y canales
   remindersEnabled: z.boolean().optional(),
   reminderHoursBefore: z.number().int().min(1).max(24 * 14).optional(),

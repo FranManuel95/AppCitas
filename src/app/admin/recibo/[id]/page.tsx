@@ -204,6 +204,16 @@ export default async function ReceiptPage({
               })}
             </p>
           )}
+          {appointment.depositCents > 0 && (
+            <p className="mt-1 text-xs text-ink-muted">
+              {fmt(r.depositLine, {
+                amount: formatCents(appointment.depositCents, b.currency),
+              })}
+              {appointment.depositStatus === "REFUNDED"
+                ? ` ${r.depositRefunded}`
+                : ""}
+            </p>
+          )}
         </div>
       </Card>
     </div>
