@@ -28,6 +28,7 @@ function buildNav(
     { href: "/admin/equipo", label: nav.equipo, icon: "equipo" },
     { href: "/admin/servicios", label: nav.servicios, icon: "servicios" },
     { href: "/admin/promociones", label: nav.promos, icon: "promociones" },
+    { href: "/admin/marketing", label: "Marketing", icon: "marketing" },
     { href: "/admin/horario", label: nav.horario, icon: "horario" },
     {
       href: "/admin/notificaciones",

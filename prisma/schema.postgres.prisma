@@ -163,6 +163,7 @@ model Business {
   reviews        Review[]
   waitlist       WaitlistEntry[]
   clientNotes    ClientNote[]
+  campaigns      Campaign[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -536,4 +537,22 @@ model ClientNote {
   createdAt  DateTime @default(now())
 
   @@index([businessId, clientId, createdAt])
+}
+
+// Campaña de marketing a la cartera de clientes del negocio: se resuelve el
+// segmento, se encolan los envíos en el outbox y queda el histórico aquí.
+model Campaign {
+  id             String   @id @default(cuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  // ALL | NEW | LOYAL | INACTIVE (ver src/lib/domain/campaigns.ts)
+  segment        String
+  // EMAIL | WHATSAPP | SMS
+  channel        String
+  subject        String?
+  body           String
+  recipientCount Int
+  createdAt      DateTime @default(now())
+
+  @@index([businessId, createdAt])
 }

@@ -176,6 +176,24 @@ DO $$ BEGIN
   ALTER TABLE "ClientNote" ADD CONSTRAINT "ClientNote_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 ALTER TABLE "ClientNote" ENABLE ROW LEVEL SECURITY;
+
+-- ── (18) Campañas de marketing ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS "Campaign" (
+    "id" TEXT NOT NULL,
+    "businessId" TEXT NOT NULL,
+    "segment" TEXT NOT NULL,
+    "channel" TEXT NOT NULL,
+    "subject" TEXT,
+    "body" TEXT NOT NULL,
+    "recipientCount" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Campaign_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "Campaign_businessId_createdAt_idx" ON "Campaign"("businessId", "createdAt");
+DO $$ BEGIN
+  ALTER TABLE "Campaign" ADD CONSTRAINT "Campaign_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "Business"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+ALTER TABLE "Campaign" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Appointment"
   ADD COLUMN IF NOT EXISTS "depositCents" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS "depositStatus" TEXT NOT NULL DEFAULT 'NONE',
@@ -200,7 +218,8 @@ FROM (VALUES
   ('20260706090000_booking_deposit'),
   ('20260706100000_last_minute_discount'),
   ('20260706110000_marketplace_privacy'),
-  ('20260706120000_client_notes')
+  ('20260706120000_client_notes'),
+  ('20260706130000_campaigns')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m
