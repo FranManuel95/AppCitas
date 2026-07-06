@@ -154,6 +154,9 @@ ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "depositPercent" INTEGER NOT NUL
 
 -- ── (15) Descuento de última hora ────────────────────────────────────────────
 ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "lastMinuteDiscountPercent" INTEGER NOT NULL DEFAULT 0;
+
+-- ── (16) Modo privado del marketplace ────────────────────────────────────────
+ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "listedInMarketplace" BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE "Appointment"
   ADD COLUMN IF NOT EXISTS "depositCents" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS "depositStatus" TEXT NOT NULL DEFAULT 'NONE',
@@ -176,7 +179,8 @@ FROM (VALUES
   ('20260705120000_payment_method'),
   ('20260705130000_stripe_connect'),
   ('20260706090000_booking_deposit'),
-  ('20260706100000_last_minute_discount')
+  ('20260706100000_last_minute_discount'),
+  ('20260706110000_marketplace_privacy')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

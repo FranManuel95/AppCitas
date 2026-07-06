@@ -104,6 +104,11 @@ model Business {
   // vacíos (cancelaciones tardías); no se acumula con cupones ni bonos.
   lastMinuteDiscountPercent Int @default(0)
 
+  // Visibilidad en el marketplace: si es false, el negocio no aparece en la
+  // landing, la búsqueda ni el sitemap — su página pública solo es accesible
+  // por enlace directo/QR. "Tus clientes son tuyos": modo agenda privada.
+  listedInMarketplace Boolean @default(true)
+
   // Recordatorios y canales de notificación
   remindersEnabled    Boolean @default(true)
   reminderHoursBefore Int     @default(26)

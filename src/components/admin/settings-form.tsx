@@ -23,6 +23,7 @@ interface BusinessSettings {
   slotGranularityMinutes: number;
   maxAdvanceBookingDays: number;
   minNoticeMinutes: number;
+  listedInMarketplace: boolean;
   requireCardToBook: boolean;
   depositPercent: number;
   remindersEnabled: boolean;
@@ -76,6 +77,7 @@ export function SettingsForm({
         address: str("address") || null,
         phone: str("phone") || null,
         email: str("email") || null,
+        listedInMarketplace: bool("listedInMarketplace"),
         cancellationWindowHours: num("cancellationWindowHours"),
         lateCancellationFeePercent: num("lateCancellationFeePercent"),
         lastMinuteDiscountPercent: num("lastMinuteDiscountPercent"),
@@ -164,6 +166,14 @@ export function SettingsForm({
               defaultValue={business.email ?? ""}
             />
           </Field>
+        </div>
+        <div className="mt-5 space-y-2 border-t border-border pt-4">
+          <Switch
+            name="listedInMarketplace"
+            defaultChecked={business.listedInMarketplace}
+            label={labels.marketplaceLabel}
+          />
+          <p className="text-xs text-ink-muted">{labels.marketplaceHint}</p>
         </div>
       </Card>
 

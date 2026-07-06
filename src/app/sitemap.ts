@@ -15,7 +15,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   );
 
   const businesses = await prisma.business.findMany({
-    where: { active: true },
+    // Solo los negocios visibles en el marketplace (modo privado fuera de SEO)
+    where: { active: true, listedInMarketplace: true },
     select: { slug: true, updatedAt: true },
     orderBy: { slug: "asc" },
   });

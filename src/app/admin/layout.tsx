@@ -37,6 +37,7 @@ function buildNav(
     // "Plan" y "Cobros" van literales: el diccionario admin.nav no tiene clave
     // para estas secciones (i18n queda fuera del alcance de la capa de pagos).
     { href: "/admin/cobros", label: "Cobros", icon: "cobros" },
+    { href: "/admin/qr", label: "Código QR", icon: "qr" },
     { href: "/admin/plan", label: "Plan", icon: "plan" },
   ];
 }

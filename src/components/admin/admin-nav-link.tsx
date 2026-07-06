@@ -13,6 +13,7 @@ import {
   CreditCard,
   Hourglass,
   LayoutDashboard,
+  QrCode,
   Settings,
   Users,
   type LucideIcon,
@@ -34,6 +35,7 @@ const ICONS = {
   ajustes: Settings,
   plan: CreditCard,
   cobros: Banknote,
+  qr: QrCode,
 } satisfies Record<string, LucideIcon>;
 
 export type AdminNavIcon = keyof typeof ICONS;

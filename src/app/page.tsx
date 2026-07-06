@@ -35,6 +35,7 @@ function businessListQuery(q: string, cat: string, searchTerms: string[]) {
   return prisma.business.findMany({
     where: {
       active: true,
+      listedInMarketplace: true,
       ...(cat ? { category: cat } : {}),
       ...(q
         ? {
@@ -73,7 +74,7 @@ function reviewStatsQuery(businessIds: string[]) {
 const getCachedCategories = unstable_cache(
   () =>
     prisma.business.findMany({
-      where: { active: true },
+      where: { active: true, listedInMarketplace: true },
       select: { category: true },
       distinct: ["category"],
       orderBy: { category: "asc" },

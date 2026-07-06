@@ -556,6 +556,9 @@ const es = {
       requireCardLabel: "Exigir tarjeta guardada para reservar",
       requireCardHint:
         "Permite cobrar automáticamente el cargo por cancelación tardía o no-show. Requiere Stripe configurado en el servidor; sin tarjeta guardada, el cargo queda registrado para cobrarlo en persona.",
+      marketplaceLabel: "Aparecer en el buscador público de AppCitas",
+      marketplaceHint:
+        "Desactívalo para el modo privado: tu página de reservas sigue activa por enlace directo o QR, pero no apareces en la portada, la búsqueda ni los buscadores. Tus clientes son tuyos.",
       depositLabel: "Señal al reservar (% del precio, 0 = sin señal)",
       depositHint:
         "Se cobra en el momento de reservar con la tarjeta guardada. Se devuelve si el cliente cancela en plazo y se descuenta del cargo por cancelación tardía o no presentado. Requiere exigir tarjeta para reservar.",
@@ -1176,6 +1179,9 @@ const en: Dict = {
       requireCardLabel: "Require a saved card to book",
       requireCardHint:
         "Allows charging the late cancellation or no-show fee automatically. Requires Stripe configured on the server; without a saved card, the charge is recorded to be collected in person.",
+      marketplaceLabel: "Show my business in the public AppCitas directory",
+      marketplaceHint:
+        "Turn off for private mode: your booking page stays live via direct link or QR, but you will not appear on the homepage, search or search engines. Your clients are yours.",
       depositLabel: "Booking deposit (% of price, 0 = none)",
       depositHint:
         "Charged at booking time to the saved card. Refunded if the client cancels within the window, and deducted from the late-cancellation/no-show fee. Requires the saved-card setting.",

@@ -45,6 +45,7 @@ export default async function SettingsPage() {
           slotGranularityMinutes: business.slotGranularityMinutes,
           maxAdvanceBookingDays: business.maxAdvanceBookingDays,
           minNoticeMinutes: business.minNoticeMinutes,
+          listedInMarketplace: business.listedInMarketplace,
           requireCardToBook: business.requireCardToBook,
           depositPercent: business.depositPercent,
           remindersEnabled: business.remindersEnabled,

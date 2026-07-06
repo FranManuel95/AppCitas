@@ -11,6 +11,8 @@ const updateSchema = z.object({
   address: z.string().trim().max(200).nullable().optional(),
   phone: z.string().trim().max(30).nullable().optional(),
   email: z.email().nullable().optional(),
+  // Visibilidad en el marketplace (false = solo enlace directo/QR)
+  listedInMarketplace: z.boolean().optional(),
   // Política de reservas y cancelación
   cancellationWindowHours: z.number().int().min(0).max(24 * 30).optional(),
   lateCancellationFeePercent: z.number().int().min(0).max(100).optional(),
