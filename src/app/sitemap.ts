@@ -14,12 +14,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "",
   );
 
-  const businesses = await prisma.business.findMany({
-    // Solo los negocios visibles en el marketplace (modo privado fuera de SEO)
-    where: { active: true, listedInMarketplace: true },
-    select: { slug: true, updatedAt: true },
-    orderBy: { slug: "asc" },
-  });
+  // El sitemap se prerenderiza en el build (ISR), así que consulta la BD en
+  // ese momento. Si la base no está disponible durante el despliegue (aún sin
+  // migrar, red caída, credenciales), NO debe tumbar el build: se cae con
+  // gracia a solo las páginas estáticas y el ISR lo completa en el primer hit
+  // con la BD ya lista.
+  let businesses: Array<{ slug: string; updatedAt: Date }> = [];
+  try {
+    businesses = await prisma.business.findMany({
+      // Solo los negocios visibles en el marketplace (modo privado fuera de SEO)
+      where: { active: true, listedInMarketplace: true },
+      select: { slug: true, updatedAt: true },
+      orderBy: { slug: "asc" },
+    });
+  } catch (error) {
+    console.error(
+      "[sitemap] no se pudo leer la BD; se emite solo el sitemap estático:",
+      error,
+    );
+  }
 
   const staticEntries: MetadataRoute.Sitemap = [
     "",
