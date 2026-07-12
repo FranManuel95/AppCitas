@@ -103,6 +103,11 @@ model Business {
   // null = desactivado; regenerarlo revoca la URL anterior.
   icsFeedToken String? @unique
 
+  // Marca en la página pública y el widget: color de acento (hex) y logo
+  // (URL https externa; la app no aloja archivos)
+  brandColor String?
+  logoUrl    String?
+
   // Señal (prepago) al reservar: % del precio que se cobra en el momento con
   // la tarjeta guardada (0 = sin señal). Se reembolsa si se cancela en plazo y
   // se descuenta del cargo por cancelación tardía / no-show. Tiene sentido

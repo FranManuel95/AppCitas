@@ -14,19 +14,22 @@ import { NextResponse, type NextRequest } from "next/server";
 // (style={{…}}), que no admiten nonce. script-src es estricto (nonce +
 // strict-dynamic); js.stripe.com queda como fallback para navegadores sin
 // strict-dynamic. frame/connect-src abren lo justo para Stripe Elements.
-function buildCsp(nonce: string): string {
+function buildCsp(nonce: string, embeddable: boolean): string {
   return [
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com`,
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: blob:`,
+    // https: para el logo del negocio (URL externa configurable en Ajustes)
+    `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
     `connect-src 'self' https://api.stripe.com`,
     `frame-src 'self' https://js.stripe.com https://hooks.stripe.com`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
-    `frame-ancestors 'none'`,
+    // El widget /widget/{slug} está pensado para incrustarse en la web del
+    // negocio; el resto de la app no se puede enmarcar (clickjacking).
+    `frame-ancestors ${embeddable ? "*" : "'none'"}`,
     `upgrade-insecure-requests`,
     `report-uri /api/csp-report`,
   ].join("; ");
@@ -34,7 +37,8 @@ function buildCsp(nonce: string): string {
 
 export function proxy(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
-  const csp = buildCsp(nonce);
+  const embeddable = request.nextUrl.pathname.startsWith("/widget/");
+  const csp = buildCsp(nonce, embeddable);
 
   // La CSP va en la petición para que Next añada el nonce a sus scripts; el
   // nonce queda accesible por si algún componente inyecta un <script> inline.
@@ -50,6 +54,13 @@ export function proxy(request: NextRequest) {
       ? "Content-Security-Policy"
       : "Content-Security-Policy-Report-Only";
   response.headers.set(header, csp);
+
+  // Anti-clickjacking: X-Frame-Options se emite aquí (no en next.config) para
+  // poder eximir al widget embebible. La CSP report-only no bloquea, así que
+  // esta cabecera es la protección efectiva por defecto.
+  if (!embeddable) {
+    response.headers.set("X-Frame-Options", "DENY");
+  }
   return response;
 }
 

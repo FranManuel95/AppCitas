@@ -57,6 +57,8 @@ export default async function SettingsPage() {
           notifyByWhatsapp: business.notifyByWhatsapp,
           taxId: business.taxId,
           taxPercent: business.taxPercent,
+          brandColor: business.brandColor,
+          logoUrl: business.logoUrl,
         }}
         labels={{
           ...t.admin.ajustes,

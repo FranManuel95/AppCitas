@@ -9,7 +9,8 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "X-Frame-Options", value: "DENY" },
+          // X-Frame-Options se emite en src/proxy.ts: DENY en toda la app
+          // salvo el widget embebible /widget/{slug}.
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",

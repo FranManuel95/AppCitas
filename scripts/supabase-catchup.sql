@@ -245,6 +245,10 @@ CREATE INDEX IF NOT EXISTS "Appointment_seriesId_idx" ON "Appointment"("seriesId
 ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "icsFeedToken" TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS "Business_icsFeedToken_key" ON "Business"("icsFeedToken");
 
+-- ── (24) Marca por negocio: color y logo (página pública y widget) ───────────
+ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "brandColor" TEXT;
+ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "logoUrl" TEXT;
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -270,7 +274,8 @@ FROM (VALUES
   ('20260712100000_invitados'),
   ('20260712120000_ausencias_empleado'),
   ('20260712130000_series_recurrentes'),
-  ('20260712140000_feed_calendario')
+  ('20260712140000_feed_calendario'),
+  ('20260712150000_marca_negocio')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

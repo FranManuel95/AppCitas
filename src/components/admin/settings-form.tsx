@@ -35,6 +35,8 @@ interface BusinessSettings {
   notifyByWhatsapp: boolean;
   taxId: string | null;
   taxPercent: number;
+  brandColor: string | null;
+  logoUrl: string | null;
 }
 
 // Textos resueltos en el servidor: el subárbol admin.ajustes completo más los
@@ -98,6 +100,8 @@ export function SettingsForm({
         notifyByWhatsapp: bool("notifyByWhatsapp"),
         taxId: str("taxId") || null,
         taxPercent: num("taxPercent"),
+        brandColor: str("brandColor") || null,
+        logoUrl: str("logoUrl") || null,
       }),
     });
     const json = await res.json().catch(() => ({}));
@@ -164,6 +168,32 @@ export function SettingsForm({
               name="email"
               type="email"
               defaultValue={business.email ?? ""}
+            />
+          </Field>
+          <Field
+            label={labels.brandColorLabel}
+            htmlFor="settings-brand-color"
+            hint={labels.brandColorHint}
+          >
+            <Input
+              id="settings-brand-color"
+              name="brandColor"
+              pattern="^#[0-9a-fA-F]{6}$"
+              placeholder="#d64545"
+              defaultValue={business.brandColor ?? ""}
+            />
+          </Field>
+          <Field
+            label={labels.logoUrlLabel}
+            htmlFor="settings-logo-url"
+            hint={labels.logoUrlHint}
+          >
+            <Input
+              id="settings-logo-url"
+              name="logoUrl"
+              type="url"
+              placeholder="https://…/logo.png"
+              defaultValue={business.logoUrl ?? ""}
             />
           </Field>
         </div>

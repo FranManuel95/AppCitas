@@ -12,6 +12,7 @@ import {
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth/session";
+import { brandStyle } from "@/lib/branding";
 import { getBusinessReviewSummary } from "@/lib/domain/reviews";
 import { fmt, getDict, intlLocale } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
@@ -133,16 +134,25 @@ export default async function BusinessPage({
   return (
     <>
       <SiteHeader />
-      <main className="flex-1">
+      <main className="flex-1" style={brandStyle(business.brandColor)}>
         <div className="bg-gradient-to-b from-brand-50 to-transparent">
           <div className="mx-auto w-full max-w-5xl px-4 pb-8 pt-10">
             <div className="flex flex-wrap items-start justify-between gap-6">
               <div className="flex items-start gap-4">
-                <Avatar
-                  name={business.name}
-                  size="lg"
-                  className="mt-1 ring-4 ring-surface"
-                />
+                {business.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={business.logoUrl}
+                    alt=""
+                    className="mt-1 h-14 w-14 shrink-0 rounded-2xl object-cover ring-4 ring-surface"
+                  />
+                ) : (
+                  <Avatar
+                    name={business.name}
+                    size="lg"
+                    className="mt-1 ring-4 ring-surface"
+                  />
+                )}
                 <div className="min-w-0">
                   <Badge tone="brand">{business.category}</Badge>
                   <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">

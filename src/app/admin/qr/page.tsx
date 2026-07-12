@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { PrintButton } from "@/components/print-button";
 import { CalendarFeedCard } from "@/components/admin/calendar-feed-card";
+import { EmbedSnippetCard } from "@/components/admin/embed-snippet-card";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Código QR" };
@@ -69,6 +70,8 @@ export default async function QrPage() {
         tarjetas y a tus redes. Si activas el modo privado en Ajustes, este
         enlace sigue funcionando aunque no aparezcas en el buscador público.
       </p>
+
+      <EmbedSnippetCard baseUrl={baseUrl} slug={business.slug} />
 
       <CalendarFeedCard
         feedToken={business.icsFeedToken}

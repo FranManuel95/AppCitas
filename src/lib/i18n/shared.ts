@@ -326,6 +326,11 @@ const es = {
     cancelKeep: "Mantener la cita",
     cancelError: "No se pudo cancelar, inténtalo de nuevo",
   },
+  widget: {
+    bookCta: "Reservar cita",
+    moreServices: "y {n} servicios más",
+    poweredBy: "Reservas con AppCitas",
+  },
   verify: {
     bannerText:
       "Verifica tu email ({email}) para asegurar tu cuenta. Revisa tu bandeja de entrada.",
@@ -564,6 +569,12 @@ const es = {
       addressLabel: "Dirección",
       phoneLabel: "Teléfono",
       contactEmailLabel: "Email de contacto",
+      brandColorLabel: "Color de tu marca (opcional)",
+      brandColorHint:
+        "Hex tipo #d64545: tu página pública, el widget y los botones de reserva usarán este color. Vacío = el morado de AppCitas.",
+      logoUrlLabel: "Logo (URL https, opcional)",
+      logoUrlHint:
+        "Enlace a una imagen cuadrada ya alojada (tu web, Instagram…). Se muestra en tu página pública y el widget.",
       policyTitle: "Política de reservas y cancelación",
       policyDescription:
         "Estas reglas se aplican automáticamente a todas las reservas.",
@@ -998,6 +1009,11 @@ const en: Dict = {
     cancelKeep: "Keep the appointment",
     cancelError: "Could not cancel, please try again",
   },
+  widget: {
+    bookCta: "Book appointment",
+    moreServices: "and {n} more services",
+    poweredBy: "Bookings with AppCitas",
+  },
   verify: {
     bannerText:
       "Verify your email ({email}) to secure your account. Check your inbox.",
@@ -1236,6 +1252,12 @@ const en: Dict = {
       addressLabel: "Address",
       phoneLabel: "Phone",
       contactEmailLabel: "Contact email",
+      brandColorLabel: "Brand color (optional)",
+      brandColorHint:
+        "Hex like #d64545: your public page, the widget and booking buttons will use it. Empty = the AppCitas purple.",
+      logoUrlLabel: "Logo (https URL, optional)",
+      logoUrlHint:
+        "Link to a square image already hosted (your site, Instagram…). Shown on your public page and the widget.",
       policyTitle: "Booking and cancellation policy",
       policyDescription:
         "These rules are applied automatically to all bookings.",

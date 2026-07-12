@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth/session";
+import { brandStyle } from "@/lib/branding";
 import { getDict } from "@/lib/i18n";
 import { SiteHeader } from "@/components/site-header";
 import { BookingWizard } from "@/components/booking-wizard";
@@ -44,7 +45,10 @@ export default async function BookingPage({
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:py-10">
+      <main
+        className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:py-10"
+        style={brandStyle(business.brandColor)}
+      >
         <p className="text-sm text-ink-muted">
           <Link
             href={`/b/${business.slug}`}

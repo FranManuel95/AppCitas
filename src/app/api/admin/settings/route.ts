@@ -38,6 +38,13 @@ const updateSchema = z.object({
   // Facturación de recibos
   taxId: z.string().trim().max(30).nullable().optional(),
   taxPercent: z.number().int().min(0).max(50).optional(),
+  // Marca en la página pública y el widget
+  brandColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable()
+    .optional(),
+  logoUrl: z.url().startsWith("https://").max(300).nullable().optional(),
 });
 
 export const GET = apiHandler(async () => {
