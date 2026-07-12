@@ -62,20 +62,23 @@ historial está resumido en **un solo script idempotente**.
    ```
    scripts/supabase-catchup.sql
    ```
-   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→20):
+   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→26):
    rate limit, autocierre y 2º recordatorio, reseñas, suscripción SaaS,
    idempotencia de webhooks, consentimiento RGPD, índices, búsqueda por
    trigramas, lista de espera, forma de pago, Stripe Connect, **señal al
    reservar**, **descuento de última hora**, **modo privado del marketplace**,
    **notas de cliente (CRM)**, **campañas de marketing**, **economía de la
-   plataforma** (costes editables del super-admin) y **clientes invitados**
-   (reserva sin registro y cita manual del negocio).
+   plataforma** (costes editables del super-admin), **clientes invitados**
+   (reserva sin registro y cita manual del negocio), **ausencias por
+   empleado**, **citas recurrentes**, **feed de calendario** (Google/Outlook),
+   **marca por negocio** (color y logo), **push web** y **verificación en dos
+   pasos**.
    Es **idempotente**: usa `IF NOT EXISTS`, así que da igual cuánto tuvieras ya
    aplicado; solo añade lo que falte y no rompe nada si lo ejecutas dos veces.
 
    > **¿Ya lo pegaste antes?** Vuelve a pegarlo: al ser idempotente solo añade
-   > las migraciones que te falten (las últimas: 17 notas CRM, 18 campañas,
-   > 19 economía de la plataforma y 20 invitados) sin tocar el resto.
+   > las migraciones que te falten (las últimas: 21 ausencias, 22 series,
+   > 23 feed de calendario, 24 marca, 25 push web y 26 2FA) sin tocar el resto.
 
 3. **(Opcional) Datos de demostración** — si quieres 2 negocios de ejemplo con
    citas para probar, pega después:
@@ -192,9 +195,14 @@ probablemente no tengas puestas:
 > **Sin variables nuevas obligatorias**: la señal, el descuento de última hora,
 > el modo privado, el CRM y las campañas se activan desde el panel del negocio
 > (Ajustes/Marketing), no con variables de entorno. Igual que las novedades de
-> la última ronda: los **costes de la plataforma** se editan en
-> `/superadmin/economia`, y la **reserva sin registro**, la **cita manual** y
-> el **panel móvil** funcionan solos, sin configurar nada.
+> las últimas rondas: los **costes de la plataforma** se editan en
+> `/superadmin/economia`; la **reserva sin registro**, la **cita manual**, las
+> **ausencias**, las **series recurrentes**, el **feed de calendario**, la
+> **marca por negocio**, el **widget** y el **2FA** funcionan solos, sin
+> configurar nada. La única variable nueva OPCIONAL es el par
+> `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` (con `VAPID_SUBJECT`) para los avisos
+> **push web** gratuitos: `npx web-push generate-vapid-keys` y pégalas en tu
+> hosting; sin ellas, ese canal simplemente queda desactivado.
 
 ---
 
@@ -204,12 +212,14 @@ probablemente no tengas puestas:
 2. **Migraciones (local o con acceso directo)**: `npx prisma migrate status` →
    "Database schema is up to date!".
 3. **Supabase**: en el *Table Editor* deben verse las tablas nuevas
-   `WaitlistEntry`, `Review`, `RateLimitCounter`, `ProcessedWebhookEvent` y
-   `PlatformSetting` (migración 19); en `Business`, las columnas `plan`,
-   `subscriptionStatus`, `trialEndsAt`, `autoCompleteEnabled`,
-   `reminder2HoursBefore`, `stripeAccountId`, `stripeChargesEnabled`; en
-   `Appointment`, la columna `paymentMethod`; y en `User`, la columna `guest`
-   (migración 20).
+   `WaitlistEntry`, `Review`, `RateLimitCounter`, `ProcessedWebhookEvent`,
+   `PlatformSetting` (migración 19), `StaffTimeOff` (21) y `PushSubscription`
+   (25); en `Business`, las columnas `plan`, `subscriptionStatus`,
+   `trialEndsAt`, `autoCompleteEnabled`, `reminder2HoursBefore`,
+   `stripeAccountId`, `stripeChargesEnabled`, `icsFeedToken` (23),
+   `brandColor` y `logoUrl` (24); en `Appointment`, las columnas
+   `paymentMethod` y `seriesId` (22); y en `User`, las columnas `guest` (20),
+   `totpSecret` y `totpEnabledAt` (26).
 4. **Prueba de humo**: crea una reserva de prueba y comprueba en
    `/admin/notificaciones` que se encola el aviso. Con Stripe en modo test,
    haz una cancelación tardía con la tarjeta `4242 4242 4242 4242`.
