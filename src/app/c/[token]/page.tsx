@@ -15,6 +15,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { fmt, getDict, intlLocale } from "@/lib/i18n";
 import { AttendanceForm } from "@/components/attendance-form";
 import { ConfirmationCancelButton } from "@/components/confirmation-cancel-button";
+import { RescheduleAppointment } from "@/components/reschedule-appointment";
 import { Card } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 
@@ -58,6 +59,7 @@ export default async function ConfirmationPage({
           currency: true,
           cancellationWindowHours: true,
           lateCancellationFeePercent: true,
+          maxAdvanceBookingDays: true,
         },
       },
     },
@@ -188,6 +190,29 @@ export default async function ConfirmationPage({
                   t={t.confirmation}
                   tMy={t.myAppointments}
                 />
+                {/* Reprogramar solo dentro de la ventana gratuita (misma regla
+                    que en "Mis citas"); fuera de plazo queda solo cancelar. */}
+                {appointment.startAt.getTime() -
+                  appointment.business.cancellationWindowHours * 3_600_000 >
+                  Date.now() && (
+                  <div className="mt-3">
+                    <RescheduleAppointment
+                      appointmentId={appointment.id}
+                      businessSlug={appointment.business.slug}
+                      serviceId={appointment.serviceId}
+                      minDateISO={new Date().toISOString().slice(0, 10)}
+                      maxDateISO={new Date(
+                        Date.now() +
+                          appointment.business.maxAdvanceBookingDays *
+                            86_400_000,
+                      )
+                        .toISOString()
+                        .slice(0, 10)}
+                      labels={t.myAppointments}
+                      endpoint={`/api/confirmations/${token}/reschedule`}
+                    />
+                  </div>
+                )}
                 <ConfirmationCancelButton
                   token={token}
                   startAt={appointment.startAt.toISOString()}

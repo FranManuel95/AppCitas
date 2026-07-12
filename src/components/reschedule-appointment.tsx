@@ -38,6 +38,7 @@ export function RescheduleAppointment({
   minDateISO,
   maxDateISO,
   labels,
+  endpoint,
 }: {
   appointmentId: string;
   businessSlug: string;
@@ -45,6 +46,9 @@ export function RescheduleAppointment({
   minDateISO: string;
   maxDateISO: string;
   labels: RescheduleLabels;
+  // Por defecto la ruta autenticada de "mis citas"; la página del enlace del
+  // email (/c/{token}) pasa su ruta por token, sin sesión.
+  endpoint?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -97,11 +101,14 @@ export function RescheduleAppointment({
     if (!selected) return;
     setBusy(true);
     setError(null);
-    const res = await fetch(`/api/appointments/${appointmentId}/reschedule`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ startAt: selected.startAt }),
-    });
+    const res = await fetch(
+      endpoint ?? `/api/appointments/${appointmentId}/reschedule`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startAt: selected.startAt }),
+      },
+    );
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(json.error ?? labels.rescheduleError);

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createAuthToken } from "@/lib/auth/tokens";
 import { POST as registerRoute } from "@/app/api/auth/register/route";
 import { POST as resetRoute } from "@/app/api/auth/reset-password/route";
+import { POST as rescheduleByToken } from "@/app/api/confirmations/[token]/reschedule/route";
 import { cancelAppointment } from "../appointments";
 import { createGuestAppointment } from "../guest-booking";
 import { resetDb, seedBusiness, seedClient, slotAt } from "@/lib/test/factories";
@@ -125,6 +126,44 @@ describe("reserva de invitado (BD)", () => {
     expect(lateCancel.appointment.status).toBe("CANCELLED_LATE");
     expect(lateCancel.appointment.chargedCents).toBe(1000); // 50 % de 20 €
     expect(lateCancel.appointment.paymentStatus).toBe("UNCOLLECTED");
+  });
+
+  it("reprogramación con el token del email: mueve la cita; token falso → 404", async () => {
+    const seeded = await seedBusiness();
+    // La ruta usa el reloj real (no inyecta `now`): fechas relativas a hoy
+    const in3days = new Date(Date.now() + 3 * 86_400_000);
+    in3days.setUTCHours(10, 0, 0, 0);
+    const newStart = new Date(Date.now() + 4 * 86_400_000);
+    newStart.setUTCHours(11, 0, 0, 0);
+    const appt = await createGuestAppointment(
+      guestParams(seeded, { startAt: in3days, now: undefined }),
+    );
+
+    const res = await rescheduleByToken(
+      new Request("http://localhost/api/confirmations/x/reschedule", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ startAt: newStart.toISOString() }),
+      }),
+      { params: Promise.resolve({ token: appt.confirmationToken }) },
+    );
+    expect(res.status).toBe(200);
+    const moved = await prisma.appointment.findUniqueOrThrow({
+      where: { id: appt.id },
+      select: { startAt: true, status: true },
+    });
+    expect(moved.startAt.getTime()).toBe(newStart.getTime());
+    expect(moved.status).toBe("CONFIRMED");
+
+    const bad = await rescheduleByToken(
+      new Request("http://localhost/api/confirmations/x/reschedule", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ startAt: newStart.toISOString() }),
+      }),
+      { params: Promise.resolve({ token: "token-inexistente-123" }) },
+    );
+    expect(bad.status).toBe(404);
   });
 
   it("registro sobre una sombra: enlace de reclamo sin sesión; el reset la reclama", async () => {
