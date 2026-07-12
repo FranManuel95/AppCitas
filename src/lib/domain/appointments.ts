@@ -120,6 +120,24 @@ async function loadAvailabilityContext(params: {
   const dayStart = wallTimeToUtc(dateISO, "00:00", business.timezone);
   const dayEnd = wallTimeToUtc(addDaysISO(dateISO, 1), "00:00", business.timezone);
 
+  // Ausencias (vacaciones/baja) que cubren este día: el empleado sigue en el
+  // contexto pero con el día entero ocupado, así ni se le asignan citas en
+  // "cualquier profesional" ni ofrece huecos si se le pide explícitamente.
+  const absentStaffIds = new Set(
+    staffMembers.length > 0
+      ? (
+          await prisma.staffTimeOff.findMany({
+            where: {
+              staffId: { in: staffMembers.map((m) => m.id) },
+              startDate: { lte: dateISO },
+              endDate: { gte: dateISO },
+            },
+            select: { staffId: true },
+          })
+        ).map((t) => t.staffId)
+      : [],
+  );
+
   const dayAppointments = await prisma.appointment.findMany({
     where: {
       businessId,
@@ -165,9 +183,14 @@ async function loadAvailabilityContext(params: {
       id: m.id,
       hours: m.hours,
       busy: [
-        ...dayAppointments.filter((a) => a.staffId === m.id),
-        ...unassignedBusy,
-      ].map((a) => ({ startAt: a.startAt, endAt: a.endAt })),
+        ...(absentStaffIds.has(m.id)
+          ? [{ startAt: dayStart, endAt: dayEnd }]
+          : []),
+        ...dayAppointments
+          .filter((a) => a.staffId === m.id)
+          .map((a) => ({ startAt: a.startAt, endAt: a.endAt })),
+        ...unassignedBusy.map((a) => ({ startAt: a.startAt, endAt: a.endAt })),
+      ],
     })),
     dayLoadByStaff,
     engineBase: {

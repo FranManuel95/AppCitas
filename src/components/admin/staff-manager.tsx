@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState, type FormEvent } from "react";
 import {
   AlertCircle,
+  CalendarOff,
   Info,
   KeyRound,
   Mail,
@@ -14,6 +15,7 @@ import {
   Users,
   UserX,
 } from "lucide-react";
+import { StaffTimeOffPanel } from "@/components/admin/staff-timeoff";
 import { WEEKDAY_ORDER, weekdayNames } from "@/lib/weekdays";
 import { fmt, type Dict, type Locale } from "@/lib/i18n/shared";
 import { Avatar } from "@/components/ui/avatar";
@@ -71,6 +73,16 @@ export interface StaffManagerLabels {
     | "giveAccess"
     | "emptyTitle"
     | "emptyDescription"
+    | "timeOffCta"
+    | "timeOffTitle"
+    | "timeOffHint"
+    | "timeOffFrom"
+    | "timeOffTo"
+    | "timeOffReason"
+    | "timeOffAdd"
+    | "timeOffEmpty"
+    | "timeOffDelete"
+    | "timeOffError"
   >;
   common: Pick<
     Dict["admin"]["common"],
@@ -333,6 +345,7 @@ export function StaffManager({
   const [editing, setEditing] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
+  const [timeOffOpen, setTimeOffOpen] = useState<string | null>(null);
 
   function refresh() {
     setEditing(null);
@@ -412,6 +425,7 @@ export function StaffManager({
                 onCancel={() => setEditing(null)}
               />
             ) : (
+              <>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar name={member.name} />
@@ -462,6 +476,21 @@ export function StaffManager({
                       {labels.equipo.giveAccess}
                     </Button>
                   )}
+                  {member.active && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-expanded={timeOffOpen === member.id}
+                      onClick={() =>
+                        setTimeOffOpen((prev) =>
+                          prev === member.id ? null : member.id,
+                        )
+                      }
+                    >
+                      <CalendarOff className="h-3.5 w-3.5" aria-hidden />
+                      {labels.equipo.timeOffCta}
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -489,6 +518,13 @@ export function StaffManager({
                   </Button>
                 </div>
               </div>
+              {timeOffOpen === member.id && (
+                <StaffTimeOffPanel
+                  staffId={member.id}
+                  labels={labels.equipo}
+                />
+              )}
+              </>
             )}
           </Card>
         ))}

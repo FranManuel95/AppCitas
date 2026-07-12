@@ -282,6 +282,8 @@ model StaffMember {
   services     StaffService[]
   appointments Appointment[]
   waitlist     WaitlistEntry[]
+  // Ausencias puntuales (vacaciones, baja): días completos sin agenda
+  timeOff      StaffTimeOff[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -298,6 +300,21 @@ model StaffHour {
   closeTime String
 
   @@index([staffId, weekday])
+}
+
+// Ausencia de un empleado (vacaciones, baja, permiso): rango de días completos
+// inclusivo, en fechas locales del negocio (mismo formato que Closure.date).
+model StaffTimeOff {
+  id        String      @id @default(cuid())
+  staffId   String
+  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  // "YYYY-MM-DD" ambos inclusivos
+  startDate String
+  endDate   String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([staffId, startDate, endDate])
 }
 
 model StaffService {

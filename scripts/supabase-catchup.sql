@@ -216,6 +216,27 @@ ALTER TABLE "Appointment"
   ADD COLUMN IF NOT EXISTS "depositStatus" TEXT NOT NULL DEFAULT 'NONE',
   ADD COLUMN IF NOT EXISTS "depositRef" TEXT;
 
+-- ── (21) Ausencias por empleado (vacaciones, baja) ───────────────────────────
+CREATE TABLE IF NOT EXISTS "StaffTimeOff" (
+    "id" TEXT NOT NULL,
+    "staffId" TEXT NOT NULL,
+    "startDate" TEXT NOT NULL,
+    "endDate" TEXT NOT NULL,
+    "reason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "StaffTimeOff_pkey" PRIMARY KEY ("id")
+);
+ALTER TABLE "StaffTimeOff" ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS "StaffTimeOff_staffId_startDate_endDate_idx" ON "StaffTimeOff"("staffId", "startDate", "endDate");
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'StaffTimeOff_staffId_fkey'
+  ) THEN
+    ALTER TABLE "StaffTimeOff" ADD CONSTRAINT "StaffTimeOff_staffId_fkey" FOREIGN KEY ("staffId") REFERENCES "StaffMember"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -238,7 +259,8 @@ FROM (VALUES
   ('20260706120000_client_notes'),
   ('20260706130000_campaigns'),
   ('20260712090000_economia_plataforma'),
-  ('20260712100000_invitados')
+  ('20260712100000_invitados'),
+  ('20260712120000_ausencias_empleado')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

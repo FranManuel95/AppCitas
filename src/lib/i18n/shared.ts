@@ -442,6 +442,17 @@ const es = {
       emptyTitle:
         "Sin equipo definido, el negocio funciona con una única agenda (capacidad 1).",
       emptyDescription: "Añade empleados para atender varias citas a la vez.",
+      timeOffCta: "Ausencias",
+      timeOffTitle: "Ausencias (vacaciones, baja, permiso)",
+      timeOffHint:
+        "Días completos sin agenda: no se ofrecen huecos ni se le asignan citas esos días. Las citas ya reservadas no se cancelan solas.",
+      timeOffFrom: "Desde",
+      timeOffTo: "Hasta",
+      timeOffReason: "Motivo (opcional)",
+      timeOffAdd: "Añadir ausencia",
+      timeOffEmpty: "Sin ausencias registradas.",
+      timeOffDelete: "Eliminar",
+      timeOffError: "No se pudo guardar la ausencia",
     },
     servicios: {
       title: "Servicios",
@@ -1101,6 +1112,17 @@ const en: Dict = {
       emptyTitle:
         "No team defined, the business runs on a single agenda (capacity 1).",
       emptyDescription: "Add employees to handle several appointments at once.",
+      timeOffCta: "Time off",
+      timeOffTitle: "Time off (holidays, sick leave)",
+      timeOffHint:
+        "Full days off the calendar: no slots are offered and no bookings are assigned on those days. Existing appointments are not cancelled automatically.",
+      timeOffFrom: "From",
+      timeOffTo: "To",
+      timeOffReason: "Reason (optional)",
+      timeOffAdd: "Add time off",
+      timeOffEmpty: "No time off recorded.",
+      timeOffDelete: "Delete",
+      timeOffError: "Could not save the time off",
     },
     servicios: {
       title: "Services",
