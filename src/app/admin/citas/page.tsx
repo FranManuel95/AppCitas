@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, Receipt } from "lucide-react";
+import { CalendarX, Download, Receipt } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { getDict } from "@/lib/i18n";
@@ -12,6 +12,7 @@ import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/field";
 import { SectionHeader } from "@/components/ui/section-header";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Citas" };
@@ -245,11 +246,20 @@ export default async function AppointmentsPage({
             ))}
             {appointments.length === 0 && (
               <tr>
-                <td
-                  colSpan={7}
-                  className="px-4 py-10 text-center text-sm text-ink-muted"
-                >
-                  {t.admin.citas.emptyWithFilters}
+                <td colSpan={7} className="px-4 py-6">
+                  <EmptyState
+                    icon={CalendarX}
+                    title={t.admin.citas.emptyWithFilters}
+                    action={
+                      <Link
+                        href="/admin/agenda"
+                        className={buttonClasses({ variant: "secondary", size: "sm" })}
+                      >
+                        {t.admin.citas.emptyAction}
+                      </Link>
+                    }
+                    className="border-0 bg-transparent py-4"
+                  />
                 </td>
               </tr>
             )}

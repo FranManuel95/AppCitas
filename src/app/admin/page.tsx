@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Card } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { OnboardingChecklist } from "@/components/admin/onboarding-checklist";
+import { loadOnboardingStatus } from "@/lib/domain/onboarding";
 import { PlanBanner } from "@/components/admin/plan-banner";
 import {
   RevenueChart,
@@ -31,21 +32,13 @@ export const metadata = { title: "Dashboard" };
 
 export default async function AdminDashboardPage() {
   const admin = await requireBusinessAdmin();
-  const [
-    business,
-    stats,
-    agenda,
-    activeServices,
-    hoursCount,
-    staffCount,
-    { locale, t },
-  ] = await Promise.all([
+  const [business, stats, agenda, onboarding, { locale, t }] =
+    await Promise.all([
       prisma.business.findUniqueOrThrow({
         where: { id: admin.businessId },
         select: {
           currency: true,
           timezone: true,
-          requireCardToBook: true,
           plan: true,
           subscriptionStatus: true,
           trialEndsAt: true,
@@ -53,13 +46,7 @@ export default async function AdminDashboardPage() {
       }),
       getDashboardStats(admin.businessId),
       getDayAgenda(admin.businessId),
-      prisma.service.count({
-        where: { businessId: admin.businessId, active: true },
-      }),
-      prisma.businessHour.count({ where: { businessId: admin.businessId } }),
-      prisma.staffMember.count({
-        where: { businessId: admin.businessId, active: true },
-      }),
+      loadOnboardingStatus(admin.businessId),
       getDict(),
     ]);
   const chartLocale = locale === "es" ? "es-ES" : "en";
@@ -88,16 +75,8 @@ export default async function AdminDashboardPage() {
         }
       />
 
-      {/* Primeros pasos: solo mientras el negocio no tenga servicios activos */}
-      {activeServices === 0 && (
-        <OnboardingChecklist
-          hasServices={activeServices > 0}
-          hasHours={hoursCount > 0}
-          paymentsConfigured={business.requireCardToBook}
-          hasStaff={staffCount > 0}
-          labels={t.admin.onboarding}
-        />
-      )}
+      {/* Primeros pasos: visible hasta completar los 4 (o hasta ocultarla) */}
+      <OnboardingChecklist steps={onboarding.steps} labels={t.admin.onboarding} />
 
       {/* KPIs del mes */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

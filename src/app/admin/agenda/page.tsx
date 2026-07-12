@@ -123,7 +123,18 @@ export default async function AgendaPage({
           </Card>
         ))}
         {agenda.length === 0 && (
-          <EmptyState icon={CalendarDays} title={t.admin.agenda.noAppointmentsThatDay} />
+          <EmptyState
+            icon={CalendarDays}
+            title={t.admin.agenda.noAppointmentsThatDay}
+            action={
+              <Link
+                href="/admin/qr"
+                className={buttonClasses({ variant: "secondary", size: "sm" })}
+              >
+                {t.admin.agenda.emptyAction}
+              </Link>
+            }
+          />
         )}
       </div>
     </div>

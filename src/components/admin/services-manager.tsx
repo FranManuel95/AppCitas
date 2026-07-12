@@ -293,6 +293,12 @@ export function ServicesManager({
             icon={Tags}
             title={labels.servicios.emptyTitle}
             description={labels.servicios.emptyDescription}
+            action={
+              <Button size="sm" onClick={() => setCreating(true)}>
+                <Plus className="h-4 w-4" aria-hidden />
+                {labels.servicios.newService}
+              </Button>
+            }
           />
         )}
       </div>

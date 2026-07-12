@@ -77,6 +77,18 @@ export const POST = apiHandler(async (request: Request) => {
             closeTime: "18:00",
           })),
         },
+        // Servicio de ejemplo: el panel no aterriza vacío y el dueño tiene
+        // algo concreto que editar (la checklist lo cuenta como pendiente
+        // hasta que lo personalice).
+        services: {
+          create: {
+            name: "Servicio de ejemplo",
+            description: "Edítalo o bórralo desde Servicios",
+            durationMinutes: 30,
+            priceCents: 2500,
+            active: true,
+          },
+        },
       },
     });
     const user = await tx.user.create({

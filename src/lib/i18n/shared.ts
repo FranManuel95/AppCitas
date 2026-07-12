@@ -355,6 +355,7 @@ const es = {
       today: "Hoy",
       next: "Siguiente",
       noAppointmentsThatDay: "No hay citas para este día.",
+      emptyAction: "Comparte tu página de reservas",
     },
     citas: {
       title: "Citas",
@@ -377,6 +378,7 @@ const es = {
       colActions: "Acciones",
       receiptLink: "Recibo",
       emptyWithFilters: "No hay citas con estos filtros.",
+      emptyAction: "Ver la agenda",
       pageOf: "Página {page} de {total}",
       prevPage: "← Anterior",
       nextPage: "Siguiente →",
@@ -603,10 +605,13 @@ const es = {
       title: "Primeros pasos",
       description:
         "Completa estos pasos para que tus clientes puedan empezar a reservar.",
-      stepService: "Crea tu primer servicio",
+      stepService: "Personaliza tus servicios (edita el de ejemplo)",
       stepHours: "Revisa el horario de apertura",
-      stepPayments: "Configura los pagos",
+      stepPayments: "Conecta los cobros",
       stepStaff: "Invita a tu equipo",
+      progress: "{done} de {total} completados",
+      hide: "Ocultar",
+      optionalBadge: "opcional",
     },
     personal: {
       title: "Mi agenda",
@@ -978,6 +983,7 @@ const en: Dict = {
       today: "Today",
       next: "Next",
       noAppointmentsThatDay: "No appointments for this day.",
+      emptyAction: "Share your booking page",
     },
     citas: {
       title: "Appointments",
@@ -1000,6 +1006,7 @@ const en: Dict = {
       colActions: "Actions",
       receiptLink: "Receipt",
       emptyWithFilters: "No appointments with these filters.",
+      emptyAction: "View the agenda",
       pageOf: "Page {page} of {total}",
       prevPage: "← Previous",
       nextPage: "Next →",
@@ -1226,10 +1233,13 @@ const en: Dict = {
       title: "First steps",
       description:
         "Complete these steps so your clients can start booking.",
-      stepService: "Create your first service",
+      stepService: "Customize your services (edit the sample one)",
       stepHours: "Review your opening hours",
-      stepPayments: "Set up payments",
+      stepPayments: "Connect payouts",
       stepStaff: "Invite your team",
+      progress: "{done} of {total} done",
+      hide: "Hide",
+      optionalBadge: "optional",
     },
     personal: {
       title: "My agenda",
