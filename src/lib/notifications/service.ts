@@ -3,6 +3,7 @@ import { emailChannel } from "./channels/email";
 import { smsChannel } from "./channels/sms";
 import { whatsappChannel } from "./channels/whatsapp";
 import type { Channel } from "./channels/types";
+import { isSentinelEmail } from "@/lib/domain/guest-clients";
 import {
   bookingConfirmedMessage,
   cancellationMessage,
@@ -322,6 +323,16 @@ export async function processDueNotifications(
       data: { status: "SENDING" },
     });
     if (claim.count === 0) continue;
+
+    // Walk-ins sin email real: dirección centinela → nunca se envía correo
+    if (n.channel === "EMAIL" && isSentinelEmail(n.recipient)) {
+      await prisma.notification.update({
+        where: { id: n.id },
+        data: { status: "SKIPPED", lastError: "Cliente sin email" },
+      });
+      skipped++;
+      continue;
+    }
 
     const channel = CHANNELS[n.channel];
 

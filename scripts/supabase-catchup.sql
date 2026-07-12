@@ -208,6 +208,9 @@ CREATE TABLE IF NOT EXISTS "PlatformSetting" (
 );
 ALTER TABLE "PlatformSetting" ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS "Notification_channel_status_sentAt_idx" ON "Notification"("channel", "status", "sentAt");
+
+-- ── (20) Cuentas sombra: cita manual del negocio e invitados ─────────────────
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "guest" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "Appointment"
   ADD COLUMN IF NOT EXISTS "depositCents" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS "depositStatus" TEXT NOT NULL DEFAULT 'NONE',
@@ -234,7 +237,8 @@ FROM (VALUES
   ('20260706110000_marketplace_privacy'),
   ('20260706120000_client_notes'),
   ('20260706130000_campaigns'),
-  ('20260712090000_economia_plataforma')
+  ('20260712090000_economia_plataforma'),
+  ('20260712100000_invitados')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

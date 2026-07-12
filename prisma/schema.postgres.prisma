@@ -27,6 +27,11 @@ model User {
 
   emailVerifiedAt DateTime?
 
+  // Cuenta sombra creada al reservar como invitado o al apuntar el negocio una
+  // cita de mostrador: sin contraseña utilizable. Se "reclama" (guest: false)
+  // demostrando la posesión del email vía el flujo de restablecer contraseña.
+  guest Boolean @default(false)
+
   // Evidencia de consentimiento: instante en que aceptó los términos y la
   // política de privacidad al registrarse (RGPD, prueba del consentimiento).
   consentedAt DateTime?

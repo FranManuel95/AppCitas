@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { DomainError } from "./errors";
 import { effectivePlan } from "./plans";
+import { isSentinelEmail } from "./guest-clients";
 
 // Campañas de marketing a la cartera de clientes del negocio, con segmentos
 // calculados sobre su historial de citas. Los envíos van por el outbox de
@@ -76,12 +77,14 @@ export async function resolveSegment(
     where: { id: { in: clientIds } },
     select: { id: true, name: true, email: true, phone: true },
   });
-  return users.map((u) => ({
-    clientId: u.id,
-    name: u.name,
-    email: u.email,
-    phone: u.phone,
-  }));
+  return users
+    .filter((u) => !isSentinelEmail(u.email))
+    .map((u) => ({
+      clientId: u.id,
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+    }));
 }
 
 /** Conteo de destinatarios por segmento (para pintar el formulario). */

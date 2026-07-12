@@ -11,6 +11,7 @@ import { AppointmentActions } from "@/components/admin/appointment-actions";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { NewAppointmentForm } from "@/components/admin/new-appointment-form";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Agenda" };
@@ -23,10 +24,22 @@ export default async function AgendaPage({
   const admin = await requireBusinessAdmin();
   const { locale, t } = await getDict();
   const { fecha } = await searchParams;
-  const business = await prisma.business.findUniqueOrThrow({
-    where: { id: admin.businessId },
-    select: { timezone: true, currency: true },
-  });
+  const [business, services, staff] = await Promise.all([
+    prisma.business.findUniqueOrThrow({
+      where: { id: admin.businessId },
+      select: { timezone: true, currency: true },
+    }),
+    prisma.service.findMany({
+      where: { businessId: admin.businessId, active: true },
+      select: { id: true, name: true, durationMinutes: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.staffMember.findMany({
+      where: { businessId: admin.businessId, active: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   const today = toLocalDateISO(new Date(), business.timezone);
   const day = fecha && isValidDateISO(fecha) ? fecha : today;
@@ -70,6 +83,16 @@ export default async function AgendaPage({
           </Link>
         </div>
       </div>
+
+      {/* Cita manual: la mayoría de reservas de un negocio local entran por
+          teléfono o mostrador; este es su camino de 10 segundos. */}
+      {services.length > 0 && (
+        <NewAppointmentForm
+          services={services}
+          staff={staff}
+          defaultDate={day}
+        />
+      )}
 
       <div className="space-y-3">
         {agenda.map((a) => (

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { DomainError } from "./errors";
+import { isSentinelEmail } from "./guest-clients";
 
 // CRM ligero del negocio: la "cartera de clientes" se deriva de las citas
 // (no hay tabla propia de pertenencia) y se enriquece con métricas de
@@ -87,7 +88,7 @@ export async function getBusinessClients(
       return {
         clientId,
         name: u?.name ?? "(cliente eliminado)",
-        email: u?.email ?? "",
+        email: u && !isSentinelEmail(u.email) ? u.email : "",
         phone: u?.phone ?? null,
         totalAppointments: m.total,
         completed: m.completed,

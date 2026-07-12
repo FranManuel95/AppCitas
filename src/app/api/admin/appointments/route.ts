@@ -4,6 +4,26 @@ import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { apiRequireBusinessAdmin } from "@/lib/auth/guards";
 import { APPOINTMENT_STATUSES } from "@/lib/domain/types";
+import { createAppointment } from "@/lib/domain/appointments";
+import { findOrCreateGuestClient } from "@/lib/domain/guest-clients";
+
+const createSchema = z.object({
+  serviceId: z.string().min(1),
+  startAt: z.iso.datetime(),
+  staffId: z.string().optional(),
+  notes: z.string().trim().max(500).optional(),
+  // Datos del cliente de mostrador/teléfono: con email se reutiliza (o crea)
+  // su cuenta; sin email basta el nombre (y teléfono si lo da).
+  client: z
+    .object({
+      name: z.string().trim().min(2).max(100),
+      email: z.email().toLowerCase().optional(),
+      phone: z.string().trim().min(6).max(30).optional(),
+    })
+    .refine((c) => c.email || c.phone || c.name, {
+      message: "Faltan los datos del cliente",
+    }),
+});
 
 const querySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -67,4 +87,43 @@ export const GET = apiHandler(async (request: Request) => {
     pageSize: query.pageSize,
     appointments,
   });
+});
+
+// POST /api/admin/appointments — cita manual del negocio (mostrador/teléfono).
+// Reutiliza el MISMO camino transaccional anti doble-reserva que la reserva
+// online; bookedBy: "business" salta la antelación mínima y la señal.
+export const POST = apiHandler(async (request: Request) => {
+  const admin = await apiRequireBusinessAdmin();
+  const data = createSchema.parse(await request.json());
+
+  const { clientId } = await findOrCreateGuestClient({
+    name: data.client.name,
+    email: data.client.email,
+    phone: data.client.phone,
+    // El negocio puede apuntar citas a clientes ya registrados (teléfono)
+    allowClaimedAccounts: true,
+  });
+
+  const appointment = await createAppointment({
+    businessId: admin.businessId,
+    serviceId: data.serviceId,
+    clientId,
+    startAt: new Date(data.startAt),
+    staffId: data.staffId,
+    notes: data.notes,
+    bookedBy: "business",
+  });
+
+  return NextResponse.json(
+    {
+      appointment: {
+        id: appointment.id,
+        startAt: appointment.startAt.toISOString(),
+        status: appointment.status,
+        service: appointment.service.name,
+        staff: appointment.staff?.name ?? null,
+      },
+    },
+    { status: 201 },
+  );
 });

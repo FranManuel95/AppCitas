@@ -72,6 +72,9 @@ async function loadAvailabilityContext(params: {
   staffId?: string;
   // Al reprogramar: la propia cita no bloquea su hueco (queda libre al moverla)
   excludeAppointmentId?: string;
+  // El negocio se apunta citas de mostrador/teléfono "para ahora mismo": la
+  // antelación mínima que protege al negocio no aplica cuando reserva él.
+  relaxMinNotice?: boolean;
 }): Promise<AvailabilityContext> {
   const { businessId, serviceId, dateISO, now, staffId, excludeAppointmentId } =
     params;
@@ -139,12 +142,16 @@ async function loadAvailabilityContext(params: {
   // sala única) bloquean la agenda de todos los empleados.
   const unassignedBusy = dayAppointments.filter((a) => !a.staffId);
 
+  const minNoticeMinutes = params.relaxMinNotice
+    ? 0
+    : business.minNoticeMinutes;
+
   return {
     business: {
       id: business.id,
       timezone: business.timezone,
       slotGranularityMinutes: business.slotGranularityMinutes,
-      minNoticeMinutes: business.minNoticeMinutes,
+      minNoticeMinutes,
       maxAdvanceBookingDays: business.maxAdvanceBookingDays,
       hours: business.hours,
       closedDates: business.closures.map((c) => c.date),
@@ -169,7 +176,7 @@ async function loadAvailabilityContext(params: {
       closedDates: business.closures.map((c) => c.date),
       durationMinutes: service.durationMinutes,
       granularityMinutes: business.slotGranularityMinutes,
-      minNoticeMinutes: business.minNoticeMinutes,
+      minNoticeMinutes,
       maxAdvanceBookingDays: business.maxAdvanceBookingDays,
       now,
     },
@@ -198,6 +205,7 @@ export async function getAvailability(params: {
   dateISO: string;
   staffId?: string;
   now?: Date;
+  relaxMinNotice?: boolean;
 }): Promise<StaffSlot[]> {
   const ctx = await loadAvailabilityContext({
     ...params,
@@ -219,8 +227,13 @@ export async function createAppointment(params: {
   notes?: string;
   couponCode?: string;
   clientPackageId?: string;
+  // Quién reserva: el cliente (por defecto) o el propio negocio (mostrador/
+  // teléfono). El negocio salta la antelación mínima y no cobra señal (el
+  // walk-in paga en persona); el cupo del plan se aplica igual.
+  bookedBy?: "client" | "business";
   now?: Date;
 }) {
+  const bookedBy = params.bookedBy ?? "client";
   const now = params.now ?? new Date();
   const {
     businessId,
@@ -255,6 +268,7 @@ export async function createAppointment(params: {
     dateISO,
     now,
     staffId,
+    relaxMinNotice: bookedBy === "business",
   });
 
   // Solo se aceptan instantes exactamente ofertados por el motor de huecos:
@@ -418,7 +432,7 @@ export async function createAppointment(params: {
   const depositDue = Math.round(
     (appointment.priceCents * appointment.business.depositPercent) / 100,
   );
-  if (depositDue > 0) {
+  if (depositDue > 0 && bookedBy !== "business") {
     const deposit = await collectBookingDeposit({
       appointmentId: appointment.id,
       businessId,
