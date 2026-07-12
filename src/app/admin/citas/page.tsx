@@ -230,6 +230,7 @@ export default async function AppointmentsPage({
                     appointmentId={a.id}
                     status={a.status}
                     isPast={a.startAt.getTime() < now}
+                    seriesId={a.seriesId}
                     labels={t.admin.actions}
                   />
                   {a.chargedCents > 0 && (

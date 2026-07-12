@@ -46,6 +46,13 @@ export function NewAppointmentForm({
   const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [notes, setNotes] = useState("");
+  // Serie recurrente: "0" = una sola cita; 7/14/28 = repetir cada N días
+  const [repeatDays, setRepeatDays] = useState("0");
+  const [repeatCount, setRepeatCount] = useState(4);
+  const [seriesResult, setSeriesResult] = useState<{
+    created: number;
+    skipped: Array<{ startAt: string; code: string }>;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,17 +93,38 @@ export function NewAppointmentForm({
           email: clientEmail.trim() || undefined,
           phone: clientPhone.trim() || undefined,
         },
+        ...(repeatDays !== "0"
+          ? {
+              recurrence: {
+                intervalDays: Number(repeatDays),
+                count: repeatCount,
+              },
+            }
+          : {}),
       }),
     });
-    const json = (await res.json().catch(() => ({}))) as { error?: string };
+    const json = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      created?: Array<{ startAt: string }>;
+      skipped?: Array<{ startAt: string; code: string }>;
+    };
     if (!res.ok) {
       setError(json.error ?? "No se pudo crear la cita");
       setBusy(false);
       return;
     }
+    setBusy(false);
+    if (repeatDays !== "0") {
+      // Serie: mostrar el resumen (creadas/omitidas) antes de cerrar
+      setSeriesResult({
+        created: json.created?.length ?? 0,
+        skipped: json.skipped ?? [],
+      });
+      router.refresh();
+      return;
+    }
     // Ir al día de la cita y limpiar el formulario
     setOpen(false);
-    setBusy(false);
     setClientName("");
     setClientPhone("");
     setClientEmail("");
@@ -239,6 +267,77 @@ export function NewAppointmentForm({
           />
         </Field>
 
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Repetir" htmlFor="na-repeat">
+            <Select
+              id="na-repeat"
+              value={repeatDays}
+              onChange={(e) => setRepeatDays(e.target.value)}
+            >
+              <option value="0">No se repite</option>
+              <option value="7">Cada semana</option>
+              <option value="14">Cada 2 semanas</option>
+              <option value="28">Cada 4 semanas</option>
+            </Select>
+          </Field>
+          {repeatDays !== "0" && (
+            <Field label="Nº de citas de la serie" htmlFor="na-repeat-count">
+              <Input
+                id="na-repeat-count"
+                type="number"
+                min={2}
+                max={26}
+                value={repeatCount}
+                onChange={(e) =>
+                  setRepeatCount(
+                    Math.max(2, Math.min(26, Number(e.target.value) || 2)),
+                  )
+                }
+              />
+            </Field>
+          )}
+        </div>
+        {repeatDays !== "0" && (
+          <p className="text-xs text-ink-muted">
+            Se reservará la misma hora cada {repeatDays} días. Las fechas con
+            el hueco ocupado o el negocio cerrado se omiten y se muestran al
+            crear la serie.
+          </p>
+        )}
+
+        {seriesResult && (
+          <div
+            role="status"
+            className="rounded-lg bg-success-soft px-3 py-2.5 text-sm text-success-strong"
+          >
+            <p className="font-medium">
+              Serie creada: {seriesResult.created} citas.
+            </p>
+            {seriesResult.skipped.length > 0 && (
+              <p className="mt-1">
+                Omitidas ({seriesResult.skipped.length}):{" "}
+                {seriesResult.skipped
+                  .map((s) => s.startAt.slice(0, 10))
+                  .join(", ")}
+                . Revisa esos días y créalas a otra hora si las necesitas.
+              </p>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              className="mt-2"
+              onClick={() => {
+                setOpen(false);
+                setSeriesResult(null);
+                router.push(`/admin/agenda?fecha=${date}`);
+                router.refresh();
+              }}
+            >
+              Ver agenda
+            </Button>
+          </div>
+        )}
+
         {error && (
           <p
             role="alert"
@@ -250,13 +349,20 @@ export function NewAppointmentForm({
         )}
 
         <div className="flex items-center gap-2">
-          <Button type="submit" disabled={busy || !slot || !clientName.trim()}>
+          <Button
+            type="submit"
+            disabled={busy || !slot || !clientName.trim() || !!seriesResult}
+          >
             {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             ) : (
               <CalendarPlus className="h-4 w-4" aria-hidden />
             )}
-            {slot ? `Crear cita · ${slot.label}` : "Elige una hora"}
+            {slot
+              ? repeatDays !== "0"
+                ? `Crear serie · ${slot.label}`
+                : `Crear cita · ${slot.label}`
+              : "Elige una hora"}
           </Button>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
             Cancelar

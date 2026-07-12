@@ -405,6 +405,10 @@ model Appointment {
   confirmationToken     String    @unique @default(cuid())
   attendanceConfirmedAt DateTime?
 
+  // Serie recurrente ("todos los martes"): las citas creadas juntas comparten
+  // seriesId. Cada ocurrencia sigue siendo una cita normal e independiente.
+  seriesId String?
+
   // Resultado del cobro del cargo (si lo hubo):
   // NONE | CHARGED | SIMULATED | CHARGE_FAILED | UNCOLLECTED
   paymentStatus String  @default("NONE")
@@ -437,6 +441,7 @@ model Appointment {
   // reserva (bajo el advisory lock); sin este índice escanearía el histórico
   // completo del negocio en el camino caliente.
   @@index([businessId, createdAt])
+  @@index([seriesId])
 }
 
 // Reseña post-cita: solo el cliente de una cita COMPLETED, una por cita.

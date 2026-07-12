@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Banknote, CreditCard, RotateCcw, UserX, X } from "lucide-react";
+import { Banknote, CreditCard, Repeat, RotateCcw, UserX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Dict } from "@/lib/i18n/shared";
 
@@ -15,6 +15,8 @@ export type AppointmentActionsLabels = Pick<
   | "revert"
   | "updateError"
   | "cancelError"
+  | "cancelSeries"
+  | "seriesCancelled"
 >;
 
 // Valores por defecto (español) para las páginas que aún no pasan `labels`.
@@ -26,6 +28,8 @@ const DEFAULT_LABELS: AppointmentActionsLabels = {
   revert: "Revertir",
   updateError: "No se pudo actualizar",
   cancelError: "No se pudo cancelar",
+  cancelSeries: "Cancelar serie",
+  seriesCancelled: "Serie cancelada ({n} citas)",
 };
 
 // Acciones operativas del negocio sobre una cita. El cargo se recalcula en el
@@ -35,6 +39,7 @@ export function AppointmentActions({
   appointmentId,
   status,
   isPast,
+  seriesId = null,
   endpointBase = "/api/admin/appointments",
   canCancel = true,
   labels = DEFAULT_LABELS,
@@ -42,6 +47,8 @@ export function AppointmentActions({
   appointmentId: string;
   status: string;
   isPast: boolean;
+  // Si la cita pertenece a una serie recurrente, ofrece cancelarla entera
+  seriesId?: string | null;
   // El portal del empleado usa /api/staff/appointments (solo sus citas)
   endpointBase?: string;
   canCancel?: boolean;
@@ -50,6 +57,26 @@ export function AppointmentActions({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function cancelSeries() {
+    if (!seriesId) return;
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/admin/appointments/series/${seriesId}`, {
+      method: "DELETE",
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(json.error ?? labels.cancelError);
+      setBusy(false);
+      return;
+    }
+    setNotice(
+      labels.seriesCancelled.replace("{n}", String(json.cancelled ?? 0)),
+    );
+    router.refresh();
+  }
 
   async function setStatus(next: string, paymentMethod?: string) {
     setBusy(true);
@@ -119,16 +146,30 @@ export function AppointmentActions({
         </>
       )}
       {status === "CONFIRMED" && !isPast && canCancel && (
-        <Button
-          variant="secondary"
-          size="sm"
-          className="text-danger-strong hover:bg-danger-soft"
-          disabled={busy}
-          onClick={cancelByBusiness}
-        >
-          <X className="h-3.5 w-3.5" aria-hidden />
-          {labels.cancelNoCharge}
-        </Button>
+        <>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="text-danger-strong hover:bg-danger-soft"
+            disabled={busy}
+            onClick={cancelByBusiness}
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+            {labels.cancelNoCharge}
+          </Button>
+          {seriesId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-danger-strong hover:bg-danger-soft"
+              disabled={busy}
+              onClick={cancelSeries}
+            >
+              <Repeat className="h-3.5 w-3.5" aria-hidden />
+              {labels.cancelSeries}
+            </Button>
+          )}
+        </>
       )}
       {(status === "COMPLETED" || status === "NO_SHOW") && (
         <Button
@@ -142,6 +183,11 @@ export function AppointmentActions({
         </Button>
       )}
       {error && <span className="text-xs text-danger-strong">{error}</span>}
+      {notice && (
+        <span className="text-xs font-medium text-success-strong">
+          {notice}
+        </span>
+      )}
     </div>
   );
 }

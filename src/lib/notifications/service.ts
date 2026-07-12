@@ -128,6 +128,10 @@ function enabledDeliveries(
 export async function enqueueBookingNotifications(
   appointmentId: string,
   now = new Date(),
+  // skipConfirmation: en una serie recurrente solo la primera ocurrencia envía
+  // la confirmación inmediata (una por serie, no doce); los recordatorios de
+  // cada ocurrencia se programan siempre.
+  opts?: { skipConfirmation?: boolean },
 ): Promise<void> {
   const appointment = await loadAppointment(appointmentId);
   if (!appointment) return;
@@ -145,18 +149,20 @@ export async function enqueueBookingNotifications(
     scheduledFor: Date;
   }> = [];
 
-  const confirmed = bookingConfirmedMessage(ctx);
-  for (const d of deliveries) {
-    rows.push({
-      businessId: appointment.businessId,
-      appointmentId: appointment.id,
-      channel: d.channel,
-      template: "BOOKING_CONFIRMED",
-      recipient: d.recipient,
-      subject: confirmed.subject,
-      body: confirmed.body,
-      scheduledFor: now,
-    });
+  if (!opts?.skipConfirmation) {
+    const confirmed = bookingConfirmedMessage(ctx);
+    for (const d of deliveries) {
+      rows.push({
+        businessId: appointment.businessId,
+        appointmentId: appointment.id,
+        channel: d.channel,
+        template: "BOOKING_CONFIRMED",
+        recipient: d.recipient,
+        subject: confirmed.subject,
+        body: confirmed.body,
+        scheduledFor: now,
+      });
+    }
   }
 
   if (appointment.business.remindersEnabled) {

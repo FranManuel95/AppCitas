@@ -254,6 +254,10 @@ export async function createAppointment(params: {
   // teléfono). El negocio salta la antelación mínima y no cobra señal (el
   // walk-in paga en persona); el cupo del plan se aplica igual.
   bookedBy?: "client" | "business";
+  // Serie recurrente: las ocurrencias comparten seriesId, y a partir de la
+  // segunda no se envía la confirmación inmediata (los recordatorios sí).
+  seriesId?: string;
+  suppressConfirmation?: boolean;
   now?: Date;
 }) {
   const bookedBy = params.bookedBy ?? "client";
@@ -436,6 +440,7 @@ export async function createAppointment(params: {
         couponId,
         clientPackageId: usedPackageId,
         notes: notes?.trim() || null,
+        seriesId: params.seriesId ?? null,
       },
       include: {
         service: true,
@@ -502,7 +507,9 @@ export async function createAppointment(params: {
   }
 
   // Confirmación inmediata + recordatorio programado (outbox)
-  await enqueueBookingNotifications(appointment.id, now);
+  await enqueueBookingNotifications(appointment.id, now, {
+    skipConfirmation: params.suppressConfirmation,
+  });
 
   // El cliente ya cubrió lo que esperaba: quita su entrada de lista de espera
   // de ese servicio y día (si la tenía).

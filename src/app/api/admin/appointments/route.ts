@@ -5,6 +5,10 @@ import { apiHandler } from "@/lib/api";
 import { apiRequireBusinessAdmin } from "@/lib/auth/guards";
 import { APPOINTMENT_STATUSES } from "@/lib/domain/types";
 import { createAppointment } from "@/lib/domain/appointments";
+import {
+  createRecurringAppointments,
+  MAX_SERIES_COUNT,
+} from "@/lib/domain/recurring";
 import { findOrCreateGuestClient } from "@/lib/domain/guest-clients";
 
 const createSchema = z.object({
@@ -23,6 +27,13 @@ const createSchema = z.object({
     .refine((c) => c.email || c.phone || c.name, {
       message: "Faltan los datos del cliente",
     }),
+  // Serie recurrente opcional: repite la misma hora de pared cada 7/14/28 días
+  recurrence: z
+    .object({
+      intervalDays: z.union([z.literal(7), z.literal(14), z.literal(28)]),
+      count: z.number().int().min(2).max(MAX_SERIES_COUNT),
+    })
+    .optional(),
 });
 
 const querySchema = z.object({
@@ -103,6 +114,35 @@ export const POST = apiHandler(async (request: Request) => {
     // El negocio puede apuntar citas a clientes ya registrados (teléfono)
     allowClaimedAccounts: true,
   });
+
+  // Serie recurrente: crea todas las ocurrencias posibles y devuelve el
+  // resumen (las que chocan con huecos ocupados/cierres quedan omitidas).
+  if (data.recurrence) {
+    const result = await createRecurringAppointments({
+      businessId: admin.businessId,
+      serviceId: data.serviceId,
+      clientId,
+      startAt: new Date(data.startAt),
+      staffId: data.staffId,
+      notes: data.notes,
+      intervalDays: data.recurrence.intervalDays,
+      count: data.recurrence.count,
+    });
+    return NextResponse.json(
+      {
+        seriesId: result.seriesId,
+        created: result.created.map((a) => ({
+          id: a.id,
+          startAt: a.startAt.toISOString(),
+        })),
+        skipped: result.skipped.map((s) => ({
+          startAt: s.startAt.toISOString(),
+          code: s.code,
+        })),
+      },
+      { status: 201 },
+    );
+  }
 
   const appointment = await createAppointment({
     businessId: admin.businessId,

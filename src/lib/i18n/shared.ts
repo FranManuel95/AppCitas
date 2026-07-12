@@ -673,6 +673,8 @@ const es = {
       revert: "Revertir",
       updateError: "No se pudo actualizar",
       cancelError: "No se pudo cancelar",
+      cancelSeries: "Cancelar serie",
+      seriesCancelled: "Serie cancelada ({n} citas)",
     },
     common: {
       edit: "Editar",
@@ -1343,6 +1345,8 @@ const en: Dict = {
       revert: "Revert",
       updateError: "Could not update",
       cancelError: "Could not cancel",
+      cancelSeries: "Cancel series",
+      seriesCancelled: "Series cancelled ({n} appointments)",
     },
     common: {
       edit: "Edit",
