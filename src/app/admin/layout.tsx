@@ -12,35 +12,59 @@ import {
   AdminNavLink,
   type AdminNavIcon,
 } from "@/components/admin/admin-nav-link";
+import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 
 // El icono va como clave (no como componente): las funciones no pueden
-// cruzar la frontera server→client; AdminNavLink resuelve la clave.
+// cruzar la frontera server→client; AdminNavLink resuelve la clave. Con 15
+// destinos, el nav va agrupado en secciones (y en móvil, barra inferior +
+// hoja "Más"). Algunas etiquetas van literales: el diccionario admin.nav no
+// tiene clave para esas secciones nuevas.
 function buildNav(
   nav: Dict["admin"]["nav"],
-): Array<{ href: string; label: string; icon: AdminNavIcon }> {
+): Array<{
+  title: string;
+  items: Array<{ href: string; label: string; icon: AdminNavIcon }>;
+}> {
   return [
-    { href: "/admin", label: nav.dashboard, icon: "dashboard" },
-    { href: "/admin/agenda", label: nav.agenda, icon: "agenda" },
-    { href: "/admin/citas", label: nav.citas, icon: "citas" },
-    // "Lista de espera" va literal (el diccionario admin.nav no tiene clave).
-    { href: "/admin/clientes", label: "Clientes", icon: "clientes" },
-    { href: "/admin/lista-espera", label: "Lista de espera", icon: "espera" },
-    { href: "/admin/equipo", label: nav.equipo, icon: "equipo" },
-    { href: "/admin/servicios", label: nav.servicios, icon: "servicios" },
-    { href: "/admin/promociones", label: nav.promos, icon: "promociones" },
-    { href: "/admin/marketing", label: "Marketing", icon: "marketing" },
-    { href: "/admin/horario", label: nav.horario, icon: "horario" },
     {
-      href: "/admin/notificaciones",
-      label: nav.notificaciones,
-      icon: "notificaciones",
+      title: nav.groupActivity,
+      items: [
+        { href: "/admin", label: nav.dashboard, icon: "dashboard" },
+        { href: "/admin/agenda", label: nav.agenda, icon: "agenda" },
+        { href: "/admin/citas", label: nav.citas, icon: "citas" },
+      ],
     },
-    { href: "/admin/ajustes", label: nav.ajustes, icon: "ajustes" },
-    // "Plan" y "Cobros" van literales: el diccionario admin.nav no tiene clave
-    // para estas secciones (i18n queda fuera del alcance de la capa de pagos).
-    { href: "/admin/cobros", label: "Cobros", icon: "cobros" },
-    { href: "/admin/qr", label: "Código QR", icon: "qr" },
-    { href: "/admin/plan", label: "Plan", icon: "plan" },
+    {
+      title: nav.groupClients,
+      items: [
+        { href: "/admin/clientes", label: "Clientes", icon: "clientes" },
+        { href: "/admin/lista-espera", label: "Lista de espera", icon: "espera" },
+        { href: "/admin/marketing", label: "Marketing", icon: "marketing" },
+      ],
+    },
+    {
+      title: nav.groupBusiness,
+      items: [
+        { href: "/admin/servicios", label: nav.servicios, icon: "servicios" },
+        { href: "/admin/equipo", label: nav.equipo, icon: "equipo" },
+        { href: "/admin/promociones", label: nav.promos, icon: "promociones" },
+        { href: "/admin/horario", label: nav.horario, icon: "horario" },
+      ],
+    },
+    {
+      title: nav.groupSettings,
+      items: [
+        { href: "/admin/ajustes", label: nav.ajustes, icon: "ajustes" },
+        {
+          href: "/admin/notificaciones",
+          label: nav.notificaciones,
+          icon: "notificaciones",
+        },
+        { href: "/admin/cobros", label: "Cobros", icon: "cobros" },
+        { href: "/admin/qr", label: "Código QR", icon: "qr" },
+        { href: "/admin/plan", label: "Plan", icon: "plan" },
+      ],
+    },
   ];
 }
 
@@ -81,16 +105,23 @@ export default async function AdminLayout({
           </div>
         </div>
 
-        <nav className="min-h-0 md:flex-1 md:overflow-y-auto">
-          <ul className="flex items-center gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:items-stretch md:gap-0.5 md:overflow-x-visible md:py-1">
-            {nav.map((item) => (
-              <li key={item.href} className="shrink-0 md:shrink">
-                <AdminNavLink href={item.href} icon={item.icon}>
-                  {item.label}
-                </AdminNavLink>
-              </li>
-            ))}
-          </ul>
+        <nav className="hidden min-h-0 md:block md:flex-1 md:overflow-y-auto">
+          {nav.map((section) => (
+            <div key={section.title} className="px-3 py-1.5">
+              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+                {section.title}
+              </p>
+              <ul className="space-y-0.5">
+                {section.items.map((item) => (
+                  <li key={item.href}>
+                    <AdminNavLink href={item.href} icon={item.icon}>
+                      {item.label}
+                    </AdminNavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </nav>
 
         <div className="mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border px-3 py-2 md:block md:py-3">
@@ -120,7 +151,7 @@ export default async function AdminLayout({
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 bg-surface-2 px-4 py-6 md:px-8 md:py-8">
+      <main className="min-w-0 flex-1 bg-surface-2 px-4 py-6 pb-24 md:px-8 md:py-8">
         <div className="mx-auto w-full max-w-6xl">
           {account && !account.emailVerifiedAt && (
             <VerifyEmailBanner email={admin.email} />
@@ -150,6 +181,9 @@ export default async function AdminLayout({
           {children}
         </div>
       </main>
+
+      {/* Barra de navegación inferior (solo móvil) */}
+      <AdminMobileNav sections={nav} moreLabel={t.admin.nav.more} />
     </div>
   );
 }

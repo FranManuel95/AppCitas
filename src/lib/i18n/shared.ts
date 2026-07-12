@@ -309,6 +309,11 @@ const es = {
   admin: {
     nav: {
       dashboard: "Dashboard",
+      groupActivity: "Actividad",
+      groupClients: "Clientes",
+      groupBusiness: "Negocio",
+      groupSettings: "Configuración",
+      more: "Más",
       agenda: "Agenda",
       citas: "Citas",
       equipo: "Equipo",
@@ -937,6 +942,11 @@ const en: Dict = {
   admin: {
     nav: {
       dashboard: "Dashboard",
+      groupActivity: "Activity",
+      groupClients: "Clients",
+      groupBusiness: "Business",
+      groupSettings: "Settings",
+      more: "More",
       agenda: "Agenda",
       citas: "Appointments",
       equipo: "Team",

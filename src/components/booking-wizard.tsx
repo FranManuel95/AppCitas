@@ -313,7 +313,7 @@ export function BookingWizard({
     isLoggedIn && !!selectedSlot && (cardSaved || !business.requireCardToBook);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 lg:pb-0">
       <Card className="px-4 py-4 sm:px-6">
         <Stepper steps={steps} current={currentStep} />
       </Card>
@@ -734,6 +734,70 @@ export function BookingWizard({
             )}
           </Card>
         </aside>
+      </div>
+
+      {/* Barra fija en móvil: el CTA no se pierde al final del scroll (en
+          escritorio el aside sticky ya lo mantiene a la vista). */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-4 pt-3 backdrop-blur lg:hidden"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
+        {isLoggedIn ? (
+          <div className="mx-auto flex max-w-xl items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs text-ink-muted">
+                {service ? service.name : t.stepService}
+              </p>
+              <p className="text-sm font-semibold tabular-nums text-ink">
+                {usePackageId
+                  ? t.packagePrice
+                  : service
+                    ? formatCents(service.priceCents, business.currency)
+                    : "—"}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-primary shrink-0"
+              disabled={submitting || (!!selectedSlot && !canBook)}
+              onClick={() => {
+                if (!selectedSlot) {
+                  // Aún sin hueco: llevar al usuario a la sección de fecha
+                  document
+                    .getElementById("fecha")
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  return;
+                }
+                book();
+              }}
+            >
+              {submitting
+                ? t.booking
+                : !selectedSlot
+                  ? t.chooseSlot
+                  : business.requireCardToBook && !cardSaved
+                    ? t.saveCardFirst
+                    : selectedSlot.label}
+            </button>
+          </div>
+        ) : (
+          <p className="mx-auto max-w-xl text-center text-sm text-ink-soft">
+            <Link
+              href={`/login?next=/b/${business.slug}/reservar${serviceId ? `?servicio=${serviceId}` : ""}`}
+              className="font-medium text-brand-700 hover:text-brand-800"
+            >
+              {t.loginPrompt1}
+            </Link>{" "}
+            {t.loginPrompt2}{" "}
+            <Link
+              href={`/register?next=/b/${business.slug}/reservar${serviceId ? `?servicio=${serviceId}` : ""}`}
+              className="font-medium text-brand-700 hover:text-brand-800"
+            >
+              {t.loginPrompt3}
+            </Link>{" "}
+            {t.loginPrompt4}
+          </p>
+        )}
       </div>
     </div>
   );

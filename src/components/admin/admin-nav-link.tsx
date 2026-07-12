@@ -44,6 +44,18 @@ const ICONS = {
 
 export type AdminNavIcon = keyof typeof ICONS;
 
+// Resolución de icono para otros navs (barra móvil) sin duplicar el mapa.
+export function navIcon(icon: AdminNavIcon): LucideIcon {
+  return ICONS[icon];
+}
+
+/** "/admin" solo activo con coincidencia exacta; el resto por prefijo. */
+export function isNavActive(pathname: string, href: string): boolean {
+  return href === "/admin"
+    ? pathname === "/admin"
+    : pathname === href || pathname.startsWith(`${href}/`);
+}
+
 /**
  * Enlace del sidebar del panel admin con icono y estado activo según la ruta.
  * "/admin" solo se marca activo con coincidencia exacta para que el Dashboard
@@ -60,10 +72,7 @@ export function AdminNavLink({
 }) {
   const pathname = usePathname();
   const Icon = ICONS[icon];
-  const active =
-    href === "/admin"
-      ? pathname === "/admin"
-      : pathname === href || pathname.startsWith(`${href}/`);
+  const active = isNavActive(pathname, href);
 
   return (
     <Link
