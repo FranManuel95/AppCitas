@@ -479,6 +479,7 @@ model Notification {
   @@index([status, scheduledFor])
   @@index([businessId, createdAt])
   @@index([appointmentId])
+  @@index([channel, status, sentAt])
 }
 
 // Lista de espera: un cliente se apunta para un servicio en un día concreto
@@ -553,4 +554,17 @@ model Campaign {
   createdAt      DateTime @default(now())
 
   @@index([businessId, createdAt])
+}
+
+// Ajustes económicos de la plataforma (fila única id="platform"): costes que
+// el super-admin edita desde el panel para que el beneficio se calcule solo.
+// Importes en céntimos y comisión en basis points (140 = 1,40 %): sin floats.
+model PlatformSetting {
+  id                    String   @id @default("platform")
+  fixedMonthlyCostCents Int      @default(0)
+  whatsappMsgCostCents  Int      @default(5)
+  smsMsgCostCents       Int      @default(8)
+  stripeFeeBps          Int      @default(140)
+  stripeFeeFixedCents   Int      @default(25)
+  updatedAt             DateTime @updatedAt
 }

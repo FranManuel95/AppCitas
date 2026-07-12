@@ -27,6 +27,20 @@ export default async function SuperAdminLayout({
               AppCitas <span className="font-normal text-ink-muted">· Plataforma</span>
             </span>
           </Link>
+          <nav className="flex items-center gap-4 text-sm">
+            <Link
+              href="/superadmin"
+              className="font-medium text-ink-soft transition-colors hover:text-ink"
+            >
+              Negocios
+            </Link>
+            <Link
+              href="/superadmin/economia"
+              className="font-medium text-ink-soft transition-colors hover:text-ink"
+            >
+              Economía
+            </Link>
+          </nav>
           <span className="flex shrink-0 items-center gap-1.5">
             <LogOut className="h-4 w-4 text-ink-muted" aria-hidden />
             <LogoutButton label="Salir" />

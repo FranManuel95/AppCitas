@@ -194,6 +194,20 @@ DO $$ BEGIN
   ALTER TABLE "Campaign" ADD CONSTRAINT "Campaign_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "Business"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 ALTER TABLE "Campaign" ENABLE ROW LEVEL SECURITY;
+
+-- ── (19) Economía de la plataforma ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS "PlatformSetting" (
+    "id" TEXT NOT NULL DEFAULT 'platform',
+    "fixedMonthlyCostCents" INTEGER NOT NULL DEFAULT 0,
+    "whatsappMsgCostCents" INTEGER NOT NULL DEFAULT 5,
+    "smsMsgCostCents" INTEGER NOT NULL DEFAULT 8,
+    "stripeFeeBps" INTEGER NOT NULL DEFAULT 140,
+    "stripeFeeFixedCents" INTEGER NOT NULL DEFAULT 25,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "PlatformSetting_pkey" PRIMARY KEY ("id")
+);
+ALTER TABLE "PlatformSetting" ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS "Notification_channel_status_sentAt_idx" ON "Notification"("channel", "status", "sentAt");
 ALTER TABLE "Appointment"
   ADD COLUMN IF NOT EXISTS "depositCents" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS "depositStatus" TEXT NOT NULL DEFAULT 'NONE',
@@ -219,7 +233,8 @@ FROM (VALUES
   ('20260706100000_last_minute_discount'),
   ('20260706110000_marketplace_privacy'),
   ('20260706120000_client_notes'),
-  ('20260706130000_campaigns')
+  ('20260706130000_campaigns'),
+  ('20260712090000_economia_plataforma')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m
