@@ -49,6 +49,7 @@ model User {
   auditLogs    AuditLog[]
   waitlist     WaitlistEntry[]
   clientNotes  ClientNote[]
+  pushSubscriptions PushSubscription[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -296,6 +297,21 @@ model StaffMember {
   updatedAt DateTime @updatedAt
 
   @@index([businessId, active])
+}
+
+// Suscripción push web de un dispositivo del usuario (PWA): canal de aviso
+// gratuito. endpoint es único por dispositivo/navegador; las claves cifran el
+// payload (Web Push / VAPID).
+model PushSubscription {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint String @unique
+  p256dh   String
+  auth     String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model StaffHour {

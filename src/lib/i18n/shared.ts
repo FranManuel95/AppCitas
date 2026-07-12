@@ -226,6 +226,11 @@ const es = {
   },
   myAppointments: {
     title: "Mis citas",
+    pushEnable: "Activar avisos en este dispositivo",
+    pushDisable: "Desactivar avisos en este dispositivo",
+    pushHint: "Recordatorios gratis en tu móvil u ordenador, sin depender del email.",
+    pushDenied:
+      "Los avisos están bloqueados en este navegador. Actívalos en los permisos del sitio si los quieres.",
     reviewCta: "Valorar",
     reviewTitle: "¿Cómo fue tu cita?",
     reviewCommentLabel: "Comentario (opcional)",
@@ -911,6 +916,11 @@ const en: Dict = {
   },
   myAppointments: {
     title: "My appointments",
+    pushEnable: "Enable alerts on this device",
+    pushDisable: "Disable alerts on this device",
+    pushHint: "Free reminders on your phone or computer, without relying on email.",
+    pushDenied:
+      "Alerts are blocked in this browser. Enable them in the site permissions if you want them.",
     reviewCta: "Rate",
     reviewTitle: "How was your appointment?",
     reviewCommentLabel: "Comment (optional)",

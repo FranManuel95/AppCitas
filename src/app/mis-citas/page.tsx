@@ -19,6 +19,7 @@ import { RescheduleAppointment } from "@/components/reschedule-appointment";
 import { ReviewForm } from "@/components/review-form";
 import { MyDataPanel } from "@/components/my-data-panel";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
+import { PushOptIn } from "@/components/push-optin";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -126,6 +127,9 @@ export default async function MyAppointmentsPage() {
           />
         )}
         <SectionHeader as="h1" title={t.myAppointments.title} />
+        <div className="mt-3">
+          <PushOptIn labels={t.myAppointments} />
+        </div>
 
         <section className="mt-8">
           <SectionHeader as="h2" title={t.myAppointments.upcoming} />

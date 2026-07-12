@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { emailChannel } from "./channels/email";
 import { smsChannel } from "./channels/sms";
 import { whatsappChannel } from "./channels/whatsapp";
+import { webPushChannel } from "./channels/webpush";
 import type { Channel } from "./channels/types";
 import { isSentinelEmail } from "@/lib/domain/guest-clients";
 import {
@@ -16,6 +17,7 @@ const CHANNELS: Record<string, Channel> = {
   EMAIL: emailChannel,
   SMS: smsChannel,
   WHATSAPP: whatsappChannel,
+  WEBPUSH: webPushChannel,
 };
 
 const MAX_ATTEMPTS = 3;
@@ -39,7 +41,13 @@ type AppointmentForNotify = {
   priceCents: number;
   confirmationToken: string;
   businessId: string;
-  client: { name: string; email: string; phone: string | null };
+  client: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    pushSubscriptions: Array<{ id: string }>;
+  };
   service: { name: string };
   staff: { name: string } | null;
   business: {
@@ -68,7 +76,15 @@ async function loadAppointment(
       priceCents: true,
       confirmationToken: true,
       businessId: true,
-      client: { select: { name: true, email: true, phone: true } },
+      client: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          pushSubscriptions: { select: { id: true }, take: 1 },
+        },
+      },
       service: { select: { name: true } },
       staff: { select: { name: true } },
       business: {
@@ -119,6 +135,11 @@ function enabledDeliveries(
   }
   if (a.business.notifyByWhatsapp && a.client.phone) {
     out.push({ channel: "WHATSAPP", recipient: a.client.phone });
+  }
+  // Push web: gratuito, sin toggle del negocio; basta que el cliente haya
+  // activado los avisos en algún dispositivo. recipient = userId.
+  if (a.client.pushSubscriptions.length > 0) {
+    out.push({ channel: "WEBPUSH", recipient: a.client.id });
   }
   return out;
 }

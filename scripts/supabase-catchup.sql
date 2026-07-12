@@ -249,6 +249,28 @@ CREATE UNIQUE INDEX IF NOT EXISTS "Business_icsFeedToken_key" ON "Business"("ics
 ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "brandColor" TEXT;
 ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "logoUrl" TEXT;
 
+-- ── (25) Notificaciones push web (PWA) ───────────────────────────────────────
+CREATE TABLE IF NOT EXISTS "PushSubscription" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "endpoint" TEXT NOT NULL,
+    "p256dh" TEXT NOT NULL,
+    "auth" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "PushSubscription_pkey" PRIMARY KEY ("id")
+);
+ALTER TABLE "PushSubscription" ENABLE ROW LEVEL SECURITY;
+CREATE UNIQUE INDEX IF NOT EXISTS "PushSubscription_endpoint_key" ON "PushSubscription"("endpoint");
+CREATE INDEX IF NOT EXISTS "PushSubscription_userId_idx" ON "PushSubscription"("userId");
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'PushSubscription_userId_fkey'
+  ) THEN
+    ALTER TABLE "PushSubscription" ADD CONSTRAINT "PushSubscription_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -275,7 +297,8 @@ FROM (VALUES
   ('20260712120000_ausencias_empleado'),
   ('20260712130000_series_recurrentes'),
   ('20260712140000_feed_calendario'),
-  ('20260712150000_marca_negocio')
+  ('20260712150000_marca_negocio'),
+  ('20260712160000_push_web')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

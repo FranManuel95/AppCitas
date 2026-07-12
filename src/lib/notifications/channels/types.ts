@@ -14,7 +14,7 @@ export interface SendOptions {
 }
 
 export interface Channel {
-  readonly key: "EMAIL" | "SMS" | "WHATSAPP";
+  readonly key: "EMAIL" | "SMS" | "WHATSAPP" | "WEBPUSH";
   isConfigured(): boolean;
   send(
     recipient: string,
