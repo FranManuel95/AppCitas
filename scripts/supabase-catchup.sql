@@ -271,6 +271,10 @@ BEGIN
   END IF;
 END $$;
 
+-- ── (26) Verificación en dos pasos (TOTP) ────────────────────────────────────
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "totpSecret" TEXT;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "totpEnabledAt" TIMESTAMP(3);
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -298,7 +302,8 @@ FROM (VALUES
   ('20260712130000_series_recurrentes'),
   ('20260712140000_feed_calendario'),
   ('20260712150000_marca_negocio'),
-  ('20260712160000_push_web')
+  ('20260712160000_push_web'),
+  ('20260712170000_totp_2fa')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

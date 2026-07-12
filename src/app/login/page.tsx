@@ -36,6 +36,7 @@ export default async function LoginPage() {
                 submitLabel={t.auth.loginButton}
                 busyLabel={t.auth.submitBusy}
                 errorFallback={t.auth.genericError}
+                totpLabel={t.auth.totpLabel}
                 fields={[
                   {
                     name: "email",

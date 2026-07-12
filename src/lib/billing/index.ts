@@ -96,6 +96,12 @@ export async function createCheckoutSession(
   const session = await stripe().checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
+    // SEPA además de tarjeta: la domiciliación bancaria cuesta ~0,35 €/recibo
+    // frente al ~1,5 % + 0,25 € de la tarjeta — en cuotas mensuales es lo que
+    // usan casi todos los SaaS. Requiere activar "SEPA Direct Debit" en el
+    // dashboard de Stripe (Settings → Payment methods); si no está activo,
+    // Stripe simplemente no lo ofrece en el Checkout.
+    payment_method_types: ["card", "sepa_debit"],
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: successUrl,
     cancel_url: cancelUrl,

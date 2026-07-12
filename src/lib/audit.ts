@@ -10,7 +10,10 @@ export type AuditEvent =
   | "PASSWORD_RESET_OK"
   | "EMAIL_VERIFIED"
   | "SESSIONS_REVOKED"
-  | "STAFF_INVITED";
+  | "STAFF_INVITED"
+  | "TOTP_ENABLED"
+  | "TOTP_DISABLED"
+  | "CLIENT_ANONYMIZED";
 
 // Registro de auditoría de accesos. Nunca interrumpe el flujo principal:
 // un fallo al auditar se registra en el log y se sigue adelante.
@@ -51,4 +54,7 @@ export const AUDIT_EVENT_LABELS: Record<string, string> = {
   EMAIL_VERIFIED: "Email verificado",
   SESSIONS_REVOKED: "Sesiones revocadas",
   STAFF_INVITED: "Empleado invitado",
+  TOTP_ENABLED: "Verificación en dos pasos activada",
+  TOTP_DISABLED: "Verificación en dos pasos desactivada",
+  CLIENT_ANONYMIZED: "Cliente anonimizado (RGPD)",
 };

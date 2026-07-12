@@ -3,6 +3,7 @@ import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { getDict } from "@/lib/i18n";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { LogoutAllButton } from "@/components/logout-all-button";
+import { TwoFactorSetup } from "@/components/two-factor-setup";
 import { AUDIT_EVENT_LABELS } from "@/lib/audit";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -71,6 +72,9 @@ export default async function SettingsPage() {
       <Card>
         <SectionHeader as="h2" title={t.admin.ajustes.securityTitle} />
         <div className="mt-4">
+          <TwoFactorSetup />
+        </div>
+        <div className="mt-4 border-t border-border pt-4">
           <LogoutAllButton />
         </div>
         <h3 className="mt-6 text-sm font-semibold text-ink">

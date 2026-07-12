@@ -107,7 +107,14 @@ export async function getClientDetail(businessId: string, clientId: string) {
   const [user, appointments] = await Promise.all([
     prisma.user.findUnique({
       where: { id: clientId },
-      select: { id: true, name: true, email: true, phone: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        guest: true,
+        createdAt: true,
+      },
     }),
     prisma.appointment.findMany({
       where: { businessId, clientId },

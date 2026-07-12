@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { ClientNotes } from "@/components/admin/client-notes";
+import { AnonymizeClientButton } from "@/components/admin/anonymize-client-button";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Ficha de cliente" };
@@ -94,6 +95,13 @@ export default async function ClienteDetallePage({
         <p className="mt-1 text-sm text-ink-muted">
           {[client.email, client.phone].filter(Boolean).join(" · ")}
         </p>
+        {/* Derecho al olvido solo para sombras (mostrador/invitado); los
+            clientes con cuenta lo hacen ellos mismos desde "Mis datos". */}
+        {client.guest && (
+          <div className="mt-3">
+            <AnonymizeClientButton clientId={client.id} />
+          </div>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -39,6 +39,12 @@ model User {
   // Incrementarlo invalida todas las sesiones emitidas (revocación de JWT)
   sessionVersion Int @default(0)
 
+  // 2FA TOTP (app de autenticación). El secreto se guarda al INICIAR la
+  // activación y solo cuenta como activo cuando totpEnabledAt no es null
+  // (el usuario demostró que su app genera códigos válidos).
+  totpSecret    String?
+  totpEnabledAt DateTime?
+
   // Cliente de la pasarela de pagos (Stripe) si guardó tarjeta
   stripeCustomerId String?
 

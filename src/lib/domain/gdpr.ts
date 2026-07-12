@@ -182,3 +182,71 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
     }),
   ]);
 }
+
+/**
+ * RGPD desde el mostrador: un cliente SIN cuenta (sombra de invitado o
+ * walk-in) pide al negocio borrar sus datos. Las cuentas reales se borran
+ * solas desde "Mis datos"; aquí solo se anonimizan sombras, y solo si toda su
+ * actividad pertenece a este negocio (una sombra con citas en otro negocio no
+ * es "tuya" para borrar).
+ */
+export async function anonymizeGuestClient(params: {
+  businessId: string;
+  clientId: string;
+}): Promise<void> {
+  const { businessId, clientId } = params;
+  const user = await prisma.user.findUnique({
+    where: { id: clientId },
+    select: { id: true, guest: true },
+  });
+  if (!user) {
+    throw new DomainError("Cliente no encontrado", "CLIENT_NOT_FOUND", 404);
+  }
+  if (!user.guest) {
+    throw new DomainError(
+      "Solo se pueden anonimizar clientes sin cuenta; los registrados borran sus datos desde su perfil",
+      "CLIENT_NOT_GUEST",
+      409,
+    );
+  }
+
+  const [ownCount, foreignCount] = await Promise.all([
+    prisma.appointment.count({ where: { clientId, businessId } }),
+    prisma.appointment.count({
+      where: { clientId, businessId: { not: businessId } },
+    }),
+  ]);
+  if (ownCount === 0) {
+    throw new DomainError("Cliente no encontrado", "CLIENT_NOT_FOUND", 404);
+  }
+  if (foreignCount > 0) {
+    throw new DomainError(
+      "Este cliente también tiene citas en otros negocios: no se puede anonimizar desde aquí",
+      "CLIENT_SHARED",
+      409,
+    );
+  }
+
+  // Se conservan las citas (histórico contable) pero dejan de ser atribuibles
+  // a una persona; notas del equipo, lista de espera, suscripciones push y
+  // avisos pendientes se retiran.
+  await prisma.$transaction([
+    prisma.authToken.deleteMany({ where: { userId: clientId } }),
+    prisma.clientNote.deleteMany({ where: { clientId } }),
+    prisma.pushSubscription.deleteMany({ where: { userId: clientId } }),
+    prisma.waitlistEntry.deleteMany({ where: { clientId } }),
+    prisma.notification.updateMany({
+      where: { appointment: { clientId }, status: "PENDING" },
+      data: { status: "SKIPPED", lastError: "Cliente anonimizado (RGPD)" },
+    }),
+    prisma.user.update({
+      where: { id: clientId },
+      data: {
+        name: "Cliente eliminado",
+        email: `borrado-${randomUUID().slice(0, 12)}@deleted.local`,
+        phone: null,
+        consentedAt: null,
+      },
+    }),
+  ]);
+}

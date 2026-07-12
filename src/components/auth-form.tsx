@@ -15,6 +15,7 @@ export function AuthForm({
   errorFallback = "Algo ha ido mal, inténtalo de nuevo",
   adminRedirect = false,
   consent,
+  totpLabel,
 }: {
   endpoint: string;
   fields: Array<{
@@ -31,11 +32,15 @@ export function AuthForm({
   adminRedirect?: boolean;
   // Aceptación de privacidad/términos (obligatoria en los registros)
   consent?: React.ReactNode;
+  // Etiqueta del código 2FA (solo login): el campo aparece cuando el servidor
+  // responde TOTP_REQUIRED para esa cuenta.
+  totpLabel?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [askTotp, setAskTotp] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,6 +62,8 @@ export function AuthForm({
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      // Cuenta con 2FA: mostrar el campo del código y reintentar con él
+      if (json.code === "TOTP_REQUIRED") setAskTotp(true);
       setError(json.error ?? errorFallback);
       setBusy(false);
       return;
@@ -84,6 +91,20 @@ export function AuthForm({
           />
         </Field>
       ))}
+      {askTotp && (
+        <Field label={totpLabel ?? "Código 2FA"} htmlFor="totpCode">
+          <Input
+            id="totpCode"
+            name="totpCode"
+            inputMode="numeric"
+            pattern="\d{6}"
+            maxLength={6}
+            autoComplete="one-time-code"
+            autoFocus
+            required
+          />
+        </Field>
+      )}
       {consent && (
         <label className="flex items-start gap-2.5 text-sm text-ink-soft">
           <input

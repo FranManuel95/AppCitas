@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { verifyPassword } from "@/lib/auth/password";
+import { verifyTotpCode } from "@/lib/auth/totp";
 import { createSession } from "@/lib/auth/session";
 import { DomainError } from "@/lib/domain/errors";
 import { enforceRateLimit } from "@/lib/rate-limit";
@@ -12,10 +13,12 @@ import type { Role } from "@/lib/domain/types";
 const schema = z.object({
   email: z.email().toLowerCase(),
   password: z.string().min(1),
+  // Código de la app de autenticación, solo para cuentas con 2FA activo
+  totpCode: z.string().max(8).optional(),
 });
 
 export const POST = apiHandler(async (request: Request) => {
-  const { email, password } = schema.parse(await request.json());
+  const { email, password, totpCode } = schema.parse(await request.json());
 
   // Frena la fuerza bruta de credenciales por IP+cuenta
   await enforceRateLimit(request, "login", { limit: 10, windowMs: 15 * 60_000 }, email);
@@ -25,6 +28,22 @@ export const POST = apiHandler(async (request: Request) => {
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     await audit("LOGIN_FAILED", { email, userId: user?.id, request });
     throw new DomainError("Credenciales incorrectas", "BAD_CREDENTIALS", 401);
+  }
+
+  // 2FA: la contraseña sola no basta si la cuenta tiene TOTP activo. El
+  // formulario, al recibir TOTP_REQUIRED, pide el código y reintenta.
+  if (user.totpEnabledAt && user.totpSecret) {
+    if (!totpCode) {
+      throw new DomainError(
+        "Introduce el código de tu app de autenticación",
+        "TOTP_REQUIRED",
+        401,
+      );
+    }
+    if (!verifyTotpCode(totpCode, user.totpSecret)) {
+      await audit("LOGIN_FAILED", { email, userId: user.id, request });
+      throw new DomainError("Código 2FA no válido", "TOTP_BAD_CODE", 401);
+    }
   }
 
   await createSession(
