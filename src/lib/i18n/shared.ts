@@ -192,6 +192,21 @@ const es = {
     waitlistError: "No se pudo apuntar a la lista de espera.",
     // Mensajes de error de dominio por código (se localizan en el cliente en
     // vez de mostrar el mensaje del servidor, que va en español).
+    guestTitle: "Tus datos",
+    guestIntro: "Reserva sin crear cuenta: solo necesitamos cómo avisarte.",
+    guestName: "Nombre",
+    guestEmail: "Email",
+    guestPhone: "Teléfono (opcional)",
+    guestConsentPre: "Acepto los",
+    guestConsentTerms: "términos",
+    guestConsentAnd: "y la",
+    guestConsentPrivacy: "política de privacidad",
+    guestHaveAccount: "¿Ya tienes cuenta?",
+    guestLogin: "Inicia sesión",
+    manageCta: "Gestionar mi cita",
+    guestAccountHint:
+      "El enlace de gestión también te llega por email. Si quieres ver tu historial, crea una cuenta con este mismo email.",
+    guestFillDetails: "Completa tus datos para reservar",
     errors: {
       SLOT_TAKEN: "Otro cliente acaba de reservar este hueco. Elige otro.",
       SLOT_UNAVAILABLE: "Ese horario ya no está disponible. Elige otro.",
@@ -201,6 +216,12 @@ const es = {
       PROMO_CONFLICT: "No se puede combinar un cupón con un bono.",
       RATE_LIMITED: "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
       PLAN_LIMIT: "Este negocio ha alcanzado su límite de reservas del mes.",
+      EMAIL_HAS_ACCOUNT:
+        "Ese email ya tiene una cuenta: inicia sesión para reservar.",
+      CONSENT_REQUIRED:
+        "Debes aceptar los términos y la política de privacidad.",
+      CARD_REQUIRED_ACCOUNT:
+        "Este negocio requiere tarjeta guardada: crea una cuenta para reservar.",
     },
   },
   myAppointments: {
@@ -297,6 +318,13 @@ const es = {
     pastAppointment: "Esta cita ya ha pasado.",
     inactiveAppointment: "Esta cita ya no está activa.",
     respondError: "No se pudo registrar tu respuesta",
+    cancelCta: "Cancelar esta cita",
+    cancelFree: "Estás dentro del plazo: la cancelación es gratuita.",
+    cancelLate:
+      "Estás fuera de plazo: se aplicará el cargo por cancelación tardía del {percent}% ({amount}).",
+    cancelConfirm: "Sí, cancelar la cita",
+    cancelKeep: "Mantener la cita",
+    cancelError: "No se pudo cancelar, inténtalo de nuevo",
   },
   verify: {
     bannerText:
@@ -827,6 +855,21 @@ const en: Dict = {
     waitlistJoining: "Joining…",
     waitlistDone: "We'll let you know if a slot frees up that day.",
     waitlistError: "Couldn't join the waitlist.",
+    guestTitle: "Your details",
+    guestIntro: "Book without an account: we only need a way to reach you.",
+    guestName: "Name",
+    guestEmail: "Email",
+    guestPhone: "Phone (optional)",
+    guestConsentPre: "I accept the",
+    guestConsentTerms: "terms",
+    guestConsentAnd: "and the",
+    guestConsentPrivacy: "privacy policy",
+    guestHaveAccount: "Already have an account?",
+    guestLogin: "Log in",
+    manageCta: "Manage my appointment",
+    guestAccountHint:
+      "The management link is also in your email. To see your history, create an account with this same email.",
+    guestFillDetails: "Fill in your details to book",
     errors: {
       SLOT_TAKEN: "Someone just booked this slot. Please pick another.",
       SLOT_UNAVAILABLE: "That time is no longer available. Please pick another.",
@@ -836,6 +879,10 @@ const en: Dict = {
       PROMO_CONFLICT: "A coupon and a pass can't be combined.",
       RATE_LIMITED: "Too many attempts. Please wait a moment and try again.",
       PLAN_LIMIT: "This business has reached its monthly booking limit.",
+      EMAIL_HAS_ACCOUNT: "That email already has an account: log in to book.",
+      CONSENT_REQUIRED: "You must accept the terms and the privacy policy.",
+      CARD_REQUIRED_ACCOUNT:
+        "This business requires a saved card: create an account to book.",
     },
   },
   myAppointments: {
@@ -930,6 +977,13 @@ const en: Dict = {
     pastAppointment: "This appointment has already passed.",
     inactiveAppointment: "This appointment is no longer active.",
     respondError: "Could not register your answer",
+    cancelCta: "Cancel this appointment",
+    cancelFree: "You are within the window: cancellation is free.",
+    cancelLate:
+      "You are past the window: the {percent}% late-cancellation fee applies ({amount}).",
+    cancelConfirm: "Yes, cancel the appointment",
+    cancelKeep: "Keep the appointment",
+    cancelError: "Could not cancel, please try again",
   },
   verify: {
     bannerText:

@@ -14,6 +14,7 @@ import { formatCents } from "@/lib/money";
 import { StatusBadge } from "@/components/status-badge";
 import { fmt, getDict, intlLocale } from "@/lib/i18n";
 import { AttendanceForm } from "@/components/attendance-form";
+import { ConfirmationCancelButton } from "@/components/confirmation-cancel-button";
 import { Card } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 
@@ -175,17 +176,35 @@ export default async function ConfirmationPage({
 
           <div className="mt-6">
             {isActive ? (
-              <AttendanceForm
-                token={token}
-                startAt={appointment.startAt.toISOString()}
-                windowHours={appointment.business.cancellationWindowHours}
-                feePercent={appointment.business.lateCancellationFeePercent}
-                priceCents={appointment.priceCents}
-                currency={appointment.business.currency}
-                alreadyConfirmed={!!appointment.attendanceConfirmedAt}
-                t={t.confirmation}
-                tMy={t.myAppointments}
-              />
+              <>
+                <AttendanceForm
+                  token={token}
+                  startAt={appointment.startAt.toISOString()}
+                  windowHours={appointment.business.cancellationWindowHours}
+                  feePercent={appointment.business.lateCancellationFeePercent}
+                  priceCents={appointment.priceCents}
+                  currency={appointment.business.currency}
+                  alreadyConfirmed={!!appointment.attendanceConfirmedAt}
+                  t={t.confirmation}
+                  tMy={t.myAppointments}
+                />
+                <ConfirmationCancelButton
+                  token={token}
+                  startAt={appointment.startAt.toISOString()}
+                  windowHours={appointment.business.cancellationWindowHours}
+                  feePercent={appointment.business.lateCancellationFeePercent}
+                  priceCents={appointment.priceCents}
+                  currency={appointment.business.currency}
+                  labels={{
+                    cancelCta: t.confirmation.cancelCta,
+                    cancelFree: t.confirmation.cancelFree,
+                    cancelLate: t.confirmation.cancelLate,
+                    cancelConfirm: t.confirmation.cancelConfirm,
+                    cancelKeep: t.confirmation.cancelKeep,
+                    cancelError: t.confirmation.cancelError,
+                  }}
+                />
+              </>
             ) : (
               <div className="flex items-start gap-2.5 rounded-xl bg-surface-3 px-4 py-3.5 text-sm text-ink-soft">
                 <Info

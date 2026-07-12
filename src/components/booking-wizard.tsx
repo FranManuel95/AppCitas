@@ -136,7 +136,20 @@ export function BookingWizard({
     service: string;
     staff: string | null;
     freeCancellationUntil: string;
+    manageUrl: string | null;
   } | null>(null);
+
+  // Reserva como invitado: sin cuenta, con datos de contacto + consentimiento.
+  // Si el negocio exige tarjeta guardada, la reserva sigue pidiendo cuenta.
+  const guestMode = !isLoggedIn && !business.requireCardToBook;
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestConsent, setGuestConsent] = useState(false);
+  const guestFormValid =
+    guestName.trim().length >= 2 &&
+    /^\S+@\S+\.\S+$/.test(guestEmail.trim()) &&
+    guestConsent;
 
   const service = useMemo(
     () => services.find((s) => s.id === serviceId) ?? null,
@@ -220,21 +233,42 @@ export function BookingWizard({
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch("/api/appointments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          businessId: business.id,
-          serviceId,
-          startAt: selectedSlot.startAt,
-          staffId: staffId || undefined,
-          notes: notes.trim() || undefined,
-          phone: phone.trim() || undefined,
-          clientPackageId: usePackageId || undefined,
-          couponCode:
-            !usePackageId && couponCode.trim() ? couponCode.trim() : undefined,
-        }),
-      });
+      const body = guestMode
+        ? {
+            businessId: business.id,
+            serviceId,
+            startAt: selectedSlot.startAt,
+            staffId: staffId || undefined,
+            notes: notes.trim() || undefined,
+            couponCode: couponCode.trim() || undefined,
+            guest: {
+              name: guestName.trim(),
+              email: guestEmail.trim(),
+              phone: guestPhone.trim() || undefined,
+            },
+            consent: true,
+          }
+        : {
+            businessId: business.id,
+            serviceId,
+            startAt: selectedSlot.startAt,
+            staffId: staffId || undefined,
+            notes: notes.trim() || undefined,
+            phone: phone.trim() || undefined,
+            clientPackageId: usePackageId || undefined,
+            couponCode:
+              !usePackageId && couponCode.trim()
+                ? couponCode.trim()
+                : undefined,
+          };
+      const res = await fetch(
+        guestMode ? "/api/appointments/guest" : "/api/appointments",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
       const json = await res.json();
       if (!res.ok) {
         // El hueco pudo ocuparse mientras se decidía: recarga disponibilidad
@@ -248,6 +282,7 @@ export function BookingWizard({
         service: json.appointment.service,
         staff: json.appointment.staff,
         freeCancellationUntil: json.appointment.freeCancellationUntil,
+        manageUrl: json.manageUrl ?? null,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : t.networkError);
@@ -284,10 +319,19 @@ export function BookingWizard({
             ),
           })}
         </div>
+        {confirmed.manageUrl && (
+          <p className="mt-3 text-sm text-ink-muted">{t.guestAccountHint}</p>
+        )}
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link href="/mis-citas" className="btn-primary">
-            {t.seeMyAppointments}
-          </Link>
+          {confirmed.manageUrl ? (
+            <Link href={confirmed.manageUrl} className="btn-primary">
+              {t.manageCta}
+            </Link>
+          ) : (
+            <Link href="/mis-citas" className="btn-primary">
+              {t.seeMyAppointments}
+            </Link>
+          )}
           <Link href={`/b/${business.slug}`} className="btn-secondary">
             {t.backToBusiness}
           </Link>
@@ -310,7 +354,10 @@ export function BookingWizard({
       : steps.length - 1;
 
   const canBook =
-    isLoggedIn && !!selectedSlot && (cardSaved || !business.requireCardToBook);
+    !!selectedSlot &&
+    (isLoggedIn
+      ? cardSaved || !business.requireCardToBook
+      : guestMode && guestFormValid);
 
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
@@ -474,6 +521,78 @@ export function BookingWizard({
           <Card>
             <SectionHeader as="h2" title={stepLabel(t.stepConfirm)} />
 
+            {/* Datos del invitado (reserva sin cuenta) */}
+            {guestMode && (
+              <div className="mt-4 rounded-xl border border-border bg-surface-2 p-4">
+                <p className="font-medium text-ink">{t.guestTitle}</p>
+                <p className="mt-1 text-xs text-ink-muted">{t.guestIntro}</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Field label={t.guestName} htmlFor="invitado-nombre">
+                    <Input
+                      id="invitado-nombre"
+                      autoComplete="name"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                    />
+                  </Field>
+                  <Field label={t.guestEmail} htmlFor="invitado-email">
+                    <Input
+                      id="invitado-email"
+                      type="email"
+                      autoComplete="email"
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                    />
+                  </Field>
+                  <Field label={t.guestPhone} htmlFor="invitado-telefono">
+                    <Input
+                      id="invitado-telefono"
+                      type="tel"
+                      autoComplete="tel"
+                      placeholder="+34 600 000 000"
+                      value={guestPhone}
+                      onChange={(e) => setGuestPhone(e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <label className="mt-3 flex items-start gap-2 text-sm text-ink-soft">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 accent-brand-600"
+                    checked={guestConsent}
+                    onChange={(e) => setGuestConsent(e.target.checked)}
+                  />
+                  <span>
+                    {t.guestConsentPre}{" "}
+                    <Link
+                      href="/legal/terminos"
+                      target="_blank"
+                      className="font-medium text-brand-700 underline hover:text-brand-800"
+                    >
+                      {t.guestConsentTerms}
+                    </Link>{" "}
+                    {t.guestConsentAnd}{" "}
+                    <Link
+                      href="/legal/privacidad"
+                      target="_blank"
+                      className="font-medium text-brand-700 underline hover:text-brand-800"
+                    >
+                      {t.guestConsentPrivacy}
+                    </Link>
+                  </span>
+                </label>
+                <p className="mt-3 text-xs text-ink-muted">
+                  {t.guestHaveAccount}{" "}
+                  <Link
+                    href={`/login?next=/b/${business.slug}/reservar${serviceId ? `?servicio=${serviceId}` : ""}`}
+                    className="font-medium text-brand-700 hover:text-brand-800"
+                  >
+                    {t.guestLogin}
+                  </Link>
+                </p>
+              </div>
+            )}
+
             {isLoggedIn && !userHasPhone && (
               <Field label={t.phoneLabel} htmlFor="telefono" className="mt-4">
                 <Input
@@ -512,7 +631,7 @@ export function BookingWizard({
               </div>
             )}
 
-            {isLoggedIn && !usePackageId && (
+            {(isLoggedIn || guestMode) && !usePackageId && (
               <Field label={t.couponLabel} htmlFor="cupon" className="mt-4">
                 <Input
                   id="cupon"
@@ -695,7 +814,7 @@ export function BookingWizard({
                 <p>{error}</p>
               </div>
             )}
-            {isLoggedIn ? (
+            {isLoggedIn || guestMode ? (
               <button
                 className="btn-primary mt-4 w-full"
                 disabled={!canBook || submitting}
@@ -705,14 +824,16 @@ export function BookingWizard({
                   ? t.booking
                   : !selectedSlot
                     ? t.chooseSlot
-                    : business.requireCardToBook && !cardSaved
+                    : isLoggedIn && business.requireCardToBook && !cardSaved
                       ? t.saveCardFirst
-                      : service
-                        ? fmt(t.bookCta, {
-                            service: service.name,
-                            slot: selectedSlot.label,
-                          })
-                        : t.stepConfirm}
+                      : guestMode && !guestFormValid
+                        ? t.guestFillDetails
+                        : service
+                          ? fmt(t.bookCta, {
+                              service: service.name,
+                              slot: selectedSlot.label,
+                            })
+                          : t.stepConfirm}
               </button>
             ) : (
               <div className="mt-4 rounded-lg bg-surface-3 p-3 text-sm text-ink-soft">
@@ -742,7 +863,7 @@ export function BookingWizard({
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-4 pt-3 backdrop-blur lg:hidden"
         style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
       >
-        {isLoggedIn ? (
+        {isLoggedIn || guestMode ? (
           <div className="mx-auto flex max-w-xl items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs text-ink-muted">
@@ -759,12 +880,22 @@ export function BookingWizard({
             <button
               type="button"
               className="btn-primary shrink-0"
-              disabled={submitting || (!!selectedSlot && !canBook)}
+              disabled={
+                submitting ||
+                (!!selectedSlot && !canBook && !(guestMode && !guestFormValid))
+              }
               onClick={() => {
                 if (!selectedSlot) {
                   // Aún sin hueco: llevar al usuario a la sección de fecha
                   document
                     .getElementById("fecha")
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  return;
+                }
+                if (guestMode && !guestFormValid) {
+                  // Faltan sus datos: llevar al formulario de invitado
+                  document
+                    .getElementById("invitado-nombre")
                     ?.scrollIntoView({ behavior: "smooth", block: "center" });
                   return;
                 }
@@ -775,9 +906,11 @@ export function BookingWizard({
                 ? t.booking
                 : !selectedSlot
                   ? t.chooseSlot
-                  : business.requireCardToBook && !cardSaved
+                  : isLoggedIn && business.requireCardToBook && !cardSaved
                     ? t.saveCardFirst
-                    : selectedSlot.label}
+                    : guestMode && !guestFormValid
+                      ? t.guestTitle
+                      : selectedSlot.label}
             </button>
           </div>
         ) : (

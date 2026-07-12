@@ -40,6 +40,8 @@ export const POST = apiHandler(async (request: Request) => {
       // Revoca todas las sesiones activas: si alguien tenía acceso a la
       // cuenta, el cambio de contraseña lo expulsa de inmediato
       sessionVersion: { increment: 1 },
+      // Si era una cuenta sombra (reserva de invitado), queda reclamada
+      guest: false,
     },
     select: { id: true, email: true },
   });

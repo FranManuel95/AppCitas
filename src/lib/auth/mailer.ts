@@ -88,6 +88,35 @@ export async function sendPasswordResetEmail(params: {
   );
 }
 
+// Reclamo de cuenta sombra: alguien reservó como invitado con este email y
+// ahora quiere registrarse. La posesión del email se demuestra con el mismo
+// token de un solo uso del flujo de contraseña.
+export async function sendClaimAccountEmail(params: {
+  to: string;
+  name: string;
+  token: string;
+}) {
+  const link = `${baseUrl()}/restablecer?token=${params.token}`;
+  await deliver(
+    params.to,
+    "Activa tu cuenta · AppCitas",
+    `Hola ${params.name},\n\n` +
+      `Ya habías reservado con este email como invitado, así que tu cuenta ya existe. ` +
+      `Elige una contraseña para activarla y ver todas tus citas:\n` +
+      `${link}\n\n` +
+      `El enlace caduca en 30 minutos. Si no has sido tú, ignora este mensaje.`,
+    renderBrandedEmail({
+      title: "Activa tu cuenta",
+      intro:
+        `Hola ${params.name},\n\n` +
+        `Ya habías reservado con este email como invitado: tu cuenta existe y solo le falta una contraseña.`,
+      ctaLabel: "Elegir contraseña",
+      ctaUrl: link,
+      footerNote: `Si el botón no funciona, copia este enlace en tu navegador:\n${link}`,
+    }),
+  );
+}
+
 export async function sendStaffInviteEmail(params: {
   to: string;
   name: string;

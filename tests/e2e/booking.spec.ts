@@ -64,4 +64,41 @@ test.describe("reserva", () => {
     expect(statuses[1]).toBe(201);
     expect(statuses[2]).toBe(409);
   });
+
+  test("invitado: reserva sin cuenta y gestiona la cita desde /c/{token}", async ({
+    page,
+  }) => {
+    // Sin login: el wizard muestra el formulario de invitado
+    await page.goto("/b/estudio-aurora/reservar");
+    await page
+      .getByRole("button", { name: /Consulta inicial/ })
+      .first()
+      .click();
+
+    const date = toDateISO(nextMonday(28));
+    await page.locator('input[type="date"]').fill(date);
+    const slot = page.getByRole("button", { name: /^\d{2}:\d{2}$/ }).first();
+    await expect(slot).toBeVisible({ timeout: 15_000 });
+    await slot.click();
+
+    // Tus datos + consentimiento
+    await page.locator("#invitado-nombre").fill("Invitada E2E");
+    await page
+      .locator("#invitado-email")
+      .fill(`invitada-${Date.now()}@test.local`);
+    await page.getByRole("checkbox").check();
+    await page.getByRole("button", { name: /^Reservar / }).click();
+    await expect(page.getByText("¡Cita confirmada!")).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // El enlace de gestión lleva a /c/{token}, donde puede cancelar
+    await page.getByRole("link", { name: "Gestionar mi cita" }).click();
+    await expect(page).toHaveURL(/\/c\/[a-z0-9]+/i);
+    await page.getByRole("button", { name: "Cancelar esta cita" }).click();
+    await page.getByRole("button", { name: "Sí, cancelar la cita" }).click();
+    await expect(page.getByText("Cancelada", { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
+  });
 });

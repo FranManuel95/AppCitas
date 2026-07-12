@@ -5,7 +5,7 @@ import { apiHandler } from "@/lib/api";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { createAuthToken } from "@/lib/auth/tokens";
-import { sendVerificationEmail } from "@/lib/auth/mailer";
+import { sendClaimAccountEmail, sendVerificationEmail } from "@/lib/auth/mailer";
 import { DomainError } from "@/lib/domain/errors";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
@@ -23,8 +23,28 @@ export const POST = apiHandler(async (request: Request) => {
 
   const existing = await prisma.user.findUnique({
     where: { email: data.email },
-    select: { id: true },
+    select: { id: true, name: true, guest: true },
   });
+  if (existing?.guest) {
+    // Reservó antes como invitado: la cuenta existe sin contraseña. NUNCA se
+    // abre sesión directa (sería apropiarse del historial de otro con solo
+    // teclear su email): se demuestra la posesión del email vía enlace.
+    try {
+      const token = await createAuthToken(existing.id, "PASSWORD_RESET", 30);
+      await sendClaimAccountEmail({
+        to: data.email,
+        name: existing.name,
+        token,
+      });
+    } catch (error) {
+      console.error("[register] no se pudo enviar el reclamo:", error);
+    }
+    throw new DomainError(
+      "Ya habías reservado como invitado con este email. Te hemos enviado un enlace para elegir tu contraseña y activar la cuenta.",
+      "CLAIM_EMAIL_SENT",
+      409,
+    );
+  }
   if (existing) {
     throw new DomainError("Ya existe una cuenta con este email", "EMAIL_TAKEN", 409);
   }
