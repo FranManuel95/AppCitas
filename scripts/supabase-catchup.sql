@@ -241,6 +241,10 @@ END $$;
 ALTER TABLE "Appointment" ADD COLUMN IF NOT EXISTS "seriesId" TEXT;
 CREATE INDEX IF NOT EXISTS "Appointment_seriesId_idx" ON "Appointment"("seriesId");
 
+-- ── (23) Feed iCal privado de la agenda (Google/Outlook) ─────────────────────
+ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "icsFeedToken" TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS "Business_icsFeedToken_key" ON "Business"("icsFeedToken");
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -265,7 +269,8 @@ FROM (VALUES
   ('20260712090000_economia_plataforma'),
   ('20260712100000_invitados'),
   ('20260712120000_ausencias_empleado'),
-  ('20260712130000_series_recurrentes')
+  ('20260712130000_series_recurrentes'),
+  ('20260712140000_feed_calendario')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

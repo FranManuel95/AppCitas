@@ -70,3 +70,45 @@ export function buildAppointmentIcs(
   lines.push("END:VEVENT", "END:VCALENDAR");
   return lines.map(foldLine).join(CRLF) + CRLF;
 }
+
+// Calendario completo con varios eventos: el feed privado de la agenda del
+// negocio al que Google Calendar/Outlook se suscriben por URL.
+export function buildAgendaFeedIcs(
+  calendarName: string,
+  events: AppointmentIcsInput[],
+  now: Date = new Date(),
+): string {
+  const lines: string[] = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//AppCitas//Agenda//ES",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:${escapeText(calendarName)}`,
+    // Sugerencia de refresco para los clientes que la respetan (Outlook)
+    "X-PUBLISHED-TTL:PT30M",
+    "REFRESH-INTERVAL;VALUE=DURATION:PT30M",
+  ];
+  for (const event of events) {
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${escapeText(event.uid)}`,
+      `DTSTAMP:${icsUtcDate(now)}`,
+      `DTSTART:${icsUtcDate(event.startAt)}`,
+      `DTEND:${icsUtcDate(event.endAt)}`,
+      `SUMMARY:${escapeText(event.summary)}`,
+    );
+    if (event.description) {
+      lines.push(`DESCRIPTION:${escapeText(event.description)}`);
+    }
+    if (event.location) {
+      lines.push(`LOCATION:${escapeText(event.location)}`);
+    }
+    if (event.url) {
+      lines.push(`URL:${event.url}`);
+    }
+    lines.push("END:VEVENT");
+  }
+  lines.push("END:VCALENDAR");
+  return lines.map(foldLine).join(CRLF) + CRLF;
+}

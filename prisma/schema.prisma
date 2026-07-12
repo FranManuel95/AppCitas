@@ -97,6 +97,10 @@ model Business {
   // tardías automáticamente). Requiere pasarela configurada.
   requireCardToBook Boolean @default(false)
 
+  // Feed iCal privado de la agenda (Google Calendar/Outlook por URL).
+  // null = desactivado; regenerarlo revoca la URL anterior.
+  icsFeedToken String? @unique
+
   // Señal (prepago) al reservar: % del precio que se cobra en el momento con
   // la tarjeta guardada (0 = sin señal). Se reembolsa si se cancela en plazo y
   // se descuenta del cargo por cancelación tardía / no-show. Tiene sentido

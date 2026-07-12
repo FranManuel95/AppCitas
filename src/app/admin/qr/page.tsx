@@ -4,6 +4,7 @@ import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { PrintButton } from "@/components/print-button";
+import { CalendarFeedCard } from "@/components/admin/calendar-feed-card";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Código QR" };
@@ -15,7 +16,16 @@ export default async function QrPage() {
   const admin = await requireBusinessAdmin();
   const business = await prisma.business.findUniqueOrThrow({
     where: { id: admin.businessId },
-    select: { name: true, slug: true },
+    select: {
+      name: true,
+      slug: true,
+      icsFeedToken: true,
+      staff: {
+        where: { active: true },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      },
+    },
   });
 
   const baseUrl = (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(
@@ -59,6 +69,12 @@ export default async function QrPage() {
         tarjetas y a tus redes. Si activas el modo privado en Ajustes, este
         enlace sigue funcionando aunque no aparezcas en el buscador público.
       </p>
+
+      <CalendarFeedCard
+        feedToken={business.icsFeedToken}
+        staff={business.staff}
+        baseUrl={baseUrl}
+      />
     </div>
   );
 }
