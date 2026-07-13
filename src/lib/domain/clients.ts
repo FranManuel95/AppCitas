@@ -31,14 +31,23 @@ function reliability(completed: number, noShows: number): number | null {
 export async function getBusinessClients(
   businessId: string,
 ): Promise<ClientSummary[]> {
-  const grouped = await prisma.appointment.groupBy({
-    by: ["clientId", "status"],
-    where: { businessId },
-    _count: { _all: true },
-    _sum: { chargedCents: true },
-    _max: { startAt: true },
-  });
-  if (grouped.length === 0) return [];
+  const [grouped, noted] = await Promise.all([
+    prisma.appointment.groupBy({
+      by: ["clientId", "status"],
+      where: { businessId },
+      _count: { _all: true },
+      _sum: { chargedCents: true },
+      _max: { startAt: true },
+    }),
+    // Cartera sin citas aún: clientes con notas del negocio (importados de
+    // CSV o fichados a mano) también son "sus clientes".
+    prisma.clientNote.findMany({
+      where: { businessId },
+      select: { clientId: true },
+      distinct: ["clientId"],
+    }),
+  ]);
+  if (grouped.length === 0 && noted.length === 0) return [];
 
   const byClient = new Map<
     string,
@@ -74,6 +83,20 @@ export async function getBusinessClients(
     if (row.status === "NO_SHOW") c.noShows += row._count._all;
     if (row.status === "CANCELLED_LATE") c.late += row._count._all;
     byClient.set(row.clientId, c);
+  }
+
+  // Importados/fichados sin citas: fila a cero para que aparezcan en la lista
+  for (const { clientId } of noted) {
+    if (!byClient.has(clientId)) {
+      byClient.set(clientId, {
+        total: 0,
+        completed: 0,
+        noShows: 0,
+        late: 0,
+        spent: 0,
+        lastVisit: null,
+      });
+    }
   }
 
   const users = await prisma.user.findMany({

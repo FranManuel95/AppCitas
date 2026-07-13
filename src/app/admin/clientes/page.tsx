@@ -8,6 +8,12 @@ import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { CsvImportCard } from "@/components/admin/csv-import-card";
+
+const CLIENTS_TEMPLATE = `nombre;email;telefono;nacimiento
+Marta García;marta@ejemplo.com;+34600111222;1990-05-14
+Juan Pérez;;600333444;
+Lucía Sanz;lucia@ejemplo.com;;`;
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Clientes" };
@@ -104,6 +110,12 @@ export default async function ClientesPage() {
           })}
         </div>
       )}
+
+      <CsvImportCard
+        kind="clients"
+        templateCsv={CLIENTS_TEMPLATE}
+        templateName="plantilla-clientes.csv"
+      />
     </div>
   );
 }

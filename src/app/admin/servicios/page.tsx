@@ -2,6 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { getDict } from "@/lib/i18n";
 import { ServicesManager } from "@/components/admin/services-manager";
+import { CsvImportCard } from "@/components/admin/csv-import-card";
+
+const SERVICES_TEMPLATE = `nombre;duracion;precio
+Corte de pelo;30;15
+Tinte;90;45,50
+Manicura;45;22`;
 import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +50,12 @@ export default async function ServicesPage() {
         }))}
         currency={business.currency}
         labels={{ servicios: t.admin.servicios, common: t.admin.common }}
+      />
+
+      <CsvImportCard
+        kind="services"
+        templateCsv={SERVICES_TEMPLATE}
+        templateName="plantilla-servicios.csv"
       />
     </div>
   );

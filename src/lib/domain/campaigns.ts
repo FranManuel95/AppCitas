@@ -80,9 +80,24 @@ export async function resolveSegment(
     _min: { startAt: true },
     _max: { startAt: true },
   });
-  if (grouped.length === 0) return [];
 
   let clientIds = grouped.map((g) => g.clientId);
+
+  // La cartera también incluye a los clientes SIN citas pero con notas del
+  // negocio (importados de CSV): cuentan en ALL y BIRTHDAY. Los segmentos de
+  // comportamiento (NEW/LOYAL/INACTIVE) exigen historial de citas.
+  if (segment === "ALL" || segment === "BIRTHDAY") {
+    const noted = await prisma.clientNote.findMany({
+      where: { businessId },
+      select: { clientId: true },
+      distinct: ["clientId"],
+    });
+    const seen = new Set(clientIds);
+    for (const { clientId } of noted) {
+      if (!seen.has(clientId)) clientIds.push(clientId);
+    }
+  }
+  if (clientIds.length === 0) return [];
 
   if (segment === "NEW") {
     const cutoff = new Date(now.getTime() - NEW_DAYS * 86_400_000);
