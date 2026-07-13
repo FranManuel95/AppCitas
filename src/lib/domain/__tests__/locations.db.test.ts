@@ -6,6 +6,7 @@ import {
   getBookableLocations,
   updateLocation,
 } from "../locations";
+import { getDayAgenda } from "../stats";
 import { resetDb, seedBusiness, seedClient, seedStaff, slotAt } from "@/lib/test/factories";
 
 const NOW = new Date("2026-07-12T12:00:00.000Z");
@@ -86,6 +87,65 @@ describe("multi-sede (BD)", () => {
     expect(staffOffered.has(anna)).toBe(true);
     expect(staffOffered.has(carla)).toBe(true); // "todas las sedes"
     expect(staffOffered.has(bruno)).toBe(false); // es de la otra sede
+  });
+
+  it("cita manual: pedir sede + empleado de OTRA sede no ofrece huecos", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    const anna = await seedStaff(businessId);
+    const bruno = await seedStaff(businessId);
+    const centro = await createLocation(businessId, { name: "Centro" });
+    const norte = await createLocation(businessId, { name: "Norte" });
+    await prisma.staffMember.update({
+      where: { id: anna },
+      data: { locationId: centro.id },
+    });
+    await prisma.staffMember.update({
+      where: { id: bruno },
+      data: { locationId: norte.id },
+    });
+
+    // Combinación del formulario de cita manual: sede Centro + Bruno (Norte)
+    await expect(
+      getAvailability({
+        businessId,
+        serviceId,
+        dateISO: "2026-07-20",
+        staffId: bruno,
+        locationId: centro.id,
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ code: "STAFF_NOT_AVAILABLE" });
+
+    // La combinación coherente sí ofrece huecos
+    const slots = await getAvailability({
+      businessId,
+      serviceId,
+      dateISO: "2026-07-20",
+      staffId: anna,
+      locationId: centro.id,
+      now: NOW,
+    });
+    expect(slots.length).toBeGreaterThan(0);
+  });
+
+  it("la agenda del día expone la sede de cada cita", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    await seedStaff(businessId);
+    const centro = await createLocation(businessId, { name: "Centro" });
+    const clientId = await seedClient();
+
+    await createAppointment({
+      businessId,
+      serviceId,
+      clientId,
+      startAt: slotAt("2026-07-20", "10:00"),
+      locationId: centro.id,
+      now: NOW,
+    });
+
+    const agenda = await getDayAgenda(businessId, "2026-07-20");
+    expect(agenda).toHaveLength(1);
+    expect(agenda[0].location?.name).toBe("Centro");
   });
 
   it("la cita guarda la sede y valida que sea del negocio", async () => {

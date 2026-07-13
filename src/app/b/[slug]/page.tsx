@@ -80,6 +80,11 @@ function getPublicBusinessData(slug: string) {
             orderBy: [{ position: "asc" }, { createdAt: "asc" }],
             select: { id: true, url: true, caption: true },
           },
+          locations: {
+            where: { active: true },
+            select: { id: true, name: true, address: true, phone: true },
+            orderBy: { name: "asc" },
+          },
         },
       });
       if (!business) return null;
@@ -158,14 +163,28 @@ export default async function BusinessPage({
 
   // JSON-LD LocalBusiness (schema.org): mejora el SEO local y es la base de
   // datos estructurados que pide Reserve with Google.
+  const locationAddresses = business.locations
+    .map((l) => l.address)
+    .filter((a): a is string => !!a);
+  const jsonLdImages = [
+    business.logoUrl,
+    ...business.photos.map((p) => p.url),
+  ].filter((u): u is string => !!u);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: business.name,
     description: business.description ?? undefined,
-    address: business.address ?? undefined,
+    // Con sedes, todas las direcciones (schema.org admite Text | array)
+    address:
+      locationAddresses.length > 0
+        ? [business.address, ...locationAddresses].filter(Boolean)
+        : (business.address ?? undefined),
     telephone: business.phone ?? undefined,
-    image: business.logoUrl ?? undefined,
+    image:
+      jsonLdImages.length > 1
+        ? jsonLdImages
+        : (jsonLdImages[0] ?? undefined),
     openingHoursSpecification: business.hours.map((h) => ({
       "@type": "OpeningHoursSpecification",
       // schema.org usa nombres de día; weekday 0 = domingo (getUTCDay)
@@ -444,6 +463,28 @@ export default async function BusinessPage({
                       >
                         <Avatar name={m.name} size="sm" />
                         <span className="text-ink-soft">{m.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+
+              {business.locations.length > 1 && (
+                <Card>
+                  <h2 className="flex items-center gap-2 font-semibold tracking-tight text-ink">
+                    <MapPin
+                      className="h-4 w-4 shrink-0 text-ink-muted"
+                      aria-hidden
+                    />
+                    {t.business.locationsTitle}
+                  </h2>
+                  <ul className="mt-3 space-y-2.5 text-sm">
+                    {business.locations.map((l) => (
+                      <li key={l.id}>
+                        <p className="font-medium text-ink">{l.name}</p>
+                        <p className="text-xs text-ink-muted">
+                          {[l.address, l.phone].filter(Boolean).join(" · ")}
+                        </p>
                       </li>
                     ))}
                   </ul>

@@ -10,6 +10,7 @@ const querySchema = z.object({
   serviceId: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato esperado: YYYY-MM-DD"),
   staffId: z.string().optional(),
+  locationId: z.string().optional(),
 });
 
 // GET /api/admin/availability — huecos para la cita manual del negocio.
@@ -18,7 +19,7 @@ const querySchema = z.object({
 export const GET = apiHandler(async (request: Request) => {
   const admin = await apiRequireBusinessAdmin();
   const url = new URL(request.url);
-  const { serviceId, date, staffId } = querySchema.parse(
+  const { serviceId, date, staffId, locationId } = querySchema.parse(
     Object.fromEntries(url.searchParams),
   );
 
@@ -32,6 +33,7 @@ export const GET = apiHandler(async (request: Request) => {
     serviceId,
     dateISO: date,
     staffId,
+    locationId,
     relaxMinNotice: true,
   });
 

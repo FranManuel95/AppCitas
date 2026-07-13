@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { ClientNotes } from "@/components/admin/client-notes";
+import { ClientBirthdate } from "@/components/admin/client-birthdate";
 import { AnonymizeClientButton } from "@/components/admin/anonymize-client-button";
 
 export const dynamic = "force-dynamic";
@@ -95,6 +96,19 @@ export default async function ClienteDetallePage({
         <p className="mt-1 text-sm text-ink-muted">
           {[client.email, client.phone].filter(Boolean).join(" · ")}
         </p>
+        {/* Cumpleaños: editable solo para mostrador/importados sin fecha
+            propia; la que aportó el cliente desde su cuenta no se pisa. */}
+        <div className="mt-2">
+          <ClientBirthdate
+            clientId={client.id}
+            birthDate={
+              client.birthDate
+                ? client.birthDate.toISOString().slice(0, 10)
+                : null
+            }
+            editable={client.guest || client.birthDate === null}
+          />
+        </div>
         {/* Derecho al olvido solo para sombras (mostrador/invitado); los
             clientes con cuenta lo hacen ellos mismos desde "Mis datos". */}
         {client.guest && (

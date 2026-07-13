@@ -304,6 +304,7 @@ export async function getDayAgenda(
       service: { select: { name: true, color: true, durationMinutes: true } },
       client: { select: { id: true, name: true, email: true, phone: true } },
       staff: { select: { id: true, name: true, color: true } },
+      location: { select: { name: true } },
     },
     orderBy: { startAt: "asc" },
   });

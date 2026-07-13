@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { getDict } from "@/lib/i18n";
 import { getDayAgenda } from "@/lib/domain/stats";
+import { getBookableLocations } from "@/lib/domain/locations";
 import { addDaysISO, toLocalDateISO, toLocalTime, isValidDateISO } from "@/lib/domain/dates";
 import { formatCents } from "@/lib/money";
 import { StatusBadge } from "@/components/status-badge";
@@ -40,6 +41,9 @@ export default async function AgendaPage({
       orderBy: { name: "asc" },
     }),
   ]);
+  // Selector de sede en la cita manual: misma regla que el wizard público
+  // (solo con >1 sede activa y equipo)
+  const locations = await getBookableLocations(admin.businessId);
 
   const today = toLocalDateISO(new Date(), business.timezone);
   const day = fecha && isValidDateISO(fecha) ? fecha : today;
@@ -90,6 +94,7 @@ export default async function AgendaPage({
         <NewAppointmentForm
           services={services}
           staff={staff}
+          locations={locations.map((l) => ({ id: l.id, name: l.name }))}
           defaultDate={day}
         />
       )}
@@ -118,6 +123,11 @@ export default async function AgendaPage({
                         style={{ background: a.staff.color }}
                       >
                         {a.staff.name}
+                      </span>
+                    )}
+                    {a.location && (
+                      <span className="ml-2 text-xs text-ink-muted">
+                        📍 {a.location.name}
                       </span>
                     )}
                   </p>

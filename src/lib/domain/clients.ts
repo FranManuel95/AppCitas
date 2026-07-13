@@ -136,6 +136,7 @@ export async function getClientDetail(businessId: string, clientId: string) {
         email: true,
         phone: true,
         guest: true,
+        birthDate: true,
         createdAt: true,
       },
     }),
@@ -188,6 +189,52 @@ export async function getClientDetail(businessId: string, clientId: string) {
       reliabilityPercent: reliability(completed, noShows),
     },
   };
+}
+
+export async function updateClientBirthDate(params: {
+  businessId: string;
+  clientId: string;
+  birthDate: string | null; // "YYYY-MM-DD" o null para borrarla
+}) {
+  const { businessId, clientId, birthDate } = params;
+  // Pertenencia: cita O nota del negocio — los importados/fichados a mano
+  // sin citas también son "sus clientes" (misma cartera que la lista).
+  const [hasAppointment, hasNote] = await Promise.all([
+    prisma.appointment.findFirst({
+      where: { businessId, clientId },
+      select: { id: true },
+    }),
+    prisma.clientNote.findFirst({
+      where: { businessId, clientId },
+      select: { id: true },
+    }),
+  ]);
+  if (!hasAppointment && !hasNote) {
+    throw new DomainError("Cliente no encontrado", "CLIENT_NOT_FOUND", 404);
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: clientId },
+    select: { guest: true, birthDate: true },
+  });
+  if (!user) {
+    throw new DomainError("Cliente no encontrado", "CLIENT_NOT_FOUND", 404);
+  }
+  // Misma regla de no-pisado que la importación CSV: la fecha que aportó el
+  // propio cliente desde su cuenta no la toca el negocio.
+  if (!user.guest && user.birthDate !== null) {
+    throw new DomainError(
+      "El cliente ya indicó su fecha de nacimiento desde su cuenta",
+      "BIRTHDATE_LOCKED",
+      409,
+    );
+  }
+  return prisma.user.update({
+    where: { id: clientId },
+    data: {
+      birthDate: birthDate ? new Date(`${birthDate}T00:00:00.000Z`) : null,
+    },
+    select: { id: true, birthDate: true },
+  });
 }
 
 export async function addClientNote(params: {

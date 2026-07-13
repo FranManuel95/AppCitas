@@ -58,6 +58,7 @@ export default async function StaffPortalPage({
       include: {
         service: { select: { name: true, durationMinutes: true } },
         client: { select: { name: true, email: true, phone: true } },
+        location: { select: { name: true } },
       },
       orderBy: { startAt: "asc" },
     }),
@@ -152,6 +153,11 @@ export default async function StaffPortalPage({
                       <span className="min-w-0">
                         {a.service.name} ·{" "}
                         {formatCents(a.priceCents, business.currency)}
+                        {a.location && (
+                          <span className="ml-1.5 text-xs text-ink-muted">
+                            📍 {a.location.name}
+                          </span>
+                        )}
                       </span>
                     </p>
                     <p className="pl-6 text-xs text-ink-muted">

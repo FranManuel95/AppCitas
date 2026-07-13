@@ -17,6 +17,10 @@ interface StaffOption {
   id: string;
   name: string;
 }
+interface LocationOption {
+  id: string;
+  name: string;
+}
 interface SlotOption {
   startAt: string;
   label: string;
@@ -29,16 +33,20 @@ interface SlotOption {
 export function NewAppointmentForm({
   services,
   staff,
+  locations = [],
   defaultDate,
 }: {
   services: ServiceOption[];
   staff: StaffOption[];
+  // Sedes elegibles (vacío = sin selector: 1 sede o sin equipo)
+  locations?: LocationOption[];
   defaultDate: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
   const [staffId, setStaffId] = useState("");
+  const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
   const [date, setDate] = useState(defaultDate);
   const [slots, setSlots] = useState<SlotOption[] | null>(null);
   const [slot, setSlot] = useState<SlotOption | null>(null);
@@ -62,6 +70,7 @@ export function NewAppointmentForm({
     setSlot(null);
     const params = new URLSearchParams({ serviceId, date });
     if (staffId) params.set("staffId", staffId);
+    if (locationId) params.set("locationId", locationId);
     try {
       const res = await fetch(`/api/admin/availability?${params}`);
       const json = (await res.json()) as { slots?: SlotOption[] };
@@ -69,7 +78,7 @@ export function NewAppointmentForm({
     } catch {
       setSlots([]);
     }
-  }, [serviceId, date, staffId]);
+  }, [serviceId, date, staffId, locationId]);
 
   useEffect(() => {
     if (open) void loadSlots();
@@ -87,6 +96,7 @@ export function NewAppointmentForm({
         serviceId,
         startAt: slot.startAt,
         staffId: staffId || undefined,
+        locationId: locationId || undefined,
         notes: notes.trim() || undefined,
         client: {
           name: clientName.trim(),
@@ -159,6 +169,24 @@ export function NewAppointmentForm({
       </div>
 
       <form onSubmit={submit} className="mt-4 space-y-4">
+        {locations.length > 0 && (
+          <Field label="Sede" htmlFor="na-location">
+            <Select
+              id="na-location"
+              value={locationId}
+              onChange={(e) => {
+                setLocationId(e.target.value);
+                setStaffId("");
+              }}
+            >
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Servicio" htmlFor="na-service">
             <Select

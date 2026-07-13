@@ -5,6 +5,7 @@ import {
   deleteClientNote,
   getBusinessClients,
   getClientDetail,
+  updateClientBirthDate,
 } from "../clients";
 import { resetDb, seedBusiness, seedClient } from "@/lib/test/factories";
 
@@ -110,5 +111,103 @@ describe("clientes del negocio (BD)", () => {
     expect(
       (await getClientDetail(a.businessId, clientId)).notes,
     ).toHaveLength(0);
+  });
+
+  async function seedGuest(): Promise<string> {
+    const user = await prisma.user.create({
+      data: {
+        email: `guest-${crypto.randomUUID()}@test.local`,
+        name: "Invitado de prueba",
+        passwordHash: "x",
+        role: "CLIENT",
+        guest: true,
+      },
+    });
+    return user.id;
+  }
+
+  it("cumpleaños: el negocio lo apunta a un invitado y puede quitarlo", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    const guestId = await seedGuest();
+    await seedAppointment(businessId, serviceId, guestId, "COMPLETED");
+
+    const updated = await updateClientBirthDate({
+      businessId,
+      clientId: guestId,
+      birthDate: "1990-05-10",
+    });
+    expect(updated.birthDate?.toISOString()).toBe("1990-05-10T00:00:00.000Z");
+
+    // La ficha lo expone
+    const detail = await getClientDetail(businessId, guestId);
+    expect(detail.client.birthDate?.toISOString()).toBe(
+      "1990-05-10T00:00:00.000Z",
+    );
+
+    // Y se puede borrar (el invitado puede corregirse siempre)
+    const cleared = await updateClientBirthDate({
+      businessId,
+      clientId: guestId,
+      birthDate: null,
+    });
+    expect(cleared.birthDate).toBeNull();
+  });
+
+  it("cumpleaños: pertenencia por nota (importado sin citas) también vale", async () => {
+    const { businessId } = await seedBusiness();
+    const guestId = await seedGuest();
+    await prisma.clientNote.create({
+      data: { businessId, clientId: guestId, text: "Importado de CSV" },
+    });
+
+    const updated = await updateClientBirthDate({
+      businessId,
+      clientId: guestId,
+      birthDate: "1985-12-01",
+    });
+    expect(updated.birthDate?.toISOString()).toBe("1985-12-01T00:00:00.000Z");
+  });
+
+  it("cumpleaños: la fecha que aportó una cuenta propia no se pisa (409)", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    const clientId = await seedClient(); // cuenta real (guest = false)
+    await prisma.user.update({
+      where: { id: clientId },
+      data: { birthDate: new Date("1992-03-08T00:00:00.000Z") },
+    });
+    await seedAppointment(businessId, serviceId, clientId, "COMPLETED");
+
+    await expect(
+      updateClientBirthDate({
+        businessId,
+        clientId,
+        birthDate: "2000-01-01",
+      }),
+    ).rejects.toMatchObject({ code: "BIRTHDATE_LOCKED", httpStatus: 409 });
+
+    // Cuenta real SIN fecha: sí se puede completar desde el mostrador
+    const other = await seedClient();
+    await seedAppointment(businessId, serviceId, other, "COMPLETED");
+    const updated = await updateClientBirthDate({
+      businessId,
+      clientId: other,
+      birthDate: "1988-07-20",
+    });
+    expect(updated.birthDate?.toISOString()).toBe("1988-07-20T00:00:00.000Z");
+  });
+
+  it("cumpleaños: cliente de otro negocio → 404", async () => {
+    const a = await seedBusiness();
+    const b = await seedBusiness();
+    const guestId = await seedGuest();
+    await seedAppointment(b.businessId, b.serviceId, guestId, "COMPLETED");
+
+    await expect(
+      updateClientBirthDate({
+        businessId: a.businessId,
+        clientId: guestId,
+        birthDate: "1990-01-01",
+      }),
+    ).rejects.toMatchObject({ code: "CLIENT_NOT_FOUND", httpStatus: 404 });
   });
 });
