@@ -7,6 +7,7 @@ import { brandStyle } from "@/lib/branding";
 import { getDict } from "@/lib/i18n";
 import { SiteHeader } from "@/components/site-header";
 import { BookingWizard } from "@/components/booking-wizard";
+import { getBookableLocations } from "@/lib/domain/locations";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Reservar cita" };
@@ -41,6 +42,9 @@ export default async function BookingPage({
       : null,
   ]);
   if (!business) notFound();
+
+  // Selector de sede: solo con >1 sede activa y equipo activo
+  const locations = await getBookableLocations(business.id);
 
   return (
     <>
@@ -88,7 +92,9 @@ export default async function BookingPage({
               name: m.name,
               color: m.color,
               serviceIds: m.services.map((x) => x.serviceId),
+              locationId: m.locationId,
             }))}
+            locations={locations}
             initialServiceId={servicio}
             isLoggedIn={!!sessionUser}
             userHasPhone={!!user?.phone}

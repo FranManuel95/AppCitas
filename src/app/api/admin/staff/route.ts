@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { apiRequireBusinessAdmin } from "@/lib/auth/guards";
+import { DomainError } from "@/lib/domain/errors";
 import { assertServicesOwned } from "@/lib/domain/ownership";
 import { assertWithinPlan } from "@/lib/domain/plans";
 
@@ -24,6 +25,8 @@ const createSchema = z.object({
     .optional(),
   // Ids de servicios que realiza; vacío/omitido = todos
   serviceIds: z.array(z.string()).max(100).optional(),
+  // Sede asignada (null/omitido = todas las sedes)
+  locationId: z.string().nullable().optional(),
   // Horario propio; vacío/omitido = hereda el del negocio
   hours: z.array(hourSchema).max(28).optional(),
 });
@@ -50,6 +53,17 @@ export const POST = apiHandler(async (request: Request) => {
   // Límite del plan: nº de empleados activos.
   await assertWithinPlan(admin.businessId, "addStaff");
 
+  // Aislamiento: la sede asignada debe ser del propio negocio y activa.
+  if (data.locationId) {
+    const location = await prisma.location.findFirst({
+      where: { id: data.locationId, businessId: admin.businessId, active: true },
+      select: { id: true },
+    });
+    if (!location) {
+      throw new DomainError("Sede no encontrada", "LOCATION_NOT_FOUND", 404);
+    }
+  }
+
   const member = await prisma.staffMember.create({
     data: {
       businessId: admin.businessId,
@@ -57,6 +71,7 @@ export const POST = apiHandler(async (request: Request) => {
       email: data.email || null,
       phone: data.phone || null,
       color: data.color ?? "#0ea5e9",
+      locationId: data.locationId ?? null,
       hours: { create: data.hours ?? [] },
       services: {
         // Dedupe: StaffService tiene PK compuesto (staffId, serviceId); ids

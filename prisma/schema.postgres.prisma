@@ -208,6 +208,7 @@ model Business {
   membershipPlans   MembershipPlan[]
   clientMemberships ClientMembership[]
   calendarConnections CalendarConnection[]
+  locations           Location[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -264,6 +265,29 @@ model ClientMembership {
 
   @@index([businessId, clientId])
   @@index([clientId])
+}
+
+// Sede del negocio. Corte mínimo: la sede es un PRE-FILTRO de empleados —
+// el motor de huecos no cambia (el conflicto sigue siendo por persona: nadie
+// puede estar en dos sedes a la vez). Multi-sede exige equipo activo; los
+// horarios siguen siendo por negocio/empleado.
+model Location {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name    String
+  address String?
+  phone   String?
+  active  Boolean @default(true)
+
+  staff        StaffMember[]
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, active])
 }
 
 // Conexión de Google Calendar del dueño (staffId null) o de un empleado.
@@ -491,6 +515,10 @@ model StaffMember {
   userId String? @unique
   user   User?   @relation(fields: [userId], references: [id])
 
+  // Sede donde trabaja (null = todas las sedes)
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id])
+
   // Horario propio; si no tiene tramos, hereda el horario del negocio
   hours        StaffHour[]
   // Servicios que realiza; sin filas = realiza todos los servicios
@@ -644,6 +672,9 @@ model Appointment {
   // Membresía cuyo descuento se aplicó a esta cita (snapshot del beneficio)
   membershipId String?
   membership   ClientMembership? @relation(fields: [membershipId], references: [id])
+  // Sede de la cita (snapshot; reprogramar conserva la sede original)
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id])
 
   // Serie recurrente ("todos los martes"): las citas creadas juntas comparten
   // seriesId. Cada ocurrencia sigue siendo una cita normal e independiente.

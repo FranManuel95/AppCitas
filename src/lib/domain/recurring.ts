@@ -29,6 +29,7 @@ export async function createRecurringAppointments(params: {
   clientId: string;
   startAt: Date;
   staffId?: string;
+  locationId?: string;
   notes?: string;
   intervalDays: number;
   count: number;
@@ -76,6 +77,7 @@ export async function createRecurringAppointments(params: {
         clientId: params.clientId,
         startAt: occStart,
         staffId: params.staffId,
+        locationId: params.locationId,
         notes: params.notes,
         bookedBy: "business",
         seriesId,

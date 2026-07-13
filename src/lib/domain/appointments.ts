@@ -75,6 +75,10 @@ async function loadAvailabilityContext(params: {
   dateISO: string;
   now: Date;
   staffId?: string;
+  // Multi-sede: pre-filtra el equipo a la sede pedida (los empleados con
+  // locationId null trabajan en todas). El motor de huecos no cambia y el
+  // conflicto transaccional sigue siendo por persona.
+  locationId?: string;
   // Al reprogramar: la propia cita no bloquea su hueco (queda libre al moverla)
   excludeAppointmentId?: string;
   // El negocio se apunta citas de mostrador/teléfono "para ahora mismo": la
@@ -109,6 +113,18 @@ async function loadAvailabilityContext(params: {
       active: true,
       ...(staffId ? { id: staffId } : {}),
       OR: [{ services: { none: {} } }, { services: { some: { serviceId } } }],
+      ...(params.locationId
+        ? {
+            AND: [
+              {
+                OR: [
+                  { locationId: null },
+                  { locationId: params.locationId },
+                ],
+              },
+            ],
+          }
+        : {}),
     },
     include: { hours: true },
   });
@@ -249,6 +265,7 @@ export async function getAvailability(params: {
   serviceId: string;
   dateISO: string;
   staffId?: string;
+  locationId?: string;
   now?: Date;
   relaxMinNotice?: boolean;
 }): Promise<StaffSlot[]> {
@@ -269,6 +286,8 @@ export async function createAppointment(params: {
   clientId: string;
   startAt: Date;
   staffId?: string;
+  // Multi-sede: sede elegida (filtra el equipo y queda como snapshot)
+  locationId?: string;
   notes?: string;
   couponCode?: string;
   clientPackageId?: string;
@@ -310,6 +329,19 @@ export async function createAppointment(params: {
     throw new DomainError("Negocio no encontrado", "BUSINESS_NOT_FOUND", 404);
   }
 
+  // Sede: debe ser del negocio y estar activa (si se indica)
+  let locationId: string | null = null;
+  if (params.locationId) {
+    const location = await prisma.location.findFirst({
+      where: { id: params.locationId, businessId, active: true },
+      select: { id: true },
+    });
+    if (!location) {
+      throw new DomainError("Sede no encontrada", "LOCATION_NOT_FOUND", 404);
+    }
+    locationId = location.id;
+  }
+
   const dateISO = toLocalDateISO(startAt, businessRow.timezone);
   const ctx = await loadAvailabilityContext({
     businessId,
@@ -317,6 +349,7 @@ export async function createAppointment(params: {
     dateISO,
     now,
     staffId,
+    locationId: locationId ?? undefined,
     relaxMinNotice: bookedBy === "business",
   });
 
@@ -491,6 +524,7 @@ export async function createAppointment(params: {
         couponId,
         clientPackageId: usedPackageId,
         membershipId,
+        locationId,
         notes: notes?.trim() || null,
         seriesId: params.seriesId ?? null,
       },
@@ -859,6 +893,9 @@ export async function rescheduleAppointment(params: {
     serviceId: appointment.serviceId,
     dateISO,
     now,
+    // Reprogramar conserva la sede original (cambiar de sede = cancelar y
+    // volver a reservar); el equipo se filtra a esa sede.
+    locationId: appointment.locationId ?? undefined,
     excludeAppointmentId: appointmentId,
   });
 

@@ -15,6 +15,7 @@ import {
   CreditCard,
   Hourglass,
   LayoutDashboard,
+  MapPin,
   Megaphone,
   QrCode,
   Receipt,
@@ -44,6 +45,7 @@ const ICONS = {
   qr: QrCode,
   facturas: Receipt,
   informes: BarChart3,
+  sedes: MapPin,
 } satisfies Record<string, LucideIcon>;
 
 export type AdminNavIcon = keyof typeof ICONS;

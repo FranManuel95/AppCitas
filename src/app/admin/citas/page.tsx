@@ -80,6 +80,7 @@ export default async function AppointmentsPage({
         service: { select: { name: true } },
         client: { select: { name: true, email: true } },
         staff: { select: { name: true, color: true } },
+        location: { select: { name: true } },
       },
       orderBy: { startAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
@@ -211,6 +212,11 @@ export default async function AppointmentsPage({
                         style={{ background: a.staff.color }}
                       />
                       {a.staff.name}
+                    </span>
+                  )}
+                  {a.location && (
+                    <span className="mt-0.5 block text-xs text-ink-muted">
+                      📍 {a.location.name}
                     </span>
                   )}
                 </td>

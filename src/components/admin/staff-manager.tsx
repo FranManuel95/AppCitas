@@ -43,9 +43,15 @@ interface StaffDTO {
   hasAccess: boolean;
   hours: HourRange[];
   serviceIds: string[];
+  locationId: string | null;
 }
 
 interface ServiceOption {
+  id: string;
+  name: string;
+}
+
+interface LocationOption {
   id: string;
   name: string;
 }
@@ -100,6 +106,7 @@ export interface StaffManagerLabels {
 function StaffForm({
   initial,
   services,
+  locations,
   locale,
   labels,
   onDone,
@@ -107,6 +114,7 @@ function StaffForm({
 }: {
   initial?: StaffDTO;
   services: ServiceOption[];
+  locations: LocationOption[];
   locale: Locale;
   labels: StaffManagerLabels;
   onDone: () => void;
@@ -123,6 +131,8 @@ function StaffForm({
   const [serviceIds, setServiceIds] = useState<string[]>(
     initial?.serviceIds ?? [],
   );
+  // Sede asignada ("" = todas las sedes)
+  const [locationId, setLocationId] = useState(initial?.locationId ?? "");
 
   function toggleService(id: string) {
     setServiceIds((prev) =>
@@ -142,6 +152,7 @@ function StaffForm({
       phone: String(form.get("phone") ?? "") || null,
       color: String(form.get("color") ?? "#0ea5e9"),
       serviceIds,
+      locationId: locationId || null,
       hours: useOwnHours ? ownHours : [],
     };
 
@@ -198,6 +209,23 @@ function StaffForm({
             defaultValue={initial?.phone ?? ""}
           />
         </Field>
+        {locations.length > 0 && (
+          <Field label="Sede" htmlFor={`${uid}-location`}>
+            <select
+              id={`${uid}-location`}
+              value={locationId}
+              onChange={(e) => setLocationId(e.target.value)}
+              className="input w-full text-sm"
+            >
+              <option value="">Todas las sedes</option>
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
       </div>
 
       <div>
@@ -333,11 +361,13 @@ function StaffForm({
 export function StaffManager({
   staff,
   services,
+  locations,
   locale,
   labels,
 }: {
   staff: StaffDTO[];
   services: ServiceOption[];
+  locations: LocationOption[];
   locale: Locale;
   labels: StaffManagerLabels;
 }) {
@@ -404,6 +434,7 @@ export function StaffManager({
           </h2>
           <StaffForm
             services={services}
+            locations={locations}
             locale={locale}
             labels={labels}
             onDone={refresh}
@@ -419,6 +450,7 @@ export function StaffManager({
               <StaffForm
                 initial={member}
                 services={services}
+                locations={locations}
                 locale={locale}
                 labels={labels}
                 onDone={refresh}

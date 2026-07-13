@@ -49,6 +49,7 @@ function buildNav(
       items: [
         { href: "/admin/servicios", label: nav.servicios, icon: "servicios" },
         { href: "/admin/equipo", label: nav.equipo, icon: "equipo" },
+        { href: "/admin/sedes", label: "Sedes", icon: "sedes" },
         { href: "/admin/promociones", label: nav.promos, icon: "promociones" },
         { href: "/admin/horario", label: nav.horario, icon: "horario" },
       ],

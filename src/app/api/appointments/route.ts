@@ -12,6 +12,7 @@ const createSchema = z.object({
   serviceId: z.string().min(1),
   startAt: z.iso.datetime(),
   staffId: z.string().optional(),
+  locationId: z.string().optional(),
   notes: z.string().trim().max(500).optional(),
   // Teléfono para recordatorios por SMS/WhatsApp (se guarda en el perfil)
   phone: z.string().trim().min(6).max(30).optional(),
@@ -47,6 +48,7 @@ export const POST = apiHandler(async (request: Request) => {
     clientId: user.id,
     startAt: new Date(data.startAt),
     staffId: data.staffId,
+    locationId: data.locationId,
     notes: data.notes,
     couponCode: data.couponCode,
     clientPackageId: data.clientPackageId,

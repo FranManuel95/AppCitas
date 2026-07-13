@@ -102,7 +102,7 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
    todas las tablas (la API pública de Supabase no podrá leer tus datos; la
    app no se ve afectada) y deja el registro de migraciones coherente para
    futuros `prisma migrate deploy`. **Después**, ejecuta en orden los scripts
-   incrementales `scripts/supabase-migration-2-*.sql` … `-33-*.sql` (cada uno
+   incrementales `scripts/supabase-migration-2-*.sql` … `-34-*.sql` (cada uno
    añade las mejoras de una fase posterior: rate limit, autocierre/2º
    recordatorio, reseñas, suscripción SaaS, idempotencia de webhooks,
    consentimiento, el default de suscripción, los índices de camino caliente,

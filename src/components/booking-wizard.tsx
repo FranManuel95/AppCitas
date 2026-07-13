@@ -49,6 +49,13 @@ interface StaffOption {
   name: string;
   color: string;
   serviceIds: string[]; // vacío = realiza todos
+  locationId: string | null; // null = todas las sedes
+}
+
+interface LocationOption {
+  id: string;
+  name: string;
+  address: string | null;
 }
 
 interface SlotOption {
@@ -74,6 +81,8 @@ interface BookingWizardProps {
   };
   services: ServiceOption[];
   staff: StaffOption[];
+  // Sedes elegibles (vacío = sin selector: negocio de una sede o sin equipo)
+  locations: LocationOption[];
   initialServiceId?: string;
   isLoggedIn: boolean;
   userHasPhone: boolean;
@@ -101,6 +110,7 @@ export function BookingWizard({
   business,
   services,
   staff,
+  locations,
   initialServiceId,
   isLoggedIn,
   userHasPhone,
@@ -114,6 +124,8 @@ export function BookingWizard({
   );
   // "" = cualquier profesional disponible
   const [staffId, setStaffId] = useState("");
+  // Multi-sede: la sede es el primer filtro (solo si hay >1 sede y equipo)
+  const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
   const [dateISO, setDateISO] = useState(addDays(todayISO(), 1));
   const [slots, setSlots] = useState<SlotOption[] | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -156,13 +168,16 @@ export function BookingWizard({
     [services, serviceId],
   );
 
-  // Profesionales cualificados para el servicio elegido
+  // Profesionales cualificados para el servicio elegido (y de la sede, si
+  // aplica; los de "todas las sedes" siempre entran)
   const qualifiedStaff = useMemo(
     () =>
       staff.filter(
-        (m) => m.serviceIds.length === 0 || m.serviceIds.includes(serviceId),
+        (m) =>
+          (m.serviceIds.length === 0 || m.serviceIds.includes(serviceId)) &&
+          (!locationId || m.locationId === null || m.locationId === locationId),
       ),
-    [staff, serviceId],
+    [staff, serviceId, locationId],
   );
   const hasStaff = staff.length > 0;
 
@@ -210,6 +225,7 @@ export function BookingWizard({
     try {
       const params = new URLSearchParams({ serviceId, date: dateISO });
       if (staffId) params.set("staffId", staffId);
+      if (locationId) params.set("location", locationId);
       const res = await fetch(
         `/api/businesses/${business.slug}/availability?${params.toString()}`,
       );
@@ -222,7 +238,7 @@ export function BookingWizard({
     } finally {
       setLoadingSlots(false);
     }
-  }, [business.slug, serviceId, staffId, dateISO]);
+  }, [business.slug, serviceId, staffId, locationId, dateISO]);
 
   useEffect(() => {
     void loadSlots();
@@ -239,6 +255,7 @@ export function BookingWizard({
             serviceId,
             startAt: selectedSlot.startAt,
             staffId: staffId || undefined,
+            locationId: locationId || undefined,
             notes: notes.trim() || undefined,
             couponCode: couponCode.trim() || undefined,
             guest: {
@@ -253,6 +270,7 @@ export function BookingWizard({
             serviceId,
             startAt: selectedSlot.startAt,
             staffId: staffId || undefined,
+            locationId: locationId || undefined,
             notes: notes.trim() || undefined,
             phone: phone.trim() || undefined,
             clientPackageId: usePackageId || undefined,
@@ -367,6 +385,40 @@ export function BookingWizard({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {/* Sede (solo negocios con varias sedes y equipo) */}
+          {locations.length > 1 && (
+            <Card>
+              <SectionHeader as="h2" title={stepLabel(t.stepLocation)} />
+              <div className="mt-4 flex flex-wrap gap-2">
+                {locations.map((l) => (
+                  <button
+                    key={l.id}
+                    type="button"
+                    aria-pressed={locationId === l.id}
+                    onClick={() => {
+                      setLocationId(l.id);
+                      setStaffId("");
+                      setSelectedSlot(null);
+                    }}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors",
+                      locationId === l.id
+                        ? "border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600"
+                        : "border-border bg-surface text-ink-soft hover:border-brand-300",
+                    )}
+                  >
+                    {l.name}
+                    {l.address && (
+                      <span className="block text-xs font-normal text-ink-muted">
+                        {l.address}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* Servicio */}
           <Card>
             <SectionHeader as="h2" title={stepLabel(t.stepService)} />

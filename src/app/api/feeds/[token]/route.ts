@@ -42,6 +42,7 @@ export const GET = apiHandler(
         service: { select: { name: true } },
         client: { select: { name: true, phone: true } },
         staff: { select: { name: true } },
+        location: { select: { name: true, address: true } },
       },
       orderBy: { startAt: "asc" },
       take: 1000,
@@ -63,7 +64,10 @@ export const GET = apiHandler(
         ]
           .filter(Boolean)
           .join("\n"),
-        location: business.address ?? undefined,
+        // Multi-sede: la dirección de la sede de la cita gana a la del negocio
+        location: a.location
+          ? (a.location.address ?? a.location.name)
+          : (business.address ?? undefined),
       })),
       now,
     );

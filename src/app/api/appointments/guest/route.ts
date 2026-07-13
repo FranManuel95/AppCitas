@@ -10,6 +10,7 @@ const schema = z.object({
   serviceId: z.string().min(1),
   startAt: z.iso.datetime(),
   staffId: z.string().optional(),
+  locationId: z.string().optional(),
   notes: z.string().trim().max(500).optional(),
   couponCode: z.string().trim().max(30).optional(),
   guest: z.object({
@@ -42,6 +43,7 @@ export const POST = apiHandler(async (request: Request) => {
     serviceId: data.serviceId,
     startAt: new Date(data.startAt),
     staffId: data.staffId,
+    locationId: data.locationId,
     notes: data.notes,
     couponCode: data.couponCode,
     guest: data.guest,

@@ -10,6 +10,7 @@ const querySchema = z.object({
   serviceId: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato esperado: YYYY-MM-DD"),
   staffId: z.string().optional(),
+  location: z.string().optional(),
 });
 
 // GET /api/businesses/[slug]/availability?serviceId=…&date=YYYY-MM-DD[&staffId=…]
@@ -21,7 +22,7 @@ export const GET = apiHandler(
   ) => {
     const { slug } = await params;
     const url = new URL(request.url);
-    const { serviceId, date, staffId } = querySchema.parse(
+    const { serviceId, date, staffId, location } = querySchema.parse(
       Object.fromEntries(url.searchParams),
     );
 
@@ -38,6 +39,7 @@ export const GET = apiHandler(
       serviceId,
       dateISO: date,
       staffId,
+      locationId: location,
     });
 
     return NextResponse.json({

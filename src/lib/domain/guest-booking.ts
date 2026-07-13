@@ -12,6 +12,7 @@ export interface GuestBookingParams {
   serviceId: string;
   startAt: Date;
   staffId?: string;
+  locationId?: string;
   notes?: string;
   couponCode?: string;
   guest: { name: string; email: string; phone?: string };
@@ -62,6 +63,7 @@ export async function createGuestAppointment(params: GuestBookingParams) {
     clientId,
     startAt: params.startAt,
     staffId: params.staffId,
+    locationId: params.locationId,
     notes: params.notes,
     couponCode: params.couponCode,
     now: params.now,

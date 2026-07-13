@@ -18,6 +18,8 @@ const updateSchema = z.object({
     .optional(),
   active: z.boolean().optional(),
   serviceIds: z.array(z.string()).max(100).optional(),
+  // Sede asignada (null = todas las sedes)
+  locationId: z.string().nullable().optional(),
   hours: z
     .array(
       z.object({
@@ -53,6 +55,17 @@ export const PATCH = apiHandler(
     // Aislamiento: los servicios vinculados deben ser del propio negocio.
     await assertServicesOwned(admin.businessId, data.serviceIds);
 
+    // Aislamiento: la sede asignada debe ser del propio negocio y activa.
+    if (data.locationId) {
+      const location = await prisma.location.findFirst({
+        where: { id: data.locationId, businessId: admin.businessId, active: true },
+        select: { id: true },
+      });
+      if (!location) {
+        throw new DomainError("Sede no encontrada", "LOCATION_NOT_FOUND", 404);
+      }
+    }
+
     const member = await prisma.$transaction(async (tx) => {
       if (data.hours) {
         await tx.staffHour.deleteMany({ where: { staffId: id } });
@@ -78,6 +91,9 @@ export const PATCH = apiHandler(
           ...(data.phone !== undefined ? { phone: data.phone || null } : {}),
           ...(data.color !== undefined ? { color: data.color } : {}),
           ...(data.active !== undefined ? { active: data.active } : {}),
+          ...(data.locationId !== undefined
+            ? { locationId: data.locationId }
+            : {}),
         },
         include: {
           hours: { orderBy: [{ weekday: "asc" }, { openTime: "asc" }] },
