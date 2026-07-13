@@ -141,7 +141,9 @@ export default async function ReceiptPage({
                 ? r.packageSuffix
                 : appointment.coupon
                   ? fmt(r.couponSuffix, { code: appointment.coupon.code })
-                  : ""}
+                  : appointment.membershipId
+                    ? r.membershipSuffix
+                    : ""}
             </dd>
           </div>
         </dl>

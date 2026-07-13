@@ -151,6 +151,39 @@ describe("facturas fiscales (BD)", () => {
     expect(newF?.code).toBe("2026-000002");
   });
 
+  it("el concepto deja traza de la membresía que abarató la cita", async () => {
+    const { businessId, serviceId } = await seedBusiness({ priceCents: 2000 });
+    await enableInvoicing(businessId);
+    const clientId = await seedClient();
+    const plan = await prisma.membershipPlan.create({
+      data: { businessId, name: "Socio", priceCents: 1990, discountPercent: 25 },
+    });
+    const membership = await prisma.clientMembership.create({
+      data: {
+        businessId,
+        planId: plan.id,
+        clientId,
+        status: "active",
+        currentPeriodEnd: new Date(NOW.getTime() + 30 * 86_400_000),
+        paymentSimulated: true,
+      },
+    });
+
+    // La reserva aplica el beneficio (membershipId en la cita) y al
+    // completarla se emite la factura con el sufijo en el concepto
+    await bookAndComplete(businessId, serviceId, clientId, slotAt("2026-07-14", "10:00"));
+    const invoice = await prisma.invoice.findFirstOrThrow({
+      where: { businessId, series: "F" },
+    });
+    expect(invoice.concept).toContain("(membresía)");
+
+    const appointment = await prisma.appointment.findFirstOrThrow({
+      where: { businessId },
+      select: { membershipId: true },
+    });
+    expect(appointment.membershipId).toBe(membership.id);
+  });
+
   it("backfill: factura los cobros del año que no tenían factura", async () => {
     const { businessId, serviceId } = await seedBusiness();
     const clientId = await seedClient();

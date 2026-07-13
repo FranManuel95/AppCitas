@@ -67,6 +67,7 @@ export const GET = apiHandler(async (request: Request) => {
       staff: { select: { name: true } },
       client: { select: { name: true, email: true, phone: true } },
       coupon: { select: { code: true } },
+      location: { select: { name: true } },
     },
     orderBy: { startAt: "desc" },
     take: 10_000,
@@ -81,6 +82,7 @@ export const GET = apiHandler(async (request: Request) => {
       "Teléfono",
       "Servicio",
       "Profesional",
+      "Sede",
       "Estado",
       "Precio (€)",
       "Descuento (€)",
@@ -96,11 +98,16 @@ export const GET = apiHandler(async (request: Request) => {
       a.client.phone,
       a.service.name,
       a.staff?.name ?? "",
+      a.location?.name ?? "",
       STATUS_LABELS[a.status as AppointmentStatus] ?? a.status,
       (a.priceCents / 100).toFixed(2),
       (a.discountCents / 100).toFixed(2),
       (a.chargedCents / 100).toFixed(2),
-      a.clientPackageId ? "Bono" : (a.coupon?.code ?? ""),
+      a.clientPackageId
+        ? "Bono"
+        : a.membershipId
+          ? "Membresía"
+          : (a.coupon?.code ?? ""),
       a.paymentStatus,
     ]),
   );

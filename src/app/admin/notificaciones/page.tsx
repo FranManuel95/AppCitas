@@ -54,6 +54,10 @@ export default async function NotificationsPage() {
     BOOKING_CONFIRMED: nt.templateBookingConfirmed,
     REMINDER: nt.templateReminder,
     CANCELLED: nt.templateCancelled,
+    NO_SHOW: nt.templateNoShow,
+    CAMPAIGN: nt.templateCampaign,
+    LOYALTY_REWARD: nt.templateLoyaltyReward,
+    WAITLIST_SLOT_FREED: nt.templateWaitlistSlotFreed,
   };
 
   const statusLabels: Record<string, string> = {

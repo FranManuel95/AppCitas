@@ -46,16 +46,23 @@ export function isInvoiceableCharge(appointment: {
   return false;
 }
 
-function conceptFor(status: string, serviceName: string): string {
+function conceptFor(
+  status: string,
+  serviceName: string,
+  viaMembership: boolean,
+): string {
+  // La membresía deja traza en el concepto: el descuento aplicado no es
+  // arbitrario, viene del plan contratado por el cliente.
+  const name = viaMembership ? `${serviceName} (membresía)` : serviceName;
   switch (status) {
     case "COMPLETED":
-      return serviceName;
+      return name;
     case "NO_SHOW":
-      return `${serviceName} · cargo por no presentarse`;
+      return `${name} · cargo por no presentarse`;
     case "CANCELLED_LATE":
-      return `${serviceName} · cargo por cancelación tardía`;
+      return `${name} · cargo por cancelación tardía`;
     default:
-      return serviceName;
+      return name;
   }
 }
 
@@ -178,7 +185,11 @@ export async function issueInvoiceForAppointment(
         businessAddress: appointment.business.address,
         clientName: appointment.client.name,
         clientEmail: appointment.client.email,
-        concept: conceptFor(appointment.status, appointment.service.name),
+        concept: conceptFor(
+          appointment.status,
+          appointment.service.name,
+          !!appointment.membershipId,
+        ),
         currency: appointment.business.currency,
         totalCents: appointment.chargedCents,
         taxPercent: appointment.business.taxPercent,

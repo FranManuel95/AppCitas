@@ -1,22 +1,16 @@
 import { NextResponse } from "next/server";
-import { processDueNotifications } from "@/lib/notifications/service";
-import { closePastAppointments } from "@/lib/domain/auto-close";
-import { cleanupRateLimitCounters } from "@/lib/rate-limit";
-import { degradeExpiredTrials } from "@/lib/domain/plans";
-import { purgeExpiredData } from "@/lib/domain/retention";
-import { issuePendingInvoices } from "@/lib/domain/invoices";
-import { renewSimulatedMemberships } from "@/lib/payments/memberships";
-import { processCalendarSyncJobs } from "@/lib/calendar/sync";
-import { purgeBusyCache } from "@/lib/calendar/freebusy";
-import {
-  expireStaleWaitlist,
-  recycleNotifiedWaitlist,
-} from "@/lib/domain/waitlist";
+import { runScheduledJobs } from "@/lib/jobs";
 
-// /api/jobs/notifications — despacha los mensajes vencidos del outbox.
-// Pensado para invocarse cada minuto desde un cron externo (Vercel Cron usa
-// GET, otros crons pueden usar POST) o desde el worker local (npm run worker).
+// /api/jobs/notifications — ejecuta las tareas programadas (src/lib/jobs.ts):
+// drena el outbox de notificaciones y corre el resto de mantenimientos.
+// Lo invocan el workflow de GitHub cada 5 min (camino primario), el cron de
+// vercel.json (red de seguridad diaria) o el worker local (npm run worker).
 // Protegido con CRON_SECRET para que nadie pueda dispararlo desde fuera.
+
+// El drenaje puede procesar cientos de mensajes: sin esto, el límite por
+// defecto de Vercel (10 s en Hobby) cortaría la ejecución a mitad.
+export const maxDuration = 60;
+
 async function handleCron(request: Request) {
   const secret = process.env.CRON_SECRET;
   const provided =
@@ -33,39 +27,8 @@ async function handleCron(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const result = await processDueNotifications();
-  // Cierre automático de citas pasadas (negocios con autoCompleteEnabled)
-  const { closed: autoClosed } = await closePastAppointments();
-  // Degradar pruebas caducadas sin suscripción a plan free
-  const { degraded: trialsDegraded } = await degradeExpiredTrials();
-  // Mantenimiento oportunista: purga ventanas viejas del rate limiting.
-  await cleanupRateLimitCounters();
-  // Retención: purga logs de auditoría y eventos de webhook caducados (>90 d).
-  const purged = await purgeExpiredData();
-  // Lista de espera: borra las entradas de días pasados y recicla los avisos no
-  // aprovechados para que la siguiente cancelación los vuelva a avisar.
-  const { expired: waitlistExpired } = await expireStaleWaitlist();
-  const { recycled: waitlistRecycled } = await recycleNotifiedWaitlist();
-  // Facturación: reconcilia cobros recientes que quedaron sin factura
-  // (p. ej. la app cayó entre el cobro y la emisión).
-  const invoicesIssued = await issuePendingInvoices();
-  // Membresías simuladas (dev): renueva las vencidas o cierra las canceladas.
-  const memberships = await renewSimulatedMemberships();
-  // Google Calendar: reintenta los eventos pendientes y purga la caché vieja.
-  const calendarSync = await processCalendarSyncJobs();
-  await purgeBusyCache();
-  return NextResponse.json({
-    ...result,
-    autoClosed,
-    trialsDegraded,
-    purged,
-    waitlistExpired,
-    waitlistRecycled,
-    invoicesIssued,
-    membershipsRenewed: memberships.renewed,
-    membershipsEnded: memberships.ended,
-    calendarEventsSynced: calendarSync.sent,
-  });
+  const result = await runScheduledJobs();
+  return NextResponse.json(result);
 }
 
 export const POST = handleCron;

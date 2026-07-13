@@ -65,6 +65,13 @@ cuando `DATABASE_URL` empieza por `postgres`.
    pusiste en las variables de entorno de Vercel). Si en algún momento pasas
    al plan Pro, puedes volver a poner `* * * * *` en `vercel.json` y
    desactivar el workflow.
+
+   > El endpoint ejecuta TODAS las tareas programadas (`src/lib/jobs.ts`):
+   > drena el outbox de notificaciones por lotes (sin techo por ejecución),
+   > autocierre, facturas pendientes, membresías, sincronización de Google
+   > Calendar y purgas. Declara `maxDuration = 60`; en Hobby, Vercel admite
+   > hasta 60 s por invocación. El worker de VPS (`npm run worker`) ejecuta
+   > exactamente las mismas tareas.
 5. Conecta tu dominio en *Settings → Domains* y actualiza `APP_BASE_URL`.
 6. Verifica: `https://TU-DOMINIO/api/health` debe devolver `{"ok":true}`.
 
