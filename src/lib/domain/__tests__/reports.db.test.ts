@@ -4,6 +4,7 @@ import {
   buildOccupancyHeatmap,
   buildRetentionCohorts,
   getPromotionsReport,
+  getRetentionCohorts,
   getServiceReport,
   resolveReportRange,
 } from "../reports";
@@ -109,6 +110,35 @@ describe("informes con BD", () => {
       avgTicketCents: 1500,
       noShowPercent: 33,
     });
+  });
+
+  it("cohortes acotadas: el cliente antiguo con visita reciente NO cuenta como nuevo", async () => {
+    const { businessId, serviceId } = await seedBusiness(); // timezone UTC
+    const veterano = await seedClient(); // primera visita hace años
+    const nuevo = await seedClient(); // primera visita el mes pasado
+    const mk = (clientId: string, date: string) =>
+      prisma.appointment.create({
+        data: {
+          businessId,
+          serviceId,
+          clientId,
+          startAt: slotAt(date, "10:00"),
+          endAt: slotAt(date, "10:30"),
+          status: "COMPLETED",
+          priceCents: 1000,
+        },
+      });
+
+    await mk(veterano, "2023-03-10"); // anterior al floor de 14 meses
+    await mk(veterano, "2026-06-05"); // visita reciente del veterano
+    await mk(nuevo, "2026-06-10");
+    await mk(nuevo, "2026-06-20"); // repite dentro de la ventana de 90 días
+
+    const cohorts = await getRetentionCohorts(businessId, NOW, "UTC");
+    const june = cohorts.find((c) => c.month === "2026-06");
+    // Solo el cliente realmente nuevo crea cohorte; el veterano queda fuera
+    expect(june).toMatchObject({ month: "2026-06", newClients: 1, returned: 1 });
+    expect(cohorts.every((c) => c.month >= "2025-05")).toBe(true);
   });
 
   it("promociones: usos de cupón y sesiones consumidas de bonos", async () => {

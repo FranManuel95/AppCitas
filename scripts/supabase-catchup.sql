@@ -571,6 +571,10 @@ BEGIN
   END IF;
 END $$;
 
+-- ── (36) Índices de camino caliente: membresía y cupones ────────────────────
+CREATE INDEX IF NOT EXISTS "Appointment_membershipId_startAt_idx" ON "Appointment"("membershipId", "startAt");
+CREATE INDEX IF NOT EXISTS "Coupon_clientId_idx" ON "Coupon"("clientId");
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -608,7 +612,8 @@ FROM (VALUES
   ('20260713140000_membresias'),
   ('20260713150000_google_calendar'),
   ('20260713160000_multi_sede'),
-  ('20260713170000_galeria_dominio')
+  ('20260713170000_galeria_dominio'),
+  ('20260713180000_indices_membresia_cupon')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

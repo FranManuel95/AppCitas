@@ -453,6 +453,8 @@ model Coupon {
   updatedAt DateTime @updatedAt
 
   @@unique([businessId, code])
+  // "Mis citas" lista los cupones personales del cliente en todos los negocios
+  @@index([clientId])
 }
 
 // Bono/pack: N sesiones de un servicio a precio cerrado.
@@ -736,6 +738,9 @@ model Appointment {
   // completo del negocio en el camino caliente.
   @@index([businessId, createdAt])
   @@index([seriesId])
+  // Tope mensual de la membresía: se cuenta por membershipId + rango de mes
+  // DENTRO de la transacción de reserva (bajo el advisory lock).
+  @@index([membershipId, startAt])
 }
 
 // Factura fiscal emitida por un cobro de cita: snapshot legal INMUTABLE con

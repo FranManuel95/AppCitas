@@ -110,18 +110,47 @@ export function buildRetentionCohorts(
 export async function getRetentionCohorts(
   businessId: string,
   now = new Date(),
+  timezone?: string,
 ): Promise<RetentionCohort[]> {
-  const business = await prisma.business.findUniqueOrThrow({
-    where: { id: businessId },
-    select: { timezone: true },
-  });
-  // Filas estrechas (clientId, startAt) de visitas completadas: el volumen es
-  // asumible para un negocio de servicios (decenas de miles como mucho).
-  const visits = await prisma.appointment.findMany({
-    where: { businessId, status: "COMPLETED" },
-    select: { clientId: true, startAt: true },
-  });
-  return buildRetentionCohorts(visits, business.timezone, now);
+  const tz =
+    timezone ??
+    (
+      await prisma.business.findUniqueOrThrow({
+        where: { id: businessId },
+        select: { timezone: true },
+      })
+    ).timezone;
+
+  // La UI enseña las últimas 12 cohortes: leer todo el histórico solo para
+  // descartarlo es trabajo perdido. Floor = inicio de mes hace 14 meses
+  // (margen para que la cohorte más antigua visible madure su ventana de 90
+  // días). Los clientes con visitas ANTERIORES al floor se excluyen: su
+  // primera visita real es antigua y clasificarlos como "nuevos" falsearía
+  // las cohortes recientes.
+  const currentMonth = toLocalDateISO(now, tz).slice(0, 7);
+  const [y, m] = currentMonth.split("-").map(Number);
+  const floorRef = new Date(Date.UTC(y, m - 1 - 14, 1));
+  const floorMonth = `${floorRef.getUTCFullYear()}-${String(floorRef.getUTCMonth() + 1).padStart(2, "0")}`;
+  const floor = wallTimeToUtc(`${floorMonth}-01`, "00:00", tz);
+
+  const [visits, veterans] = await Promise.all([
+    // Filas estrechas (clientId, startAt) de visitas completadas del rango
+    prisma.appointment.findMany({
+      where: { businessId, status: "COMPLETED", startAt: { gte: floor } },
+      select: { clientId: true, startAt: true },
+    }),
+    // Una fila por cliente veterano, sin traer sus citas
+    prisma.appointment.groupBy({
+      by: ["clientId"],
+      where: { businessId, status: "COMPLETED", startAt: { lt: floor } },
+    }),
+  ]);
+  const veteranIds = new Set(veterans.map((v) => v.clientId));
+  return buildRetentionCohorts(
+    visits.filter((v) => !veteranIds.has(v.clientId)),
+    tz,
+    now,
+  );
 }
 
 // ── Ventas por servicio (tabla completa) ─────────────────────────────────────
@@ -313,11 +342,16 @@ export function buildOccupancyHeatmap(
 export async function getOccupancyHeatmap(
   businessId: string,
   range: DateRange,
+  timezone?: string,
 ): Promise<{ cells: HeatmapCell[]; max: number }> {
-  const business = await prisma.business.findUniqueOrThrow({
-    where: { id: businessId },
-    select: { timezone: true },
-  });
+  const tz =
+    timezone ??
+    (
+      await prisma.business.findUniqueOrThrow({
+        where: { id: businessId },
+        select: { timezone: true },
+      })
+    ).timezone;
   const appointments = await prisma.appointment.findMany({
     where: {
       businessId,
@@ -326,5 +360,5 @@ export async function getOccupancyHeatmap(
     },
     select: { startAt: true },
   });
-  return buildOccupancyHeatmap(appointments, business.timezone);
+  return buildOccupancyHeatmap(appointments, tz);
 }

@@ -23,6 +23,11 @@ export const CALENDAR_SCOPES = [
   "email",
 ].join(" ");
 
+// Techo por llamada a Google en caminos que corren dentro de un request
+// (refresh de token, push de eventos): una API lenta no puede colgar la
+// reserva; el try/catch del llamador convierte el timeout en fail-open.
+const GOOGLE_TIMEOUT_MS = 4_000;
+
 export function isCalendarConfigured(): boolean {
   return !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
 }
@@ -141,6 +146,7 @@ export async function getAccessToken(connection: {
       refresh_token: decryptSecret(connection.refreshTokenEnc),
       grant_type: "refresh_token",
     }),
+    signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -242,7 +248,12 @@ export async function upsertEvent(
   if (existingEventId) {
     const res = await fetch(
       `${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(existingEventId)}`,
-      { method: "PATCH", headers, body: JSON.stringify(eventBody(payload)) },
+      {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify(eventBody(payload)),
+        signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
+      },
     );
     if (res.ok) {
       const json = (await res.json()) as { id: string };
@@ -255,7 +266,12 @@ export async function upsertEvent(
   }
   const res = await fetch(
     `${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events`,
-    { method: "POST", headers, body: JSON.stringify(eventBody(payload)) },
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify(eventBody(payload)),
+      signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
+    },
   );
   if (!res.ok) throw new Error(`event insert ${res.status}`);
   const json = (await res.json()) as { id: string };
@@ -273,6 +289,7 @@ export async function deleteEvent(
     {
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     },
   );
   if (!res.ok && res.status !== 404 && res.status !== 410) {

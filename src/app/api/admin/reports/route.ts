@@ -35,7 +35,11 @@ export const GET = apiHandler(async (request: Request) => {
   const suffix = `${range.fromISO}_${range.toISO}`;
 
   if (tipo === "cohortes") {
-    const cohorts = await getRetentionCohorts(admin.businessId);
+    const cohorts = await getRetentionCohorts(
+      admin.businessId,
+      new Date(),
+      business.timezone,
+    );
     return csvResponse(
       `cohortes-retencion.csv`,
       toCsv(

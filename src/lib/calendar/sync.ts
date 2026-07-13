@@ -20,17 +20,22 @@ export type CalendarSyncAction = "UPSERT" | "DELETE";
 /**
  * Encola la sincronización de una cita hacia las conexiones que la reflejan
  * (la del empleado asignado y la de nivel negocio) y procesa en línea.
+ * Los llamadores del dominio ya tienen la cita a mano: pasando ctx se evita
+ * volver a leerla solo para conocer negocio y empleado.
  */
 export async function enqueueCalendarSync(
   appointmentId: string,
   action: CalendarSyncAction,
   now = new Date(),
+  ctx?: { businessId: string; staffId: string | null },
 ): Promise<void> {
   try {
-    const appointment = await prisma.appointment.findUnique({
-      where: { id: appointmentId },
-      select: { businessId: true, staffId: true },
-    });
+    const appointment =
+      ctx ??
+      (await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { businessId: true, staffId: true },
+      }));
     if (!appointment) return;
 
     const connections = await prisma.calendarConnection.findMany({

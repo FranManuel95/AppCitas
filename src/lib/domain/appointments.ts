@@ -56,6 +56,7 @@ interface AvailabilityContext {
     slotGranularityMinutes: number;
     minNoticeMinutes: number;
     maxAdvanceBookingDays: number;
+    lastMinuteDiscountPercent: number;
     hours: Array<{ weekday: number; openTime: string; closeTime: string }>;
     closedDates: string[];
   };
@@ -72,7 +73,11 @@ interface AvailabilityContext {
 async function loadAvailabilityContext(params: {
   businessId: string;
   serviceId: string;
-  dateISO: string;
+  // Día pedido: como fecha local del negocio, o como instante (startAt) del
+  // que se deriva la fecha con la zona del negocio ya cargada — así el
+  // llamador no necesita su propio fetch de business solo para la zona.
+  dateISO?: string;
+  startAt?: Date;
   now: Date;
   staffId?: string;
   // Multi-sede: pre-filtra el equipo a la sede pedida (los empleados con
@@ -85,17 +90,18 @@ async function loadAvailabilityContext(params: {
   // antelación mínima que protege al negocio no aplica cuando reserva él.
   relaxMinNotice?: boolean;
 }): Promise<AvailabilityContext> {
-  const { businessId, serviceId, dateISO, now, staffId, excludeAppointmentId } =
-    params;
+  const { businessId, serviceId, now, staffId, excludeAppointmentId } = params;
 
-  if (!isValidDateISO(dateISO)) {
+  if (params.dateISO !== undefined && !isValidDateISO(params.dateISO)) {
     throw new DomainError("Fecha no válida", "INVALID_DATE");
   }
 
   const [business, service] = await Promise.all([
     prisma.business.findFirst({
       where: { id: businessId, active: true },
-      include: { hours: true, closures: { where: { date: dateISO } } },
+      // Todos los cierres del negocio (filas mínimas): el motor solo comprueba
+      // pertenencia del día pedido, y así la consulta no depende de dateISO.
+      include: { hours: true, closures: { select: { date: true } } },
     }),
     prisma.service.findFirst({
       where: { id: serviceId, businessId, active: true },
@@ -104,6 +110,9 @@ async function loadAvailabilityContext(params: {
 
   if (!business) throw new DomainError("Negocio no encontrado", "BUSINESS_NOT_FOUND", 404);
   if (!service) throw new DomainError("Servicio no encontrado", "SERVICE_NOT_FOUND", 404);
+
+  const dateISO =
+    params.dateISO ?? toLocalDateISO(params.startAt!, business.timezone);
 
   // Empleados activos que realizan este servicio (sin filas de servicios
   // asignados = los realiza todos)
@@ -205,6 +214,7 @@ async function loadAvailabilityContext(params: {
       slotGranularityMinutes: business.slotGranularityMinutes,
       minNoticeMinutes,
       maxAdvanceBookingDays: business.maxAdvanceBookingDays,
+      lastMinuteDiscountPercent: business.lastMinuteDiscountPercent,
       hours: business.hours,
       closedDates: business.closures.map((c) => c.date),
     },
@@ -321,14 +331,6 @@ export async function createAppointment(params: {
     );
   }
 
-  const businessRow = await prisma.business.findFirst({
-    where: { id: businessId, active: true },
-    select: { timezone: true, lastMinuteDiscountPercent: true },
-  });
-  if (!businessRow) {
-    throw new DomainError("Negocio no encontrado", "BUSINESS_NOT_FOUND", 404);
-  }
-
   // Sede: debe ser del negocio y estar activa (si se indica)
   let locationId: string | null = null;
   if (params.locationId) {
@@ -342,11 +344,12 @@ export async function createAppointment(params: {
     locationId = location.id;
   }
 
-  const dateISO = toLocalDateISO(startAt, businessRow.timezone);
+  // El contexto valida negocio activo y deriva la fecha local de startAt:
+  // sin fetch propio de business en el camino caliente de reserva.
   const ctx = await loadAvailabilityContext({
     businessId,
     serviceId,
-    dateISO,
+    startAt,
     now,
     staffId,
     locationId: locationId ?? undefined,
@@ -481,7 +484,7 @@ export async function createAppointment(params: {
         businessId,
         clientId,
         startAt,
-        timezone: businessRow.timezone,
+        timezone: ctx.business.timezone,
         now,
       });
       if (benefit) {
@@ -500,12 +503,12 @@ export async function createAppointment(params: {
       !usedPackageId &&
       !couponId &&
       !membershipId &&
-      businessRow.lastMinuteDiscountPercent > 0 &&
+      ctx.business.lastMinuteDiscountPercent > 0 &&
       startAt.getTime() - now.getTime() <=
         LAST_MINUTE_WINDOW_HOURS * 3_600_000
     ) {
       discountCents = Math.round(
-        (priceCents * businessRow.lastMinuteDiscountPercent) / 100,
+        (priceCents * ctx.business.lastMinuteDiscountPercent) / 100,
       );
       priceCents -= discountCents;
     }
@@ -598,7 +601,10 @@ export async function createAppointment(params: {
   });
 
   // Google Calendar saliente: refleja la cita como evento (best-effort)
-  await enqueueCalendarSync(appointment.id, "UPSERT", now);
+  await enqueueCalendarSync(appointment.id, "UPSERT", now, {
+    businessId,
+    staffId: appointment.staffId,
+  });
 
   // El cliente ya cubrió lo que esperaba: quita su entrada de lista de espera
   // de ese servicio y día (si la tenía).
@@ -606,7 +612,7 @@ export async function createAppointment(params: {
     clientId,
     businessId,
     serviceId,
-    desiredDate: dateISO,
+    desiredDate: toLocalDateISO(startAt, ctx.business.timezone),
   });
 
   return { ...appointment, depositCents, depositStatus, depositRef };
@@ -768,7 +774,10 @@ export async function cancelAppointment(params: {
   );
 
   // Google Calendar saliente: la cita ya no bloquea → borrar el evento
-  await enqueueCalendarSync(appointmentId, "DELETE", now);
+  await enqueueCalendarSync(appointmentId, "DELETE", now, {
+    businessId: appointment.businessId,
+    staffId: appointment.staffId,
+  });
 
   return { appointment: updated, outcome, collection };
 }
@@ -980,8 +989,12 @@ export async function rescheduleAppointment(params: {
   // y cancelAppointment tampoco audita (mismo patrón).
   await enqueueBookingNotifications(appointmentId, now);
 
-  // Google Calendar saliente: mueve el evento al nuevo horario
-  await enqueueCalendarSync(appointmentId, "UPSERT", now);
+  // Google Calendar saliente: mueve el evento al nuevo horario (el empleado
+  // puede haber cambiado al reasignar)
+  await enqueueCalendarSync(appointmentId, "UPSERT", now, {
+    businessId: appointment.businessId,
+    staffId: assignedStaffId,
+  });
 
   return updated;
 }
@@ -1122,6 +1135,7 @@ export async function setAppointmentStatus(params: {
     appointmentId,
     BLOCKING_STATUSES.includes(status) ? "UPSERT" : "DELETE",
     now,
+    { businessId, staffId: appointment.staffId },
   );
 
   return updated;

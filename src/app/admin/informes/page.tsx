@@ -54,10 +54,10 @@ export default async function InformesPage({
   const range = resolveReportRange(params.desde, params.hasta, business.timezone);
 
   const [cohorts, services, promos, heatmap] = await Promise.all([
-    getRetentionCohorts(admin.businessId),
+    getRetentionCohorts(admin.businessId, new Date(), business.timezone),
     getServiceReport(admin.businessId, range),
     getPromotionsReport(admin.businessId, range),
-    getOccupancyHeatmap(admin.businessId, range),
+    getOccupancyHeatmap(admin.businessId, range, business.timezone),
   ]);
 
   // Filas del mapa de calor: solo la franja horaria con actividad

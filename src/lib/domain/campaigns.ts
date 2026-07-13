@@ -147,25 +147,86 @@ export async function resolveSegment(
     }));
 }
 
-/** Conteo de destinatarios por segmento (para pintar el formulario). */
+/**
+ * Conteo de destinatarios por segmento (para pintar el formulario). Replica
+ * las reglas de resolveSegment en UNA pasada (4 consultas en vez de ~13):
+ * con el pool de una conexión de producción, cada consulta ahorrada cuenta.
+ * El envío real sigue usando resolveSegment.
+ */
 export async function getSegmentCounts(
   businessId: string,
   now = new Date(),
 ): Promise<Record<CampaignSegment, number>> {
-  const [all, fresh, loyal, inactive, birthday] = await Promise.all([
-    resolveSegment(businessId, "ALL", now),
-    resolveSegment(businessId, "NEW", now),
-    resolveSegment(businessId, "LOYAL", now),
-    resolveSegment(businessId, "INACTIVE", now),
-    resolveSegment(businessId, "BIRTHDAY", now),
+  const [grouped, noted, completed] = await Promise.all([
+    prisma.appointment.groupBy({
+      by: ["clientId"],
+      where: { businessId },
+      _min: { startAt: true },
+      _max: { startAt: true },
+    }),
+    prisma.clientNote.findMany({
+      where: { businessId },
+      select: { clientId: true },
+      distinct: ["clientId"],
+    }),
+    prisma.appointment.groupBy({
+      by: ["clientId"],
+      where: { businessId, status: "COMPLETED" },
+      _count: { _all: true },
+    }),
   ]);
-  return {
-    ALL: all.length,
-    NEW: fresh.length,
-    LOYAL: loyal.length,
-    INACTIVE: inactive.length,
-    BIRTHDAY: birthday.length,
+
+  const counts: Record<CampaignSegment, number> = {
+    ALL: 0,
+    NEW: 0,
+    LOYAL: 0,
+    INACTIVE: 0,
+    BIRTHDAY: 0,
   };
+
+  // Cartera: clientes con citas + fichados solo con nota (estos últimos
+  // cuentan únicamente en ALL y BIRTHDAY, como en resolveSegment).
+  const portfolio = new Set(grouped.map((g) => g.clientId));
+  for (const { clientId } of noted) portfolio.add(clientId);
+  if (portfolio.size === 0) return counts;
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: [...portfolio] } },
+    select: { id: true, email: true, birthDate: true },
+  });
+  const reachable = new Set(
+    users.filter((u) => !isSentinelEmail(u.email)).map((u) => u.id),
+  );
+  const birthdayIds = new Set(
+    users
+      .filter(
+        (u) =>
+          !isSentinelEmail(u.email) &&
+          u.birthDate &&
+          isBirthdayUpcoming(u.birthDate, now),
+      )
+      .map((u) => u.id),
+  );
+
+  for (const id of portfolio) {
+    if (reachable.has(id)) counts.ALL++;
+    if (birthdayIds.has(id)) counts.BIRTHDAY++;
+  }
+
+  const newCutoff = new Date(now.getTime() - NEW_DAYS * 86_400_000);
+  const inactiveCutoff = new Date(now.getTime() - INACTIVE_DAYS * 86_400_000);
+  const loyalIds = new Set(
+    completed
+      .filter((c) => c._count._all >= LOYAL_MIN_COMPLETED)
+      .map((c) => c.clientId),
+  );
+  for (const g of grouped) {
+    if (!reachable.has(g.clientId)) continue;
+    if (g._min.startAt && g._min.startAt >= newCutoff) counts.NEW++;
+    if (g._max.startAt && g._max.startAt < inactiveCutoff) counts.INACTIVE++;
+    if (loyalIds.has(g.clientId)) counts.LOYAL++;
+  }
+  return counts;
 }
 
 /**

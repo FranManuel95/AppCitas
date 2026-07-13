@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { resolveSegment, sendCampaign } from "../campaigns";
+import {
+  CAMPAIGN_SEGMENTS,
+  getSegmentCounts,
+  resolveSegment,
+  sendCampaign,
+} from "../campaigns";
 import { resetDb, seedBusiness, seedClient } from "@/lib/test/factories";
 
 const NOW = new Date("2026-07-06T12:00:00.000Z");
@@ -114,6 +119,49 @@ describe("campañas de marketing (BD)", () => {
     expect(
       queued.filter((n) => n.channel === "WHATSAPP").map((n) => n.recipient),
     ).toEqual(["+34600111222"]);
+  });
+
+  it("getSegmentCounts (una pasada) coincide con resolveSegment en cartera variada", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+
+    // Cartera variada que ejercita todas las reglas:
+    const nuevo = await seedClient(); // primera cita hace 5 días
+    const fiel = await seedClient(); // 3 completadas antiguas
+    const inactivo = await seedClient(); // última hace 90 días
+    const cumple = await seedClient(); // cumpleaños dentro de la ventana
+    const soloNota = await seedClient(); // importado sin citas (solo nota)
+    const sombra = await seedClient(); // email sentinel: inalcanzable
+
+    await seedApptAt(businessId, serviceId, nuevo, new Date("2026-07-01T10:00:00Z"));
+    for (const day of ["2026-05-01", "2026-05-08", "2026-05-15"]) {
+      await seedApptAt(businessId, serviceId, fiel, new Date(`${day}T10:00:00Z`));
+    }
+    await seedApptAt(businessId, serviceId, inactivo, new Date("2026-04-01T10:00:00Z"));
+    await seedApptAt(businessId, serviceId, cumple, new Date("2026-06-01T10:00:00Z"));
+    await prisma.user.update({
+      where: { id: cumple },
+      data: { birthDate: new Date("1990-07-20T00:00:00.000Z") },
+    });
+    await prisma.clientNote.create({
+      data: { businessId, clientId: soloNota, text: "Importado de CSV" },
+    });
+    await prisma.user.update({
+      where: { id: sombra },
+      data: { email: `walkin-abc123@sin-email.appcitas.local` },
+    });
+    await seedApptAt(businessId, serviceId, sombra, new Date("2026-07-02T10:00:00Z"));
+
+    const counts = await getSegmentCounts(businessId, NOW);
+    for (const segment of CAMPAIGN_SEGMENTS) {
+      const resolved = await resolveSegment(businessId, segment, NOW);
+      expect(counts[segment], segment).toBe(resolved.length);
+    }
+    // Y los valores esperados a mano, para no validar un bug contra sí mismo
+    expect(counts.ALL).toBe(5); // todos menos el sentinel
+    expect(counts.NEW).toBe(1);
+    expect(counts.LOYAL).toBe(1);
+    expect(counts.INACTIVE).toBe(1);
+    expect(counts.BIRTHDAY).toBe(1);
   });
 
   it("el email exige asunto", async () => {
