@@ -8,7 +8,13 @@ import { isSentinelEmail } from "./guest-clients";
 // notificaciones (reintentos, marca del negocio en el email, etc.).
 // Solo para el plan Pro: es la palanca clásica de monetización del sector.
 
-export const CAMPAIGN_SEGMENTS = ["ALL", "NEW", "LOYAL", "INACTIVE"] as const;
+export const CAMPAIGN_SEGMENTS = [
+  "ALL",
+  "NEW",
+  "LOYAL",
+  "INACTIVE",
+  "BIRTHDAY",
+] as const;
 export type CampaignSegment = (typeof CAMPAIGN_SEGMENTS)[number];
 
 export const CAMPAIGN_CHANNELS = ["EMAIL", "WHATSAPP", "SMS"] as const;
@@ -18,6 +24,36 @@ export type CampaignChannel = (typeof CAMPAIGN_CHANNELS)[number];
 const NEW_DAYS = 30;
 const INACTIVE_DAYS = 60;
 const LOYAL_MIN_COMPLETED = 3;
+const BIRTHDAY_WINDOW_DAYS = 30;
+
+/**
+ * ¿El próximo cumpleaños cae dentro de la ventana? Compara solo mes y día
+ * (el año de nacimiento es irrelevante); si ya pasó este año, mira el que
+ * viene. Pura para poder testearla con fechas fijas.
+ */
+export function isBirthdayUpcoming(
+  birthDate: Date,
+  now: Date,
+  windowDays = BIRTHDAY_WINDOW_DAYS,
+): boolean {
+  const next = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      birthDate.getUTCMonth(),
+      birthDate.getUTCDate(),
+    ),
+  );
+  const today = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
+  if (next.getTime() < today) {
+    next.setUTCFullYear(next.getUTCFullYear() + 1);
+  }
+  const days = Math.round((next.getTime() - today) / 86_400_000);
+  return days >= 0 && days < windowDays;
+}
 
 interface Recipient {
   clientId: string;
@@ -74,11 +110,20 @@ export async function resolveSegment(
 
   if (clientIds.length === 0) return [];
   const users = await prisma.user.findMany({
-    where: { id: { in: clientIds } },
-    select: { id: true, name: true, email: true, phone: true },
+    where: {
+      id: { in: clientIds },
+      // BIRTHDAY: solo clientes que aportaron su fecha de nacimiento
+      ...(segment === "BIRTHDAY" ? { birthDate: { not: null } } : {}),
+    },
+    select: { id: true, name: true, email: true, phone: true, birthDate: true },
   });
   return users
     .filter((u) => !isSentinelEmail(u.email))
+    .filter(
+      (u) =>
+        segment !== "BIRTHDAY" ||
+        (u.birthDate && isBirthdayUpcoming(u.birthDate, now)),
+    )
     .map((u) => ({
       clientId: u.id,
       name: u.name,
@@ -92,17 +137,19 @@ export async function getSegmentCounts(
   businessId: string,
   now = new Date(),
 ): Promise<Record<CampaignSegment, number>> {
-  const [all, fresh, loyal, inactive] = await Promise.all([
+  const [all, fresh, loyal, inactive, birthday] = await Promise.all([
     resolveSegment(businessId, "ALL", now),
     resolveSegment(businessId, "NEW", now),
     resolveSegment(businessId, "LOYAL", now),
     resolveSegment(businessId, "INACTIVE", now),
+    resolveSegment(businessId, "BIRTHDAY", now),
   ]);
   return {
     ALL: all.length,
     NEW: fresh.length,
     LOYAL: loyal.length,
     INACTIVE: inactive.length,
+    BIRTHDAY: birthday.length,
   };
 }
 

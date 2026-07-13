@@ -281,6 +281,11 @@ const es = {
     title: "Mis datos",
     description:
       "Descarga una copia de tus datos personales o elimina tu cuenta.",
+    birthDateLabel: "Fecha de nacimiento (opcional)",
+    birthDateHint:
+      "Solo se usa para que los negocios donde eres cliente puedan felicitarte u ofrecerte un detalle por tu cumpleaños.",
+    birthDateSave: "Guardar",
+    birthDateSaved: "Guardado",
     exportCta: "Descargar mis datos",
     exportHint:
       "Exporta en un archivo JSON tu cuenta, tus citas, tus valoraciones y tus bonos.",
@@ -975,6 +980,11 @@ const en: Dict = {
   myData: {
     title: "My data",
     description: "Download a copy of your personal data or delete your account.",
+    birthDateLabel: "Date of birth (optional)",
+    birthDateHint:
+      "Only used so the businesses you visit can wish you a happy birthday or send you a treat.",
+    birthDateSave: "Save",
+    birthDateSaved: "Saved",
     exportCta: "Download my data",
     exportHint:
       "Export your account, appointments, reviews and packages as a JSON file.",

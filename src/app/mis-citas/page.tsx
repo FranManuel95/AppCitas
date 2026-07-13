@@ -39,7 +39,7 @@ export default async function MyAppointmentsPage() {
   const [account, myPackages, waitlist] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.id },
-      select: { emailVerifiedAt: true },
+      select: { emailVerifiedAt: true, birthDate: true },
     }),
     prisma.clientPackage.findMany({
       where: { clientId: user.id },
@@ -423,7 +423,12 @@ export default async function MyAppointmentsPage() {
         <section className="mt-10">
           <SectionHeader as="h2" title={t.myData.title} />
           <div className="mt-4">
-            <MyDataPanel t={t.myData} />
+            <MyDataPanel
+              t={t.myData}
+              initialBirthDate={
+                account?.birthDate?.toISOString().slice(0, 10) ?? null
+              }
+            />
           </div>
         </section>
       </main>

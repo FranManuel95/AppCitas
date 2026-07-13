@@ -2,7 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Banknote, CreditCard, Repeat, RotateCcw, UserX, X } from "lucide-react";
+import {
+  Banknote,
+  CalendarClock,
+  CreditCard,
+  Repeat,
+  RotateCcw,
+  UserX,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Dict } from "@/lib/i18n/shared";
 
@@ -58,6 +66,32 @@ export function AppointmentActions({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [movingSeries, setMovingSeries] = useState(false);
+  const [newStart, setNewStart] = useState("");
+
+  async function moveSeries() {
+    if (!seriesId || !newStart) return;
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/admin/appointments/series/${seriesId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startAt: new Date(newStart).toISOString() }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setError(json.error ?? labels.updateError);
+      return;
+    }
+    setMovingSeries(false);
+    setNotice(
+      `Serie movida (${json.moved} citas${
+        json.skipped?.length ? `, ${json.skipped.length} omitidas` : ""
+      })`,
+    );
+    router.refresh();
+  }
 
   async function cancelSeries() {
     if (!seriesId) return;
@@ -158,18 +192,43 @@ export function AppointmentActions({
             {labels.cancelNoCharge}
           </Button>
           {seriesId && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-danger-strong hover:bg-danger-soft"
-              disabled={busy}
-              onClick={cancelSeries}
-            >
-              <Repeat className="h-3.5 w-3.5" aria-hidden />
-              {labels.cancelSeries}
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                onClick={() => setMovingSeries((v) => !v)}
+              >
+                <CalendarClock className="h-3.5 w-3.5" aria-hidden />
+                Mover serie
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-danger-strong hover:bg-danger-soft"
+                disabled={busy}
+                onClick={cancelSeries}
+              >
+                <Repeat className="h-3.5 w-3.5" aria-hidden />
+                {labels.cancelSeries}
+              </Button>
+            </>
           )}
         </>
+      )}
+      {movingSeries && (
+        <span className="flex items-center gap-1.5">
+          {/* Nuevo inicio de la PRÓXIMA cita; el resto se desplaza igual */}
+          <input
+            type="datetime-local"
+            value={newStart}
+            onChange={(e) => setNewStart(e.target.value)}
+            className="input max-w-52 py-1 text-xs tabular-nums"
+          />
+          <Button size="sm" disabled={busy || !newStart} onClick={moveSeries}>
+            Mover
+          </Button>
+        </span>
       )}
       {(status === "COMPLETED" || status === "NO_SHOW") && (
         <Button

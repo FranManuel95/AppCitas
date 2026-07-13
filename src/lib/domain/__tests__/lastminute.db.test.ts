@@ -99,6 +99,8 @@ describe("descuento de última hora (BD)", () => {
       where: { businessId, template: "WAITLIST_SLOT_FREED" },
     });
     expect(notification).not.toBeNull();
-    expect(notification!.body).toContain("25% de descuento de última hora");
+    // El aviso anuncia el % y el precio exacto ya rebajado
+    expect(notification!.body).toContain("25% de descuento");
+    expect(notification!.body).toContain("7,50 €");
   });
 });

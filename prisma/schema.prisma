@@ -18,6 +18,9 @@ model User {
   passwordHash String
   name         String
   phone        String?
+  // Fecha de nacimiento (opcional, la aporta el cliente): habilita el
+  // segmento de campañas "cumpleaños próximos".
+  birthDate    DateTime?
   // CLIENT | OWNER | STAFF | SUPER_ADMIN
   role         String  @default("CLIENT")
   businessId   String?

@@ -16,6 +16,7 @@ export interface UserDataExport {
     name: string;
     email: string;
     phone: string | null;
+    birthDate: string | null;
     role: string;
     createdAt: string;
     emailVerified: boolean;
@@ -55,6 +56,7 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
       name: true,
       email: true,
       phone: true,
+      birthDate: true,
       role: true,
       createdAt: true,
       emailVerifiedAt: true,
@@ -107,6 +109,7 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
       name: user.name,
       email: user.email,
       phone: user.phone,
+      birthDate: user.birthDate?.toISOString().slice(0, 10) ?? null,
       role: user.role,
       createdAt: user.createdAt.toISOString(),
       emailVerified: user.emailVerifiedAt !== null,
@@ -174,6 +177,7 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
         name: "Usuario eliminado",
         email: anonEmail,
         phone: null,
+        birthDate: null,
         passwordHash: deadHash,
         emailVerifiedAt: null,
         stripeCustomerId: null,
@@ -245,6 +249,7 @@ export async function anonymizeGuestClient(params: {
         name: "Cliente eliminado",
         email: `borrado-${randomUUID().slice(0, 12)}@deleted.local`,
         phone: null,
+        birthDate: null,
         consentedAt: null,
       },
     }),

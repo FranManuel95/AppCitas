@@ -270,18 +270,24 @@ export async function notifyWaitlistForFreedSlot(
     });
     const service = await prisma.service.findUnique({
       where: { id: slot.serviceId },
-      select: { name: true },
+      select: { name: true, priceCents: true },
     });
     if (!business || !service) return { notified: 0 };
 
     const url = `${baseUrl()}/b/${business.slug}/reservar?servicio=${slot.serviceId}`;
     const subject = `Se ha liberado un hueco en ${business.name}`;
     const body = `¡Buenas noticias! Se ha liberado un hueco para "${service.name}" en ${business.name} el ${slot.desiredDate}. Reserva antes de que lo cojan: ${url}`;
-    // Gancho de última hora: si el negocio lo tiene activo, el aviso lo anuncia
-    // (las citas que empiezan en menos de 24 h llevan ese % de descuento).
+    // Gancho de última hora: si el negocio lo tiene activo, el aviso anuncia
+    // el PRECIO exacto rebajado (el descuento se aplica solo al reservar una
+    // cita que empieza en <24 h).
+    const discountedCents =
+      service.priceCents -
+      Math.round(
+        (service.priceCents * business.lastMinuteDiscountPercent) / 100,
+      );
     const discountNote =
       business.lastMinuteDiscountPercent > 0
-        ? ` Además, las citas que empiezan en menos de 24 h tienen un ${business.lastMinuteDiscountPercent}% de descuento de última hora.`
+        ? ` Además, si tu cita empieza en menos de 24 h se aplica solo un ${business.lastMinuteDiscountPercent}% de descuento: "${service.name}" te quedaría en ${(discountedCents / 100).toFixed(2).replace(".", ",")} €.`
         : "";
     const fullBody = body + discountNote;
 

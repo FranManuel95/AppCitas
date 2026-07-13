@@ -1,6 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { cancelAppointment, createAppointment } from "./appointments";
+import {
+  cancelAppointment,
+  createAppointment,
+  rescheduleAppointment,
+} from "./appointments";
 import { addDaysISO, toLocalDateISO, toLocalTime, wallTimeToUtc } from "./dates";
 import { DomainError } from "./errors";
 
@@ -96,6 +100,98 @@ export async function createRecurringAppointments(params: {
     );
   }
   return { seriesId, created, skipped };
+}
+
+/** Días de calendario entre dos fechas ISO (b - a; puede ser negativo). */
+function daysBetweenISO(a: string, b: string): number {
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  return Math.round(
+    (Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000,
+  );
+}
+
+/**
+ * Mueve lo que queda de una serie: el nuevo inicio se aplica a la PRÓXIMA
+ * ocurrencia futura y las demás se desplazan el mismo delta de días
+ * adoptando la misma hora de pared (patrón intacto, incluidos los huecos de
+ * ocurrencias omitidas). Cada movimiento revalida disponibilidad con
+ * rescheduleAppointment; los conflictos se omiten y se reportan.
+ */
+export async function rescheduleSeriesRemainder(params: {
+  businessId: string;
+  seriesId: string;
+  actorUserId: string;
+  newStartAt: Date;
+  now?: Date;
+}): Promise<{
+  moved: Array<{ id: string; startAt: Date }>;
+  skipped: Array<{ startAt: Date; code: string }>;
+}> {
+  const now = params.now ?? new Date();
+  const pending = await prisma.appointment.findMany({
+    where: {
+      businessId: params.businessId,
+      seriesId: params.seriesId,
+      status: "CONFIRMED",
+      startAt: { gt: now },
+    },
+    select: { id: true, startAt: true },
+    orderBy: { startAt: "asc" },
+  });
+  if (pending.length === 0) {
+    throw new DomainError(
+      "La serie no tiene citas futuras que mover",
+      "SERIES_EMPTY",
+      404,
+    );
+  }
+
+  const business = await prisma.business.findUniqueOrThrow({
+    where: { id: params.businessId },
+    select: { timezone: true },
+  });
+  const tz = business.timezone;
+  const deltaDays = daysBetweenISO(
+    toLocalDateISO(pending[0].startAt, tz),
+    toLocalDateISO(params.newStartAt, tz),
+  );
+  const wallTime = toLocalTime(params.newStartAt, tz);
+
+  const moved: Array<{ id: string; startAt: Date }> = [];
+  const skipped: Array<{ startAt: Date; code: string }> = [];
+  for (const occurrence of pending) {
+    const targetDate = addDaysISO(
+      toLocalDateISO(occurrence.startAt, tz),
+      deltaDays,
+    );
+    const target = wallTimeToUtc(targetDate, wallTime, tz);
+    try {
+      const updated = await rescheduleAppointment({
+        appointmentId: occurrence.id,
+        actorUserId: params.actorUserId,
+        actorIsBusinessAdmin: true,
+        newStartAt: target,
+        now,
+        expectedBusinessId: params.businessId,
+      });
+      moved.push({ id: updated.id, startAt: updated.startAt });
+    } catch (error) {
+      if (error instanceof DomainError) {
+        skipped.push({ startAt: target, code: error.code });
+      } else {
+        throw error;
+      }
+    }
+  }
+  if (moved.length === 0) {
+    throw new DomainError(
+      "Ningún hueco del nuevo horario está libre",
+      skipped[0]?.code ?? "SLOT_TAKEN",
+      409,
+    );
+  }
+  return { moved, skipped };
 }
 
 // Cancela lo que queda de una serie (citas CONFIRMED futuras). Cancela el

@@ -20,6 +20,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   NEW: "Nuevos (30 días)",
   LOYAL: "Fieles (3+ visitas)",
   INACTIVE: "Inactivos (60 días)",
+  BIRTHDAY: "Cumpleaños próximos (30 días)",
 };
 const CHANNEL_LABELS: Record<string, string> = {
   EMAIL: "Email",
@@ -80,6 +81,11 @@ export default async function MarketingPage() {
               id: "INACTIVE",
               label: SEGMENT_LABELS.INACTIVE,
               count: counts.INACTIVE,
+            },
+            {
+              id: "BIRTHDAY",
+              label: SEGMENT_LABELS.BIRTHDAY,
+              count: counts.BIRTHDAY,
             },
           ]}
         />
