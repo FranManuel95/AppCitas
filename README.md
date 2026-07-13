@@ -98,6 +98,15 @@ Stripe/SMTP/Twilio/WhatsApp, cron de notificaciones, páginas legales y
 checklist post-despliegue. La app elige PostgreSQL automáticamente cuando
 DATABASE_URL empieza por postgres; en local sigue bastando SQLite.
 
+## Estado y hoja de ruta
+
+- **[PENDIENTE.md](PENDIENTE.md)** — qué está hecho, qué queda por hacer
+  (operativo y de producto) y limitaciones conocidas, con prioridades.
+- **[PUESTA-AL-DIA.md](PUESTA-AL-DIA.md)** — cómo poner al día la base de datos
+  (SQL de Supabase) y las variables de entorno.
+- **[ANALISIS-COMPETENCIA.md](ANALISIS-COMPETENCIA.md)** — posición frente a
+  Booksy, Apúntalo y TuAgenda.
+
 ## Puesta en marcha
 
 ```bash
