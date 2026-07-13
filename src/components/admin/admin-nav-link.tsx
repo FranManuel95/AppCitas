@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BadgePercent,
   Banknote,
+  BarChart3,
   Bell,
   BookUser,
   Briefcase,
@@ -42,6 +43,7 @@ const ICONS = {
   cobros: Banknote,
   qr: QrCode,
   facturas: Receipt,
+  informes: BarChart3,
 } satisfies Record<string, LucideIcon>;
 
 export type AdminNavIcon = keyof typeof ICONS;

@@ -33,6 +33,7 @@ function buildNav(
         { href: "/admin/agenda", label: nav.agenda, icon: "agenda" },
         { href: "/admin/citas", label: nav.citas, icon: "citas" },
         { href: "/admin/facturas", label: "Facturas", icon: "facturas" },
+        { href: "/admin/informes", label: "Informes", icon: "informes" },
       ],
     },
     {
