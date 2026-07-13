@@ -11,6 +11,7 @@ function base() {
     businessHourCount: 0,
     stripeChargesEnabled: false,
     staffCount: 0,
+    totpEnabled: false,
   };
 }
 
@@ -24,7 +25,7 @@ describe("computeOnboardingSteps", () => {
       businessHourCount: 5,
     });
     expect(status.completed).toBe(1);
-    expect(status.total).toBe(4);
+    expect(status.total).toBe(5);
     const byKey = Object.fromEntries(status.steps.map((s) => [s.key, s]));
     expect(byKey.services.done).toBe(false); // el de ejemplo no cuenta
     expect(byKey.hours.done).toBe(true);
@@ -59,16 +60,17 @@ describe("computeOnboardingSteps", () => {
     expect(status.steps.find((s) => s.key === "services")!.done).toBe(true);
   });
 
-  it("cobros y equipo son opcionales pero cuentan para el total", () => {
+  it("cobros, equipo y seguridad son opcionales pero cuentan para el total", () => {
     const status = computeOnboardingSteps({
       ...base(),
       services: [{ createdAt: T0, updatedAt: T0_PLUS_1H }],
       businessHourCount: 5,
       stripeChargesEnabled: true,
       staffCount: 2,
+      totpEnabled: true,
     });
-    expect(status.completed).toBe(4);
+    expect(status.completed).toBe(5);
     const optional = status.steps.filter((s) => s.optional).map((s) => s.key);
-    expect(optional.sort()).toEqual(["payments", "staff"]);
+    expect(optional.sort()).toEqual(["payments", "security", "staff"]);
   });
 });

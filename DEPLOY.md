@@ -102,7 +102,7 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
    todas las tablas (la API pública de Supabase no podrá leer tus datos; la
    app no se ve afectada) y deja el registro de migraciones coherente para
    futuros `prisma migrate deploy`. **Después**, ejecuta en orden los scripts
-   incrementales `scripts/supabase-migration-2-*.sql` … `-26-*.sql` (cada uno
+   incrementales `scripts/supabase-migration-2-*.sql` … `-27-*.sql` (cada uno
    añade las mejoras de una fase posterior: rate limit, autocierre/2º
    recordatorio, reseñas, suscripción SaaS, idempotencia de webhooks,
    consentimiento, el default de suscripción, los índices de camino caliente,
@@ -112,8 +112,18 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
    las notas de cliente, las campañas de marketing, la economía de la
    plataforma, las cuentas de invitado, las ausencias por empleado, las
    citas recurrentes, el feed de calendario, la marca por negocio, el push
-   web y la verificación en dos pasos). Son
+   web, la verificación en dos pasos y sus códigos de recuperación). Son
    idempotentes: registran su propia entrada en `_prisma_migrations`.
+
+> **⚠️ Antes de abrir a clientes reales**: si alguna vez cargaste los datos
+> de demostración en producción, ejecuta `scripts/remove-demo-accounts.sql`
+> en el SQL Editor. Las cuentas `*@demo.com` tienen contraseñas públicas
+> (están en el repositorio) — incluida una de SUPER_ADMIN.
+>
+> **Copias de seguridad**: Supabase y Neon incluyen backups gestionados —
+> verifica que están activos en su panel (Supabase: Database → Backups). En
+> VPS propio, programa `scripts/backup-pg.sh` en cron (dump diario
+> comprimido con retención de 14 días; instrucciones dentro del script).
 5. **Datos demo por el mismo camino** (opcional): pega después el contenido
    de `scripts/supabase-seed.sql` (2 negocios, equipo, ~140 citas, un bono
    y dos cupones — mismas credenciales que el seed local). Se regenera con

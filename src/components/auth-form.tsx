@@ -93,12 +93,11 @@ export function AuthForm({
       ))}
       {askTotp && (
         <Field label={totpLabel ?? "Código 2FA"} htmlFor="totpCode">
+          {/* Acepta el TOTP de 6 dígitos o un código de recuperación XXXX-XXXX */}
           <Input
             id="totpCode"
             name="totpCode"
-            inputMode="numeric"
-            pattern="\d{6}"
-            maxLength={6}
+            maxLength={9}
             autoComplete="one-time-code"
             autoFocus
             required

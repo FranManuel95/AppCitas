@@ -13,6 +13,7 @@ export type AuditEvent =
   | "STAFF_INVITED"
   | "TOTP_ENABLED"
   | "TOTP_DISABLED"
+  | "TOTP_RECOVERY_USED"
   | "CLIENT_ANONYMIZED";
 
 // Registro de auditoría de accesos. Nunca interrumpe el flujo principal:
@@ -56,5 +57,6 @@ export const AUDIT_EVENT_LABELS: Record<string, string> = {
   STAFF_INVITED: "Empleado invitado",
   TOTP_ENABLED: "Verificación en dos pasos activada",
   TOTP_DISABLED: "Verificación en dos pasos desactivada",
+  TOTP_RECOVERY_USED: "Acceso con código de recuperación",
   CLIENT_ANONYMIZED: "Cliente anonimizado (RGPD)",
 };

@@ -15,6 +15,7 @@ export type OnboardingChecklistLabels = {
   stepHours: string;
   stepPayments: string;
   stepStaff: string;
+  stepSecurity: string;
   progress: string;
   hide: string;
   optionalBadge: string;
@@ -47,6 +48,7 @@ export function OnboardingChecklist({
     hours: labels.stepHours,
     payments: labels.stepPayments,
     staff: labels.stepStaff,
+    security: labels.stepSecurity,
   };
 
   function dismiss() {

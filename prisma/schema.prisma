@@ -42,6 +42,10 @@ model User {
   // (el usuario demostró que su app genera códigos válidos).
   totpSecret    String?
   totpEnabledAt DateTime?
+  // Códigos de recuperación de un solo uso (JSON de hashes SHA-256): la
+  // salida de emergencia si se pierde el dispositivo del 2FA. Cada código
+  // consumido se elimina de la lista.
+  totpRecoveryCodes String?
 
   // Cliente de la pasarela de pagos (Stripe) si guardó tarjeta
   stripeCustomerId String?

@@ -4,7 +4,12 @@ import { prisma } from "@/lib/prisma";
 // confusos. La checklist del dashboard se muestra hasta completar los pasos
 // obligatorios y opcionales (o hasta que el dueño la oculte).
 
-export type OnboardingStepKey = "services" | "hours" | "payments" | "staff";
+export type OnboardingStepKey =
+  | "services"
+  | "hours"
+  | "payments"
+  | "staff"
+  | "security";
 
 export interface OnboardingStep {
   key: OnboardingStepKey;
@@ -28,6 +33,8 @@ export interface OnboardingInput {
   // requireCardToBook, que es una política y no una configuración).
   stripeChargesEnabled: boolean;
   staffCount: number;
+  // 2FA del dueño: proteger la cuenta que administra el negocio
+  totpEnabled: boolean;
 }
 
 // Margen para distinguir el `updatedAt` que fija Prisma al crear del de una
@@ -68,6 +75,12 @@ export function computeOnboardingSteps(
       done: input.staffCount > 0,
       optional: true,
     },
+    {
+      key: "security",
+      href: "/admin/ajustes",
+      done: input.totpEnabled,
+      optional: true,
+    },
   ];
 
   return {
@@ -79,8 +92,10 @@ export function computeOnboardingSteps(
 
 export async function loadOnboardingStatus(
   businessId: string,
+  // Dueño que está viendo el dashboard: su 2FA es la señal de "seguridad"
+  ownerUserId?: string,
 ): Promise<OnboardingStatus> {
-  const [services, businessHourCount, business, staffCount] =
+  const [services, businessHourCount, business, staffCount, owner] =
     await Promise.all([
       prisma.service.findMany({
         where: { businessId, active: true },
@@ -92,6 +107,12 @@ export async function loadOnboardingStatus(
         select: { stripeChargesEnabled: true },
       }),
       prisma.staffMember.count({ where: { businessId, active: true } }),
+      ownerUserId
+        ? prisma.user.findUnique({
+            where: { id: ownerUserId },
+            select: { totpEnabledAt: true },
+          })
+        : null,
     ]);
 
   return computeOnboardingSteps({
@@ -99,5 +120,6 @@ export async function loadOnboardingStatus(
     businessHourCount,
     stripeChargesEnabled: business.stripeChargesEnabled,
     staffCount,
+    totpEnabled: !!owner?.totpEnabledAt,
   });
 }

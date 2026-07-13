@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { apiRequireUser } from "@/lib/auth/guards";
 import {
+  generateRecoveryCodes,
   generateTotpSecret,
   totpKeyUri,
   verifyTotpCode,
@@ -47,7 +48,8 @@ export const POST = apiHandler(async () => {
   return NextResponse.json({ secret, uri, qrSvg });
 });
 
-// PUT — confirma la activación con un código válido de la app
+// PUT — confirma la activación con un código válido de la app. Devuelve los
+// códigos de recuperación EN CLARO una única vez (solo se guardan sus hashes).
 export const PUT = apiHandler(async (request: Request) => {
   const user = await apiRequireUser();
   await enforceUserRateLimit(user.id, "totp-verify", {
@@ -67,12 +69,45 @@ export const PUT = apiHandler(async (request: Request) => {
     throw new DomainError("Código no válido", "TOTP_BAD_CODE", 401);
   }
 
+  const recovery = generateRecoveryCodes();
   await prisma.user.update({
     where: { id: user.id },
-    data: { totpEnabledAt: new Date() },
+    data: {
+      totpEnabledAt: new Date(),
+      totpRecoveryCodes: JSON.stringify(recovery.hashes),
+    },
   });
   await audit("TOTP_ENABLED", { userId: user.id, email: user.email, request });
-  return NextResponse.json({ enabled: true });
+  return NextResponse.json({ enabled: true, recoveryCodes: recovery.plain });
+});
+
+// PATCH — regenera los códigos de recuperación (invalida los anteriores).
+// Exige un código TOTP vigente: tener la sesión abierta no basta.
+export const PATCH = apiHandler(async (request: Request) => {
+  const user = await apiRequireUser();
+  await enforceUserRateLimit(user.id, "totp-verify", {
+    limit: 10,
+    windowMs: 15 * 60_000,
+  });
+  const { code } = codeSchema.parse(await request.json());
+
+  const row = await prisma.user.findUniqueOrThrow({
+    where: { id: user.id },
+    select: { totpSecret: true, totpEnabledAt: true },
+  });
+  if (!row.totpEnabledAt || !row.totpSecret) {
+    throw new DomainError("El 2FA no está activado", "TOTP_NOT_ON", 409);
+  }
+  if (!verifyTotpCode(code, row.totpSecret)) {
+    throw new DomainError("Código no válido", "TOTP_BAD_CODE", 401);
+  }
+
+  const recovery = generateRecoveryCodes();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { totpRecoveryCodes: JSON.stringify(recovery.hashes) },
+  });
+  return NextResponse.json({ recoveryCodes: recovery.plain });
 });
 
 // DELETE — desactiva el 2FA (exige un código válido, no solo la sesión)
@@ -97,7 +132,7 @@ export const DELETE = apiHandler(async (request: Request) => {
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { totpSecret: null, totpEnabledAt: null },
+    data: { totpSecret: null, totpEnabledAt: null, totpRecoveryCodes: null },
   });
   await audit("TOTP_DISABLED", { userId: user.id, email: user.email, request });
   return NextResponse.json({ enabled: false });

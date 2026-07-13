@@ -46,7 +46,7 @@ export default async function AdminDashboardPage() {
       }),
       getDashboardStats(admin.businessId),
       getDayAgenda(admin.businessId),
-      loadOnboardingStatus(admin.businessId),
+      loadOnboardingStatus(admin.businessId, admin.id),
       getDict(),
     ]);
   const chartLocale = locale === "es" ? "es-ES" : "en";

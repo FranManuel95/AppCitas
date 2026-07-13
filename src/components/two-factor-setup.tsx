@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, ShieldCheck, ShieldOff } from "lucide-react";
+import { AlertCircle, Check, Copy, KeyRound, ShieldCheck, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 
@@ -14,6 +14,9 @@ export function TwoFactorSetup() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Se muestran UNA sola vez (tras activar o regenerar); no vuelven a salir
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+  const [copiedCodes, setCopiedCodes] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,7 +44,7 @@ export function TwoFactorSetup() {
     setSecret(json.secret);
   }
 
-  async function confirm(method: "PUT" | "DELETE") {
+  async function confirm(method: "PUT" | "DELETE" | "PATCH") {
     setBusy(true);
     setError(null);
     const res = await fetch("/api/me/2fa", {
@@ -55,10 +58,19 @@ export function TwoFactorSetup() {
       setError(json.error ?? "Código no válido");
       return;
     }
-    setEnabled(method === "PUT");
+    if (method !== "PATCH") setEnabled(method === "PUT");
+    setRecoveryCodes(json.recoveryCodes ?? null);
+    setCopiedCodes(false);
     setQrSvg(null);
     setSecret(null);
     setCode("");
+  }
+
+  async function copyRecoveryCodes() {
+    if (!recoveryCodes) return;
+    await navigator.clipboard.writeText(recoveryCodes.join("\n")).catch(() => {});
+    setCopiedCodes(true);
+    setTimeout(() => setCopiedCodes(false), 2000);
   }
 
   if (enabled === null) return null;
@@ -130,9 +142,46 @@ export function TwoFactorSetup() {
         </div>
       )}
 
+      {recoveryCodes && (
+        <div className="rounded-xl border border-warning/40 bg-warning-soft p-4">
+          <p className="flex items-center gap-2 text-sm font-medium text-warning-strong">
+            <KeyRound className="h-4 w-4" aria-hidden />
+            Guarda estos códigos de recuperación AHORA
+          </p>
+          <p className="mt-1 text-xs text-ink-soft">
+            Son tu entrada de emergencia si pierdes el móvil. Cada uno funciona
+            una sola vez y no volverán a mostrarse. Guárdalos fuera de este
+            ordenador (gestor de contraseñas, papel).
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+            {recoveryCodes.map((c) => (
+              <code
+                key={c}
+                className="rounded bg-surface px-2 py-1 text-center text-xs font-semibold tabular-nums text-ink"
+              >
+                {c}
+              </code>
+            ))}
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-3"
+            onClick={copyRecoveryCodes}
+          >
+            {copiedCodes ? (
+              <Check className="h-3.5 w-3.5 text-success-strong" aria-hidden />
+            ) : (
+              <Copy className="h-3.5 w-3.5" aria-hidden />
+            )}
+            {copiedCodes ? "Copiados" : "Copiar todos"}
+          </Button>
+        </div>
+      )}
+
       {enabled && (
         <div className="flex flex-wrap items-end gap-2">
-          <Field label="Código actual (para desactivar)" htmlFor="totp-off">
+          <Field label="Código actual" htmlFor="totp-off">
             <Input
               id="totp-off"
               inputMode="numeric"
@@ -142,6 +191,15 @@ export function TwoFactorSetup() {
               onChange={(e) => setCode(e.target.value)}
             />
           </Field>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={busy || code.length < 6}
+            onClick={() => confirm("PATCH")}
+          >
+            <KeyRound className="h-3.5 w-3.5" aria-hidden />
+            Regenerar códigos de recuperación
+          </Button>
           <Button
             variant="secondary"
             size="sm"
