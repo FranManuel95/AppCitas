@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { claimWebhookEvent } from "@/lib/webhooks/idempotency";
+import {
+  applySubscriptionEvent,
+  invoiceSubscriptionId,
+} from "@/lib/billing";
 import { syncConnectAccount } from "@/lib/billing/connect";
 import { syncInvoiceForAppointment } from "@/lib/domain/invoices";
 import { logError } from "@/lib/logger";
@@ -49,6 +53,32 @@ export async function POST(request: Request) {
       await syncConnectAccount(account);
     } catch (error) {
       logError("payments.webhook.account", error, { accountId: account.id });
+    }
+    return NextResponse.json({ received: true });
+  }
+
+  // Suscripciones (membresías de clientes o plan Pro del negocio): mismo
+  // dispatcher compartido que /api/billing/webhook — quien reclame primero el
+  // evento sabe aplicar ambos tipos (enrutado por metadata.kind).
+  if (
+    event.type === "customer.subscription.created" ||
+    event.type === "customer.subscription.updated" ||
+    event.type === "customer.subscription.deleted" ||
+    event.type === "invoice.paid" ||
+    event.type === "invoice.payment_failed"
+  ) {
+    try {
+      const subscriptionId = event.type.startsWith("invoice.")
+        ? invoiceSubscriptionId(event.data.object as Stripe.Invoice)
+        : (event.data.object as Stripe.Subscription).id;
+      if (subscriptionId) {
+        // Estado ACTUAL (anti-reordenación), igual que en billing
+        const subscription =
+          await stripe.subscriptions.retrieve(subscriptionId);
+        await applySubscriptionEvent(subscription);
+      }
+    } catch (error) {
+      logError("payments.webhook.subscription", error, { type: event.type });
     }
     return NextResponse.json({ received: true });
   }

@@ -3,6 +3,7 @@ import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { getDict } from "@/lib/i18n";
 import { PromosManager } from "@/components/admin/promos-manager";
 import { LoyaltyProgramCard } from "@/components/admin/loyalty-program-card";
+import { MembershipPlansCard } from "@/components/admin/membership-plans-card";
 import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export const metadata = { title: "Promociones" };
 export default async function PromosPage() {
   const admin = await requireBusinessAdmin();
   const { locale, t } = await getDict();
-  const [business, packages, coupons, services, loyaltyProgram] =
+  const [business, packages, coupons, services, loyaltyProgram, membershipPlans] =
     await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
@@ -36,6 +37,17 @@ export default async function PromosPage() {
     }),
     prisma.loyaltyProgram.findUnique({
       where: { businessId: admin.businessId },
+    }),
+    prisma.membershipPlan.findMany({
+      where: { businessId: admin.businessId },
+      include: {
+        _count: {
+          select: {
+            memberships: { where: { status: { in: ["active", "past_due"] } } },
+          },
+        },
+      },
+      orderBy: [{ active: "desc" }, { createdAt: "desc" }],
     }),
   ]);
 
@@ -94,6 +106,20 @@ export default async function PromosPage() {
               }
             : null
         }
+      />
+
+      <MembershipPlansCard
+        plans={membershipPlans.map((p) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          priceCents: p.priceCents,
+          discountPercent: p.discountPercent,
+          maxAppointmentsPerMonth: p.maxAppointmentsPerMonth,
+          active: p.active,
+          members: p._count.memberships,
+        }))}
+        currency={business.currency}
       />
     </div>
   );

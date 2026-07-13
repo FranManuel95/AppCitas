@@ -66,6 +66,7 @@ model User {
   clientNotes  ClientNote[]
   pushSubscriptions PushSubscription[]
   loyaltyCards LoyaltyCard[]
+  memberships  ClientMembership[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -204,9 +205,64 @@ model Business {
   invoicesIssued Invoice[]
   loyaltyProgram LoyaltyProgram?
   loyaltyCards   LoyaltyCard[]
+  membershipPlans   MembershipPlan[]
+  clientMemberships ClientMembership[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Membresía: cuota mensual del cliente a cambio de un % de descuento en sus
+// citas (con tope mensual opcional; obligatorio si el descuento es del 100%).
+// Se cobra por Stripe en la PLATAFORMA con transfer al negocio (destination
+// charge); sin claves, modo simulado en desarrollo.
+model MembershipPlan {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name            String
+  description     String?
+  priceCents      Int
+  discountPercent Int // 1..100 (100 = citas gratis, exige tope)
+  // Citas con descuento por mes natural (null = sin tope; inválido con 100%)
+  maxAppointmentsPerMonth Int?
+  active                  Boolean @default(true)
+  // Precio recurrente en Stripe (creado perezosamente al primer alta real)
+  stripePriceId String?
+
+  memberships ClientMembership[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, active])
+}
+
+model ClientMembership {
+  id         String         @id @default(cuid())
+  businessId String
+  business   Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  planId     String
+  plan       MembershipPlan @relation(fields: [planId], references: [id])
+  clientId   String
+  client     User           @relation(fields: [clientId], references: [id])
+
+  // active | past_due | canceled
+  status               String    @default("active")
+  stripeSubscriptionId String?   @unique
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  // Alta simulada en desarrollo (sin claves de Stripe)
+  paymentSimulated Boolean @default(false)
+
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, clientId])
+  @@index([clientId])
 }
 
 // Tarjeta de sellos: cada N citas completadas, un cupón personal de premio.
@@ -495,6 +551,9 @@ model Appointment {
   // Marcador idempotente de la tarjeta de sellos: la cita selló una vez
   // (se limpia si el negocio revierte el estado COMPLETED)
   loyaltyStampedAt DateTime?
+  // Membresía cuyo descuento se aplicó a esta cita (snapshot del beneficio)
+  membershipId String?
+  membership   ClientMembership? @relation(fields: [membershipId], references: [id])
 
   // Serie recurrente ("todos los martes"): las citas creadas juntas comparten
   // seriesId. Cada ocurrencia sigue siendo una cita normal e independiente.

@@ -19,6 +19,7 @@ import { fmt, getDict, intlLocale } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { SiteHeader } from "@/components/site-header";
 import { PackagesSection } from "@/components/packages-section";
+import { MembershipSection } from "@/components/membership-section";
 import { formatCents } from "@/lib/money";
 import { weekdayNames, WEEKDAY_ORDER } from "@/lib/weekdays";
 import { Avatar } from "@/components/ui/avatar";
@@ -62,6 +63,18 @@ function getPublicBusinessData(slug: string) {
               stampsRequired: true,
               rewardPercent: true,
             },
+          },
+          membershipPlans: {
+            where: { active: true },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              priceCents: true,
+              discountPercent: true,
+              maxAppointmentsPerMonth: true,
+            },
+            orderBy: { priceCents: "asc" },
           },
         },
       });
@@ -333,6 +346,14 @@ export default async function BusinessPage({
                   fullPriceCents: p.sessions * p.service.priceCents,
                   validityDays: p.validityDays,
                 }))}
+                currency={business.currency}
+                isLoggedIn={!!user}
+                slug={business.slug}
+                t={t.business}
+              />
+
+              <MembershipSection
+                plans={business.membershipPlans}
                 currency={business.currency}
                 isLoggedIn={!!user}
                 slug={business.slug}

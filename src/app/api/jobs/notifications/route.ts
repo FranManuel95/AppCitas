@@ -5,6 +5,7 @@ import { cleanupRateLimitCounters } from "@/lib/rate-limit";
 import { degradeExpiredTrials } from "@/lib/domain/plans";
 import { purgeExpiredData } from "@/lib/domain/retention";
 import { issuePendingInvoices } from "@/lib/domain/invoices";
+import { renewSimulatedMemberships } from "@/lib/payments/memberships";
 import {
   expireStaleWaitlist,
   recycleNotifiedWaitlist,
@@ -46,6 +47,8 @@ async function handleCron(request: Request) {
   // Facturación: reconcilia cobros recientes que quedaron sin factura
   // (p. ej. la app cayó entre el cobro y la emisión).
   const invoicesIssued = await issuePendingInvoices();
+  // Membresías simuladas (dev): renueva las vencidas o cierra las canceladas.
+  const memberships = await renewSimulatedMemberships();
   return NextResponse.json({
     ...result,
     autoClosed,
@@ -54,6 +57,8 @@ async function handleCron(request: Request) {
     waitlistExpired,
     waitlistRecycled,
     invoicesIssued,
+    membershipsRenewed: memberships.renewed,
+    membershipsEnded: memberships.ended,
   });
 }
 

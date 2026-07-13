@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { DomainError } from "@/lib/domain/errors";
 import type { PlanId } from "@/lib/domain/plans";
+import { applyMembershipSubscriptionEvent } from "@/lib/payments/memberships";
 import { claimWebhookEvent } from "@/lib/webhooks/idempotency";
 
 // Facturación B2B: la suscripción que cada NEGOCIO paga a la plataforma
@@ -227,12 +228,23 @@ export async function handleStripeWebhook(
       // en el snapshot. Recuperamos el estado ACTUAL de la suscripción y
       // aplicamos ese; así el resultado no depende del orden de los eventos.
       const subscription = await stripe().subscriptions.retrieve(snapshot.id);
-      await applySubscription(
-        subscription,
-        subscription.metadata?.businessId ??
-          snapshot.metadata?.businessId ??
-          null,
+      await applySubscriptionEvent(subscription);
+      break;
+    }
+    case "invoice.paid":
+    case "invoice.payment_failed": {
+      // Renovaciones (o impagos) de suscripciones: re-sincroniza el estado
+      // actual. Cubre tanto la suscripción B2B del negocio como las
+      // membresías de clientes (enrutado por metadata.kind).
+      const subscriptionId = invoiceSubscriptionId(
+        event.data.object as Stripe.Invoice,
       );
+      if (subscriptionId) {
+        const subscription = await stripe().subscriptions.retrieve(
+          subscriptionId,
+        );
+        await applySubscriptionEvent(subscription);
+      }
       break;
     }
     default:
@@ -241,6 +253,39 @@ export async function handleStripeWebhook(
   }
 
   return { received: true };
+}
+
+/**
+ * Dispatcher compartido de suscripciones B2B/B2C. claimWebhookEvent deduplica
+ * globalmente por eventId: si los webhooks de billing y de pagos apuntan al
+ * mismo endpoint de Stripe, el primero que reclama el evento debe saber
+ * aplicar AMBOS tipos. Se enruta por metadata.kind: "membership" → membresía
+ * de cliente; si no → suscripción Pro del negocio.
+ */
+export async function applySubscriptionEvent(
+  subscription: Stripe.Subscription,
+): Promise<void> {
+  if (subscription.metadata?.kind === "membership") {
+    await applyMembershipSubscriptionEvent(subscription);
+    return;
+  }
+  await applySubscription(
+    subscription,
+    subscription.metadata?.businessId ?? null,
+  );
+}
+
+/** Id de suscripción de una invoice (API 2025: vive en parent.subscription_details). */
+export function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const details = invoice.parent?.subscription_details;
+  const sub = details?.subscription;
+  if (typeof sub === "string") return sub;
+  if (sub && typeof sub === "object") return sub.id;
+  // Compatibilidad con versiones de API que aún exponen invoice.subscription
+  const legacy = (invoice as unknown as { subscription?: string | { id: string } })
+    .subscription;
+  if (typeof legacy === "string") return legacy;
+  return legacy?.id ?? null;
 }
 
 // --- Internos ---------------------------------------------------------------

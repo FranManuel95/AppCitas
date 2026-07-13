@@ -11,7 +11,9 @@ import {
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/guards";
 import { getClientLoyaltyCards } from "@/lib/domain/loyalty";
+import { getClientMemberships } from "@/lib/domain/memberships";
 import { listClientWaitlist } from "@/lib/domain/waitlist";
+import { MembershipCancelButton } from "@/components/membership-cancel-button";
 import { WaitlistLeaveButton } from "@/components/waitlist-leave-button";
 import { SiteHeader } from "@/components/site-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -54,6 +56,7 @@ export default async function MyAppointmentsPage() {
     listClientWaitlist(user.id),
     getClientLoyaltyCards(user.id),
   ]);
+  const memberships = await getClientMemberships(user.id);
 
   function formatDayISO(dateISO: string) {
     // desiredDate es una fecha de calendario; se formatea en UTC para no
@@ -277,6 +280,79 @@ export default async function MyAppointmentsPage() {
                             n: p.remainingSessions,
                           })}
                     </Badge>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {memberships.length > 0 && (
+          <section className="mt-10">
+            <SectionHeader as="h2" title={t.myAppointments.membershipsTitle} />
+            <div className="mt-4 space-y-3">
+              {memberships.map((m) => {
+                const periodDate = m.currentPeriodEnd
+                  ? m.currentPeriodEnd.toLocaleDateString(intlLocale(locale))
+                  : "—";
+                return (
+                  <Card
+                    key={m.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-ink">
+                        {m.plan.name}{" "}
+                        <span className="text-ink-muted">·</span>{" "}
+                        {m.business.name}
+                      </p>
+                      <p className="mt-1 text-sm text-ink-muted">
+                        {fmt(t.myAppointments.membershipDetail, {
+                          price: formatCents(
+                            m.plan.priceCents,
+                            m.business.currency,
+                          ),
+                          percent: m.plan.discountPercent,
+                        })}
+                        {" · "}
+                        {m.cancelAtPeriodEnd || m.status === "canceled"
+                          ? fmt(t.myAppointments.membershipEndsOn, {
+                              date: periodDate,
+                            })
+                          : fmt(t.myAppointments.membershipRenewsOn, {
+                              date: periodDate,
+                            })}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <Badge
+                        tone={
+                          m.status === "active"
+                            ? "success"
+                            : m.status === "past_due"
+                              ? "warning"
+                              : "neutral"
+                        }
+                      >
+                        {m.status === "past_due"
+                          ? t.myAppointments.membershipStatusPastDue
+                          : m.cancelAtPeriodEnd || m.status === "canceled"
+                            ? fmt(t.myAppointments.membershipEndsOn, {
+                                date: periodDate,
+                              })
+                            : t.myAppointments.membershipStatusActive}
+                      </Badge>
+                      {m.status !== "canceled" && !m.cancelAtPeriodEnd && (
+                        <MembershipCancelButton
+                          membershipId={m.id}
+                          labels={{
+                            cancel: t.myAppointments.membershipCancel,
+                            cancelling: t.myAppointments.membershipCancelling,
+                            error: t.myAppointments.membershipCancelError,
+                          }}
+                        />
+                      )}
+                    </div>
                   </Card>
                 );
               })}

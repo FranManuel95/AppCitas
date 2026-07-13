@@ -12,16 +12,30 @@ Ordenadas por prioridad según el análisis de competencia
 
 ## 1. Stripe real en staging (validar señal + Connect) — LA PRIMERA
 
-**Qué desbloquea**: cobros reales de no-shows y señales, y que el dinero
-llegue a la cuenta de cada negocio. Todo el código está hecho y testeado en
-modo simulado; falta validarlo con Stripe de verdad antes de activarlo en vivo.
+**Qué desbloquea**: cobros reales de no-shows y señales, membresías de
+clientes (cuota mensual del cliente al negocio, cobrada como suscripción de
+plataforma con `transfer_data.destination` a la cuenta conectada del negocio)
+y que el dinero llegue a la cuenta de cada negocio. Todo el código está hecho
+y testeado en modo simulado; falta validarlo con Stripe de verdad antes de
+activarlo en vivo.
 
 **Tú (≈30 min, en modo test de Stripe):**
 1. En [dashboard.stripe.com](https://dashboard.stripe.com) (modo **Test**):
    copia `STRIPE_SECRET_KEY` y `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` de prueba.
 2. Crea un webhook a `https://TU-DOMINIO/api/payments/webhook` con los eventos
-   `payment_intent.succeeded`, `payment_intent.payment_failed` y
-   `account.updated` → copia `STRIPE_WEBHOOK_SECRET`.
+   `payment_intent.succeeded`, `payment_intent.payment_failed`,
+   `account.updated`, `customer.subscription.created`,
+   `customer.subscription.updated`, `customer.subscription.deleted`,
+   `invoice.paid` e `invoice.payment_failed` → copia `STRIPE_WEBHOOK_SECRET`.
+
+   > **Membresías y suscripción Pro comparten eventos.** Los eventos de
+   > suscripción pasan por un dispatcher compartido que enruta por
+   > `metadata.kind`: `"membership"` → membresía de cliente; sin kind →
+   > suscripción Pro del negocio. La deduplicación de webhooks es global por
+   > eventId, así que da igual si apuntas los eventos a
+   > `/api/payments/webhook` o a `/api/billing/webhook` (o a ambos): el
+   > primero que procese cada evento lo aplica correctamente. No crees DOS
+   > webhooks con secrets distintos para el mismo endpoint.
 3. Activa **Connect** en el dashboard (Settings → Connect) con cuentas
    **Express**.
 4. Pon las 3 variables en un despliegue de staging (o en producción con las

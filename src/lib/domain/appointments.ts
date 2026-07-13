@@ -45,6 +45,7 @@ import {
 } from "@/lib/notifications/service";
 import { syncInvoiceForAppointment } from "./invoices";
 import { syncLoyaltyForStatusChange } from "./loyalty";
+import { activeMembershipBenefitTx } from "./memberships";
 
 interface AvailabilityContext {
   business: {
@@ -420,12 +421,33 @@ export async function createAppointment(params: {
       });
     }
 
+    // Membresía: tras bono y cupón (no se acumulan; esas promos ganan) y
+    // antes de última hora. El tope mensual se cuenta bajo el advisory lock.
+    let membershipId: string | null = null;
+    if (!usedPackageId && !couponId) {
+      const benefit = await activeMembershipBenefitTx(tx, {
+        businessId,
+        clientId,
+        startAt,
+        timezone: businessRow.timezone,
+        now,
+      });
+      if (benefit) {
+        discountCents = Math.round(
+          (priceCents * benefit.discountPercent) / 100,
+        );
+        priceCents -= discountCents;
+        membershipId = benefit.membershipId;
+      }
+    }
+
     // Descuento de última hora: si el negocio lo tiene activo y la cita
     // empieza en menos de LAST_MINUTE_WINDOW_HOURS, se aplica automáticamente.
-    // No se acumula con cupones ni bonos (esas promos tienen prioridad).
+    // No se acumula con cupones, bonos ni membresías (tienen prioridad).
     if (
       !usedPackageId &&
       !couponId &&
+      !membershipId &&
       businessRow.lastMinuteDiscountPercent > 0 &&
       startAt.getTime() - now.getTime() <=
         LAST_MINUTE_WINDOW_HOURS * 3_600_000
@@ -449,6 +471,7 @@ export async function createAppointment(params: {
         discountCents,
         couponId,
         clientPackageId: usedPackageId,
+        membershipId,
         notes: notes?.trim() || null,
         seriesId: params.seriesId ?? null,
       },
