@@ -117,6 +117,10 @@ model Business {
   brandColor String?
   logoUrl    String?
 
+  // Facturación fiscal: emitir facturas numeradas correlativas por los cobros
+  // de citas. Solo activable con taxId relleno (se valida en Ajustes).
+  invoicingEnabled Boolean @default(false)
+
   // Señal (prepago) al reservar: % del precio que se cobra en el momento con
   // la tarjeta guardada (0 = sin señal). Se reembolsa si se cancela en plazo y
   // se descuenta del cargo por cancelación tardía / no-show. Tiene sentido
@@ -187,6 +191,7 @@ model Business {
   waitlist       WaitlistEntry[]
   clientNotes    ClientNote[]
   campaigns      Campaign[]
+  invoicesIssued Invoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -462,6 +467,7 @@ model Appointment {
   depositRef    String?
 
   notifications Notification[]
+  invoices      Invoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -477,6 +483,55 @@ model Appointment {
   // completo del negocio en el camino caliente.
   @@index([businessId, createdAt])
   @@index([seriesId])
+}
+
+// Factura fiscal emitida por un cobro de cita: snapshot legal INMUTABLE con
+// numeración correlativa sin huecos por (negocio, serie, año). La serie F es
+// la normal; la R es la rectificativa (importes en negativo) que anula una F
+// cuando la cita se revierte. Las facturas nunca se borran.
+model Invoice {
+  id            String   @id @default(cuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  series        String   @default("F")
+  year          Int
+  number        Int
+  code          String
+  issuedAt      DateTime
+  // Snapshot en el momento de emisión (el negocio o la cita pueden cambiar
+  // después; la factura no)
+  businessName    String
+  businessTaxId   String?
+  businessAddress String?
+  clientName      String
+  clientEmail     String
+  concept         String
+  currency        String
+  totalCents      Int
+  baseCents       Int
+  taxCents        Int
+  taxPercent      Int
+  // ISSUED | RECTIFIED (anulada por una rectificativa)
+  status       String  @default("ISSUED")
+  rectifiesId  String? @unique
+  createdAt    DateTime @default(now())
+
+  @@unique([businessId, series, year, number])
+  @@index([businessId, issuedAt])
+  @@index([appointmentId])
+}
+
+// Contador correlativo por (negocio, serie, año): la asignación del número y
+// la inserción de la factura hacen commit atómico bajo un advisory lock.
+model InvoiceCounter {
+  businessId String
+  series     String
+  year       Int
+  nextNumber Int    @default(1)
+
+  @@id([businessId, series, year])
 }
 
 // Reseña post-cita: solo el cliente de una cita COMPLETED, una por cita.

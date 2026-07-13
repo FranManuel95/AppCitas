@@ -12,8 +12,9 @@ import { Card } from "@/components/ui/card";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Recibo" };
 
-// Recibo imprimible de una cita con importe cobrado. Nota: es un recibo
-// simple, no una factura fiscal con numeración correlativa (roadmap).
+// Recibo imprimible de una cita con importe cobrado. Si el negocio tiene la
+// facturación activada, el cobro también emite una factura fiscal numerada
+// (se enlaza abajo); este recibo se conserva como comprobante simple.
 export default async function ReceiptPage({
   params,
 }: {
@@ -36,6 +37,11 @@ export default async function ReceiptPage({
     },
   });
   if (!appointment) notFound();
+
+  const invoice = await prisma.invoice.findFirst({
+    where: { appointmentId: appointment.id, series: "F", status: "ISSUED" },
+    select: { id: true, code: true },
+  });
 
   const b = appointment.business;
   const total = appointment.chargedCents;
@@ -61,6 +67,18 @@ export default async function ReceiptPage({
         </Link>
         <PrintButton label={r.print} />
       </div>
+
+      {invoice && (
+        <p className="mb-4 rounded-lg bg-surface-3 px-3 py-2 text-sm text-ink-soft print:hidden">
+          Este cobro tiene factura fiscal:{" "}
+          <Link
+            href={`/admin/factura/${invoice.id}`}
+            className="font-medium text-brand-700 hover:underline"
+          >
+            {invoice.code}
+          </Link>
+        </p>
+      )}
 
       <Card className="print:border-0 print:shadow-none">
         <div className="flex items-start justify-between gap-4 border-b border-border pb-4">

@@ -35,6 +35,7 @@ interface BusinessSettings {
   notifyByWhatsapp: boolean;
   taxId: string | null;
   taxPercent: number;
+  invoicingEnabled: boolean;
   brandColor: string | null;
   logoUrl: string | null;
 }
@@ -100,6 +101,7 @@ export function SettingsForm({
         notifyByWhatsapp: bool("notifyByWhatsapp"),
         taxId: str("taxId") || null,
         taxPercent: num("taxPercent"),
+        invoicingEnabled: bool("invoicingEnabled"),
         brandColor: str("brandColor") || null,
         logoUrl: str("logoUrl") || null,
       }),
@@ -404,6 +406,14 @@ export function SettingsForm({
               defaultValue={business.taxPercent}
             />
           </Field>
+        </div>
+        <div className="mt-5 space-y-2 border-t border-border pt-4">
+          <Switch
+            name="invoicingEnabled"
+            defaultChecked={business.invoicingEnabled}
+            label={labels.invoicingLabel}
+          />
+          <p className="text-xs text-ink-muted">{labels.invoicingHint}</p>
         </div>
       </Card>
 

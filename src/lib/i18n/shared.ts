@@ -575,6 +575,9 @@ const es = {
       addressLabel: "Dirección",
       phoneLabel: "Teléfono",
       contactEmailLabel: "Email de contacto",
+      invoicingLabel: "Emitir facturas fiscales numeradas",
+      invoicingHint:
+        "Cada cobro (cita completada, no-show o cancelación tardía cobrada) emite una factura correlativa por año. Requiere el NIF/CIF relleno. Las facturas se consultan en la sección Facturas.",
       brandColorLabel: "Color de tu marca (opcional)",
       brandColorHint:
         "Hex tipo #d64545: tu página pública, el widget y los botones de reserva usarán este color. Vacío = el morado de AppCitas.",
@@ -1265,6 +1268,9 @@ const en: Dict = {
       addressLabel: "Address",
       phoneLabel: "Phone",
       contactEmailLabel: "Contact email",
+      invoicingLabel: "Issue numbered tax invoices",
+      invoicingHint:
+        "Every charge (completed appointment, paid no-show or late cancellation) issues a sequential invoice per year. Requires the tax ID to be filled in. Invoices live in the Invoices section.",
       brandColorLabel: "Brand color (optional)",
       brandColorHint:
         "Hex like #d64545: your public page, the widget and booking buttons will use it. Empty = the AppCitas purple.",

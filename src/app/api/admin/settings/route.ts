@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { apiRequireBusinessAdmin } from "@/lib/auth/guards";
+import { DomainError } from "@/lib/domain/errors";
 
 const updateSchema = z.object({
   name: z.string().trim().min(2).max(100).optional(),
@@ -38,6 +39,8 @@ const updateSchema = z.object({
   // Facturación de recibos
   taxId: z.string().trim().max(30).nullable().optional(),
   taxPercent: z.number().int().min(0).max(50).optional(),
+  // Facturas fiscales numeradas (exige NIF/CIF relleno; se valida abajo)
+  invoicingEnabled: z.boolean().optional(),
   // Marca en la página pública y el widget
   brandColor: z
     .string()
@@ -59,6 +62,27 @@ export const GET = apiHandler(async () => {
 export const PATCH = apiHandler(async (request: Request) => {
   const admin = await apiRequireBusinessAdmin();
   const data = updateSchema.parse(await request.json());
+
+  // Una factura sin NIF/CIF del emisor no es válida: la activación exige
+  // taxId (el que llega en esta misma petición o el ya guardado).
+  if (data.invoicingEnabled) {
+    const effectiveTaxId =
+      data.taxId !== undefined
+        ? data.taxId
+        : (
+            await prisma.business.findUniqueOrThrow({
+              where: { id: admin.businessId },
+              select: { taxId: true },
+            })
+          ).taxId;
+    if (!effectiveTaxId) {
+      throw new DomainError(
+        "Para emitir facturas rellena primero el NIF/CIF",
+        "INVOICING_NEEDS_TAX_ID",
+        422,
+      );
+    }
+  }
 
   const business = await prisma.business.update({
     where: { id: admin.businessId },

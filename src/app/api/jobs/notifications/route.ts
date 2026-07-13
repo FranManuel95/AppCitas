@@ -4,6 +4,7 @@ import { closePastAppointments } from "@/lib/domain/auto-close";
 import { cleanupRateLimitCounters } from "@/lib/rate-limit";
 import { degradeExpiredTrials } from "@/lib/domain/plans";
 import { purgeExpiredData } from "@/lib/domain/retention";
+import { issuePendingInvoices } from "@/lib/domain/invoices";
 import {
   expireStaleWaitlist,
   recycleNotifiedWaitlist,
@@ -42,6 +43,9 @@ async function handleCron(request: Request) {
   // aprovechados para que la siguiente cancelación los vuelva a avisar.
   const { expired: waitlistExpired } = await expireStaleWaitlist();
   const { recycled: waitlistRecycled } = await recycleNotifiedWaitlist();
+  // Facturación: reconcilia cobros recientes que quedaron sin factura
+  // (p. ej. la app cayó entre el cobro y la emisión).
+  const invoicesIssued = await issuePendingInvoices();
   return NextResponse.json({
     ...result,
     autoClosed,
@@ -49,6 +53,7 @@ async function handleCron(request: Request) {
     purged,
     waitlistExpired,
     waitlistRecycled,
+    invoicesIssued,
   });
 }
 

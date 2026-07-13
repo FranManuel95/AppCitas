@@ -43,6 +43,7 @@ import {
   enqueueCancellationNotifications,
   enqueueNoShowNotification,
 } from "@/lib/notifications/service";
+import { syncInvoiceForAppointment } from "./invoices";
 
 interface AvailabilityContext {
   business: {
@@ -665,6 +666,19 @@ export async function cancelAppointment(params: {
     now,
   });
 
+  // Cancelación tardía cobrada → factura del cargo (best-effort). La forma
+  // de pago del cargo tardío es siempre la tarjeta guardada.
+  await syncInvoiceForAppointment(
+    {
+      id: updated.id,
+      status: updated.status,
+      chargedCents: updated.chargedCents,
+      paymentStatus: updated.paymentStatus,
+      paymentMethod: updated.paymentMethod,
+    },
+    now,
+  );
+
   return { appointment: updated, outcome, collection };
 }
 
@@ -990,6 +1004,10 @@ export async function setAppointmentStatus(params: {
   if (status === "NO_SHOW") {
     await enqueueNoShowNotification(appointmentId, chargedCents, now);
   }
+
+  // Facturación fiscal: emitir (cobro nuevo) o rectificar (reversión) según
+  // el desenlace. Best-effort: nunca rompe la operación de la cita.
+  await syncInvoiceForAppointment(updated, now);
 
   return updated;
 }

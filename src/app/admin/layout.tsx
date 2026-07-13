@@ -32,6 +32,7 @@ function buildNav(
         { href: "/admin", label: nav.dashboard, icon: "dashboard" },
         { href: "/admin/agenda", label: nav.agenda, icon: "agenda" },
         { href: "/admin/citas", label: nav.citas, icon: "citas" },
+        { href: "/admin/facturas", label: "Facturas", icon: "facturas" },
       ],
     },
     {

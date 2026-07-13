@@ -103,6 +103,8 @@ export async function resetDb(): Promise<void> {
   // De hojas a raíces respetando las claves foráneas.
   await prisma.notification.deleteMany();
   await prisma.review.deleteMany();
+  await prisma.invoice.deleteMany();
+  await prisma.invoiceCounter.deleteMany();
   await prisma.appointment.deleteMany();
   await prisma.clientPackage.deleteMany();
   await prisma.package.deleteMany();

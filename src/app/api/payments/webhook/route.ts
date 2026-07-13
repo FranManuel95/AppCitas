@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { claimWebhookEvent } from "@/lib/webhooks/idempotency";
 import { syncConnectAccount } from "@/lib/billing/connect";
+import { syncInvoiceForAppointment } from "@/lib/domain/invoices";
 import { logError } from "@/lib/logger";
 
 // POST /api/payments/webhook — eventos de Stripe (verificados por firma).
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
     const appointmentId = intent.metadata?.appointmentId;
     if (appointmentId) {
       try {
-        await prisma.appointment.update({
+        const updated = await prisma.appointment.update({
           where: { id: appointmentId },
           data: {
             paymentStatus:
@@ -70,6 +71,10 @@ export async function POST(request: Request) {
             paymentRef: intent.id,
           },
         });
+        // Cobro asíncrono confirmado (SCA): emitir la factura si procede
+        if (event.type === "payment_intent.succeeded") {
+          await syncInvoiceForAppointment(updated);
+        }
       } catch (error) {
         // La cita pudo eliminarse (P2025): no es un fallo del webhook, no se
         // debe reintentar. Cualquier otro error sí se registra para diagnóstico.

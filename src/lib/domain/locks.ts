@@ -27,3 +27,18 @@ export async function lockBusinessForBooking(
   // 4711 = espacio de nombres arbitrario para no colisionar con otros locks.
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(4711, hashtext(${businessId}))`;
 }
+
+/**
+ * Serializa la EMISIÓN DE FACTURAS de un negocio: la numeración correlativa
+ * sin huecos exige que solo una transacción lea/incremente el contador a la
+ * vez. Espacio de nombres propio (4712): facturar no debe encolar detrás de
+ * las reservas ni al revés.
+ */
+export async function lockBusinessForInvoicing(
+  tx: Prisma.TransactionClient,
+  businessId: string,
+): Promise<void> {
+  const isPostgres = (process.env.DATABASE_URL ?? "").startsWith("postgres");
+  if (!isPostgres) return;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(4712, hashtext(${businessId}))`;
+}

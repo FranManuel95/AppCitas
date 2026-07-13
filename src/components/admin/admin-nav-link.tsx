@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   Megaphone,
   QrCode,
+  Receipt,
   Settings,
   Users,
   type LucideIcon,
@@ -40,6 +41,7 @@ const ICONS = {
   plan: CreditCard,
   cobros: Banknote,
   qr: QrCode,
+  facturas: Receipt,
 } satisfies Record<string, LucideIcon>;
 
 export type AdminNavIcon = keyof typeof ICONS;
