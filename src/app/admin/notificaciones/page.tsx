@@ -8,10 +8,20 @@ import {
 import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { getDict } from "@/lib/i18n";
+import {
+  bookingConfirmedMessage,
+  cancellationMessage,
+  noShowMessage,
+  parseTemplateOverrides,
+  renderTemplate,
+  reminderMessage,
+  type AppointmentMessageContext,
+} from "@/lib/notifications/templates";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
+import { NotificationTemplatesEditor } from "@/components/admin/notification-templates-editor";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Notificaciones" };
@@ -55,7 +65,20 @@ export default async function NotificationsPage() {
   const [business, notifications] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
-      select: { timezone: true },
+      select: {
+        name: true,
+        timezone: true,
+        currency: true,
+        cancellationWindowHours: true,
+        lateCancellationFeePercent: true,
+        notificationTemplates: true,
+        services: {
+          where: { active: true },
+          orderBy: { name: "asc" },
+          take: 1,
+          select: { name: true, priceCents: true },
+        },
+      },
     }),
     prisma.notification.findMany({
       where: { businessId: admin.businessId },
@@ -74,6 +97,33 @@ export default async function NotificationsPage() {
     timeStyle: "short",
     timeZone: business.timezone,
   });
+
+  // Datos de ejemplo para la vista previa del editor de textos: el mensaje
+  // por defecto ya renderizado y el valor de cada variable {…}.
+  const sampleCtx: AppointmentMessageContext = {
+    clientName: "Marta",
+    businessName: business.name,
+    serviceName: business.services[0]?.name ?? "Corte de pelo",
+    staffName: null,
+    startAt: new Date(Date.now() + 24 * 3_600_000),
+    timezone: business.timezone,
+    currency: business.currency,
+    priceCents: business.services[0]?.priceCents ?? 2500,
+    cancellationWindowHours: business.cancellationWindowHours,
+    lateCancellationFeePercent: business.lateCancellationFeePercent,
+    confirmationUrl: "https://…/c/ejemplo",
+  };
+  const templateDefaults = {
+    BOOKING_CONFIRMED: bookingConfirmedMessage(sampleCtx),
+    REMINDER: reminderMessage(sampleCtx),
+    CANCELLED: cancellationMessage(sampleCtx, 0),
+    NO_SHOW: noShowMessage(sampleCtx, 0),
+  };
+  const sampleValues = Object.fromEntries(
+    (["cliente", "negocio", "servicio", "fecha", "hora", "precio", "enlace"] as const).map(
+      (v) => [v, renderTemplate(`{${v}}`, sampleCtx)],
+    ),
+  );
 
   return (
     <div className="space-y-6">
@@ -139,6 +189,12 @@ export default async function NotificationsPage() {
           </table>
         </Card>
       )}
+
+      <NotificationTemplatesEditor
+        initial={parseTemplateOverrides(business.notificationTemplates)}
+        defaults={templateDefaults}
+        sampleValues={sampleValues}
+      />
     </div>
   );
 }

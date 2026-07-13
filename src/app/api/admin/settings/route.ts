@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { apiRequireBusinessAdmin } from "@/lib/auth/guards";
 import { DomainError } from "@/lib/domain/errors";
+import { validateTemplateOverrides } from "@/lib/notifications/templates";
 
 const updateSchema = z.object({
   name: z.string().trim().min(2).max(100).optional(),
@@ -41,6 +42,9 @@ const updateSchema = z.object({
   taxPercent: z.number().int().min(0).max(50).optional(),
   // Facturas fiscales numeradas (exige NIF/CIF relleno; se valida abajo)
   invoicingEnabled: z.boolean().optional(),
+  // Textos propios de los mensajes (JSON por plantilla; se valida abajo con
+  // validateTemplateOverrides: claves y variables conocidas, longitud máx.)
+  notificationTemplates: z.unknown().optional(),
   // Marca en la página pública y el widget
   brandColor: z
     .string()
@@ -61,7 +65,23 @@ export const GET = apiHandler(async () => {
 
 export const PATCH = apiHandler(async (request: Request) => {
   const admin = await apiRequireBusinessAdmin();
-  const data = updateSchema.parse(await request.json());
+  const { notificationTemplates, ...data } = updateSchema.parse(
+    await request.json(),
+  );
+
+  // Textos propios de los mensajes: se validan (claves/variables conocidas,
+  // longitudes) y se guardan como JSON; objeto vacío = volver a los textos
+  // por defecto (null).
+  let templatesUpdate: { notificationTemplates: string | null } | undefined;
+  if (notificationTemplates !== undefined) {
+    const result = validateTemplateOverrides(notificationTemplates);
+    if (!result.ok) {
+      throw new DomainError(result.error, "TEMPLATE_INVALID", 422);
+    }
+    templatesUpdate = {
+      notificationTemplates: result.value ? JSON.stringify(result.value) : null,
+    };
+  }
 
   // Una factura sin NIF/CIF del emisor no es válida: la activación exige
   // taxId (el que llega en esta misma petición o el ya guardado).
@@ -86,7 +106,7 @@ export const PATCH = apiHandler(async (request: Request) => {
 
   const business = await prisma.business.update({
     where: { id: admin.businessId },
-    data,
+    data: { ...data, ...templatesUpdate },
   });
   return NextResponse.json({ business });
 });

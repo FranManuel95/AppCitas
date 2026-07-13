@@ -9,8 +9,10 @@ import {
   bookingConfirmedMessage,
   cancellationMessage,
   noShowMessage,
+  parseTemplateOverrides,
   reminderMessage,
   type AppointmentMessageContext,
+  type TemplateOverrides,
 } from "./templates";
 
 const CHANNELS: Record<string, Channel> = {
@@ -62,6 +64,7 @@ type AppointmentForNotify = {
     notifyByEmail: boolean;
     notifyBySms: boolean;
     notifyByWhatsapp: boolean;
+    notificationTemplates: string | null;
   };
 };
 
@@ -100,10 +103,15 @@ async function loadAppointment(
           notifyByEmail: true,
           notifyBySms: true,
           notifyByWhatsapp: true,
+          notificationTemplates: true,
         },
       },
     },
   });
+}
+
+function templateOverrides(a: AppointmentForNotify): TemplateOverrides {
+  return parseTemplateOverrides(a.business.notificationTemplates);
 }
 
 function messageContext(a: AppointmentForNotify): AppointmentMessageContext {
@@ -158,6 +166,7 @@ export async function enqueueBookingNotifications(
   if (!appointment) return;
 
   const ctx = messageContext(appointment);
+  const overrides = templateOverrides(appointment);
   const deliveries = enabledDeliveries(appointment);
   const rows: Array<{
     businessId: string;
@@ -171,7 +180,7 @@ export async function enqueueBookingNotifications(
   }> = [];
 
   if (!opts?.skipConfirmation) {
-    const confirmed = bookingConfirmedMessage(ctx);
+    const confirmed = bookingConfirmedMessage(ctx, overrides);
     for (const d of deliveries) {
       rows.push({
         businessId: appointment.businessId,
@@ -194,7 +203,7 @@ export async function enqueueBookingNotifications(
       reminderOffsets.push(appointment.business.reminder2HoursBefore);
     }
 
-    const reminder = reminderMessage(ctx);
+    const reminder = reminderMessage(ctx, overrides);
     const scheduledMinutes = new Set<number>();
     for (const hoursBefore of reminderOffsets) {
       const remindAt = new Date(
@@ -243,7 +252,11 @@ export async function enqueueCancellationNotifications(
   const appointment = await loadAppointment(appointmentId);
   if (!appointment) return;
 
-  const message = cancellationMessage(messageContext(appointment), chargedCents);
+  const message = cancellationMessage(
+    messageContext(appointment),
+    chargedCents,
+    templateOverrides(appointment),
+  );
   const rows = enabledDeliveries(appointment).map((d) => ({
     businessId: appointment.businessId,
     appointmentId: appointment.id,
@@ -274,7 +287,11 @@ export async function enqueueNoShowNotification(
   const appointment = await loadAppointment(appointmentId);
   if (!appointment) return;
 
-  const message = noShowMessage(messageContext(appointment), chargedCents);
+  const message = noShowMessage(
+    messageContext(appointment),
+    chargedCents,
+    templateOverrides(appointment),
+  );
   const rows = enabledDeliveries(appointment).map((d) => ({
     businessId: appointment.businessId,
     appointmentId: appointment.id,

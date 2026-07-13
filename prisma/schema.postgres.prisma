@@ -153,6 +153,10 @@ model Business {
   notifyByEmail       Boolean @default(true)
   notifyBySms         Boolean @default(false)
   notifyByWhatsapp    Boolean @default(true)
+  // Textos propios de los mensajes al cliente (JSON: por clave de plantilla,
+  // override opcional de subject/body con variables {cliente} {negocio}
+  // {servicio} {fecha} {hora} {precio} {enlace}). null = textos por defecto.
+  notificationTemplates String?
 
   active Boolean @default(true)
 
