@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/guards";
+import { getClientLoyaltyCards } from "@/lib/domain/loyalty";
 import { listClientWaitlist } from "@/lib/domain/waitlist";
 import { WaitlistLeaveButton } from "@/components/waitlist-leave-button";
 import { SiteHeader } from "@/components/site-header";
@@ -36,7 +37,7 @@ export default async function MyAppointmentsPage() {
   const user = await requireUser();
   const { locale, t } = await getDict();
 
-  const [account, myPackages, waitlist] = await Promise.all([
+  const [account, myPackages, waitlist, loyalty] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.id },
       select: { emailVerifiedAt: true, birthDate: true },
@@ -51,6 +52,7 @@ export default async function MyAppointmentsPage() {
       take: 20,
     }),
     listClientWaitlist(user.id),
+    getClientLoyaltyCards(user.id),
   ]);
 
   function formatDayISO(dateISO: string) {
@@ -278,6 +280,73 @@ export default async function MyAppointmentsPage() {
                   </Card>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {(loyalty.cards.length > 0 || loyalty.coupons.length > 0) && (
+          <section className="mt-10">
+            <SectionHeader as="h2" title={t.myAppointments.loyaltyTitle} />
+            <div className="mt-4 space-y-3">
+              {loyalty.cards.map((card) => {
+                const program = card.business.loyaltyProgram;
+                if (!program) return null;
+                return (
+                  <Card
+                    key={card.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-ink">{card.business.name}</p>
+                      <p className="mt-1 text-sm text-ink-muted">
+                        {fmt(t.myAppointments.loyaltyReward, {
+                          percent: program.rewardPercent,
+                        })}
+                      </p>
+                      {/* Sellos visuales: llenos y vacíos hasta el objetivo */}
+                      <p
+                        className="mt-1.5 text-base tracking-widest"
+                        aria-hidden
+                      >
+                        {"●".repeat(Math.min(card.stamps, program.stampsRequired))}
+                        <span className="text-ink-muted/40">
+                          {"○".repeat(
+                            Math.max(0, program.stampsRequired - card.stamps),
+                          )}
+                        </span>
+                      </p>
+                    </div>
+                    <Badge tone="brand">
+                      {fmt(t.myAppointments.loyaltyProgress, {
+                        stamps: card.stamps,
+                        required: program.stampsRequired,
+                      })}
+                    </Badge>
+                  </Card>
+                );
+              })}
+              {loyalty.coupons.map((c) => (
+                <Card
+                  key={c.code}
+                  className="flex flex-wrap items-center justify-between gap-3 py-4"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-ink">
+                      {fmt(t.myAppointments.loyaltyCoupon, {
+                        code: c.code,
+                        percent: c.value,
+                        date: c.expiresAt
+                          ? c.expiresAt.toLocaleDateString(intlLocale(locale))
+                          : "—",
+                      })}
+                    </p>
+                    <p className="mt-1 text-sm text-ink-muted">
+                      {t.myAppointments.loyaltyCouponHint}
+                    </p>
+                  </div>
+                  <Badge tone="success">🎁</Badge>
+                </Card>
+              ))}
             </div>
           </section>
         )}

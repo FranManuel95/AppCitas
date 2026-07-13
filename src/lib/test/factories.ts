@@ -109,6 +109,8 @@ export async function resetDb(): Promise<void> {
   await prisma.clientPackage.deleteMany();
   await prisma.package.deleteMany();
   await prisma.coupon.deleteMany();
+  await prisma.loyaltyCard.deleteMany();
+  await prisma.loyaltyProgram.deleteMany();
   await prisma.processedWebhookEvent.deleteMany();
   await prisma.staffHour.deleteMany();
   await prisma.staffService.deleteMany();

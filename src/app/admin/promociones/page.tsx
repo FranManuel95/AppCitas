@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { getDict } from "@/lib/i18n";
 import { PromosManager } from "@/components/admin/promos-manager";
+import { LoyaltyProgramCard } from "@/components/admin/loyalty-program-card";
 import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,8 @@ export const metadata = { title: "Promociones" };
 export default async function PromosPage() {
   const admin = await requireBusinessAdmin();
   const { locale, t } = await getDict();
-  const [business, packages, coupons, services] = await Promise.all([
+  const [business, packages, coupons, services, loyaltyProgram] =
+    await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
       select: { currency: true },
@@ -31,6 +33,9 @@ export default async function PromosPage() {
       where: { businessId: admin.businessId, active: true },
       select: { id: true, name: true, priceCents: true },
       orderBy: { name: "asc" },
+    }),
+    prisma.loyaltyProgram.findUnique({
+      where: { businessId: admin.businessId },
     }),
   ]);
 
@@ -63,6 +68,7 @@ export default async function PromosPage() {
           maxRedemptions: c.maxRedemptions,
           timesRedeemed: c.timesRedeemed,
           expiresAt: c.expiresAt?.toISOString() ?? null,
+          personal: c.clientId !== null,
         }))}
         services={services}
         currency={business.currency}
@@ -75,6 +81,19 @@ export default async function PromosPage() {
           active: t.admin.common.active,
           inactive: t.admin.common.inactive,
         }}
+      />
+
+      <LoyaltyProgramCard
+        initial={
+          loyaltyProgram
+            ? {
+                active: loyaltyProgram.active,
+                stampsRequired: loyaltyProgram.stampsRequired,
+                rewardPercent: loyaltyProgram.rewardPercent,
+                rewardValidityDays: loyaltyProgram.rewardValidityDays,
+              }
+            : null
+        }
       />
     </div>
   );

@@ -7,6 +7,7 @@ import {
   MapPin,
   Phone,
   ShieldCheck,
+  Stamp,
   Star,
 } from "lucide-react";
 import { unstable_cache } from "next/cache";
@@ -54,6 +55,13 @@ function getPublicBusinessData(slug: string) {
             where: { active: true, service: { active: true } },
             include: { service: { select: { name: true, priceCents: true } } },
             orderBy: { priceCents: "asc" },
+          },
+          loyaltyProgram: {
+            select: {
+              active: true,
+              stampsRequired: true,
+              rewardPercent: true,
+            },
           },
         },
       });
@@ -301,6 +309,20 @@ export default async function BusinessPage({
             </section>
 
             <aside className="space-y-6">
+              {business.loyaltyProgram?.active && (
+                <Card className="border-brand-200 bg-brand-50/40">
+                  <h2 className="flex items-center gap-2 font-semibold tracking-tight text-ink">
+                    <Stamp className="h-4 w-4 text-brand-700" aria-hidden />
+                    {t.business.loyaltyTitle}
+                  </h2>
+                  <p className="mt-2 text-sm text-ink-soft">
+                    {fmt(t.business.loyaltyText, {
+                      required: business.loyaltyProgram.stampsRequired,
+                      percent: business.loyaltyProgram.rewardPercent,
+                    })}
+                  </p>
+                </Card>
+              )}
               <PackagesSection
                 packages={business.packages.map((p) => ({
                   id: p.id,

@@ -44,6 +44,7 @@ import {
   enqueueNoShowNotification,
 } from "@/lib/notifications/service";
 import { syncInvoiceForAppointment } from "./invoices";
+import { syncLoyaltyForStatusChange } from "./loyalty";
 
 interface AvailabilityContext {
   business: {
@@ -401,6 +402,14 @@ export async function createAppointment(params: {
       });
       const rejection = couponRejection(coupon, now);
       if (rejection) throw new DomainError(rejection, "COUPON_INVALID", 409);
+      // Cupón personal (premio de fidelidad): solo lo canjea su titular
+      if (coupon!.clientId && coupon!.clientId !== clientId) {
+        throw new DomainError(
+          "Este cupón es personal y pertenece a otro cliente",
+          "COUPON_INVALID",
+          409,
+        );
+      }
 
       discountCents = couponDiscountCents(coupon!, priceCents);
       priceCents -= discountCents;
@@ -1008,6 +1017,16 @@ export async function setAppointmentStatus(params: {
   // Facturación fiscal: emitir (cobro nuevo) o rectificar (reversión) según
   // el desenlace. Best-effort: nunca rompe la operación de la cita.
   await syncInvoiceForAppointment(updated, now);
+
+  // Tarjeta de sellos: sella al completar y revierte el sello si el estado
+  // deja de ser COMPLETED. Best-effort e idempotente (loyaltyStampedAt).
+  await syncLoyaltyForStatusChange({
+    appointmentId,
+    businessId,
+    clientId: appointment.clientId,
+    status,
+    now,
+  });
 
   return updated;
 }

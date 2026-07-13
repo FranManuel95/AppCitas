@@ -41,6 +41,8 @@ interface CouponDTO {
   maxRedemptions: number | null;
   timesRedeemed: number;
   expiresAt: string | null;
+  // Cupón personal emitido por la tarjeta de sellos (premio de fidelidad)
+  personal: boolean;
 }
 
 interface ServiceOption {
@@ -383,6 +385,7 @@ export function PromosManager({
                           amount: formatCents(c.value, currency),
                         })}
                   </Badge>
+                  {c.personal && <Badge tone="info">Fidelidad</Badge>}
                   {!c.active && <Badge tone="neutral">{labels.inactive}</Badge>}
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">

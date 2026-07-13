@@ -65,6 +65,7 @@ model User {
   waitlist     WaitlistEntry[]
   clientNotes  ClientNote[]
   pushSubscriptions PushSubscription[]
+  loyaltyCards LoyaltyCard[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -201,9 +202,45 @@ model Business {
   clientNotes    ClientNote[]
   campaigns      Campaign[]
   invoicesIssued Invoice[]
+  loyaltyProgram LoyaltyProgram?
+  loyaltyCards   LoyaltyCard[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Tarjeta de sellos: cada N citas completadas, un cupón personal de premio.
+// El programa es 1:1 con el negocio; la tarjeta acumula sellos por cliente.
+model LoyaltyProgram {
+  id         String   @id @default(cuid())
+  businessId String   @unique
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  active         Boolean @default(true)
+  stampsRequired Int
+  // Premio: % de descuento del cupón emitido (100 = servicio gratis)
+  rewardPercent      Int
+  rewardValidityDays Int @default(180)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LoyaltyCard {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  stamps       Int @default(0) // sellos acumulados hacia el próximo premio
+  totalStamps  Int @default(0)
+  totalRewards Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, clientId])
 }
 
 // Cupón de descuento: porcentaje o importe fijo sobre el precio del servicio.
@@ -219,6 +256,8 @@ model Coupon {
   maxRedemptions Int?
   timesRedeemed  Int       @default(0)
   expiresAt      DateTime?
+  // Cupón personal (premio de fidelidad): solo puede canjearlo este cliente
+  clientId String?
 
   appointments Appointment[]
 
@@ -453,6 +492,9 @@ model Appointment {
   // Confirmación de asistencia desde el recordatorio (enlace público firmado)
   confirmationToken     String    @unique @default(cuid())
   attendanceConfirmedAt DateTime?
+  // Marcador idempotente de la tarjeta de sellos: la cita selló una vez
+  // (se limpia si el negocio revierte el estado COMPLETED)
+  loyaltyStampedAt DateTime?
 
   // Serie recurrente ("todos los martes"): las citas creadas juntas comparten
   // seriesId. Cada ocurrencia sigue siendo una cita normal e independiente.
