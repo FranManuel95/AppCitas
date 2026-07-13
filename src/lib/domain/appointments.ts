@@ -46,6 +46,8 @@ import {
 import { syncInvoiceForAppointment } from "./invoices";
 import { syncLoyaltyForStatusChange } from "./loyalty";
 import { activeMembershipBenefitTx } from "./memberships";
+import { getExternalBusy } from "@/lib/calendar/freebusy";
+import { enqueueCalendarSync } from "@/lib/calendar/sync";
 
 interface AvailabilityContext {
   business: {
@@ -152,6 +154,19 @@ async function loadAvailabilityContext(params: {
     select: { startAt: true, endAt: true, staffId: true },
   });
 
+  // Ocupación externa (Google Calendar entrante): el "ocupado" personal del
+  // calendario conectado bloquea la oferta de huecos. Fail-open (un fallo de
+  // Google devuelve vacío) y barato sin conexiones. La conexión de nivel
+  // negocio solo bloquea la agenda única (sin equipo); con equipo, cada
+  // empleado bloquea con SU calendario.
+  const externalBusy = await getExternalBusy({
+    businessId,
+    dateISO,
+    dayStart,
+    dayEnd,
+    now,
+  });
+
   const dayLoadByStaff = new Map<string, number>();
   for (const a of dayAppointments) {
     if (a.staffId) {
@@ -193,6 +208,7 @@ async function loadAvailabilityContext(params: {
           .filter((a) => a.staffId === m.id)
           .map((a) => ({ startAt: a.startAt, endAt: a.endAt })),
         ...unassignedBusy.map((a) => ({ startAt: a.startAt, endAt: a.endAt })),
+        ...(externalBusy.byStaff.get(m.id) ?? []),
       ],
     })),
     dayLoadByStaff,
@@ -206,10 +222,13 @@ async function loadAvailabilityContext(params: {
       maxAdvanceBookingDays: business.maxAdvanceBookingDays,
       now,
     },
-    businessBusy: dayAppointments.map((a) => ({
-      startAt: a.startAt,
-      endAt: a.endAt,
-    })),
+    businessBusy: [
+      ...dayAppointments.map((a) => ({
+        startAt: a.startAt,
+        endAt: a.endAt,
+      })),
+      ...externalBusy.businessLevel,
+    ],
   };
 }
 
@@ -544,6 +563,9 @@ export async function createAppointment(params: {
     skipConfirmation: params.suppressConfirmation,
   });
 
+  // Google Calendar saliente: refleja la cita como evento (best-effort)
+  await enqueueCalendarSync(appointment.id, "UPSERT", now);
+
   // El cliente ya cubrió lo que esperaba: quita su entrada de lista de espera
   // de ese servicio y día (si la tenía).
   await fulfillWaitlistOnBooking({
@@ -710,6 +732,9 @@ export async function cancelAppointment(params: {
     },
     now,
   );
+
+  // Google Calendar saliente: la cita ya no bloquea → borrar el evento
+  await enqueueCalendarSync(appointmentId, "DELETE", now);
 
   return { appointment: updated, outcome, collection };
 }
@@ -918,6 +943,9 @@ export async function rescheduleAppointment(params: {
   // y cancelAppointment tampoco audita (mismo patrón).
   await enqueueBookingNotifications(appointmentId, now);
 
+  // Google Calendar saliente: mueve el evento al nuevo horario
+  await enqueueCalendarSync(appointmentId, "UPSERT", now);
+
   return updated;
 }
 
@@ -1050,6 +1078,14 @@ export async function setAppointmentStatus(params: {
     status,
     now,
   });
+
+  // Google Calendar saliente: si la cita deja de bloquear agenda se borra el
+  // evento; si vuelve a bloquear (revertir a confirmada) se recrea.
+  await enqueueCalendarSync(
+    appointmentId,
+    BLOCKING_STATUSES.includes(status) ? "UPSERT" : "DELETE",
+    now,
+  );
 
   return updated;
 }

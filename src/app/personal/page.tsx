@@ -14,6 +14,7 @@ import { formatCents } from "@/lib/money";
 import { SiteHeader } from "@/components/site-header";
 import { StatusBadge } from "@/components/status-badge";
 import { AppointmentActions } from "@/components/admin/appointment-actions";
+import { CalendarConnectCard } from "@/components/calendar-connect-card";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -41,6 +42,11 @@ export default async function StaffPortalPage({
   const day = fecha && isValidDateISO(fecha) ? fecha : today;
   const dayStart = wallTimeToUtc(day, "00:00", business.timezone);
   const dayEnd = wallTimeToUtc(addDaysISO(day, 1), "00:00", business.timezone);
+
+  const calendarConnection = await prisma.calendarConnection.findFirst({
+    where: { businessId: staff.businessId, staffId: staff.staffId },
+    select: { googleEmail: true, status: true, simulated: true },
+  });
 
   const [agenda, upcomingCount] = await Promise.all([
     prisma.appointment.findMany({
@@ -180,6 +186,10 @@ export default async function StaffPortalPage({
               title={t.admin.personal.noAppointmentsThatDay}
             />
           )}
+        </div>
+
+        <div className="mt-8">
+          <CalendarConnectCard kind="staff" connection={calendarConnection} />
         </div>
       </main>
     </>

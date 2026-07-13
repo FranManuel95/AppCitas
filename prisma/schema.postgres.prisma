@@ -207,6 +207,7 @@ model Business {
   loyaltyCards   LoyaltyCard[]
   membershipPlans   MembershipPlan[]
   clientMemberships ClientMembership[]
+  calendarConnections CalendarConnection[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -263,6 +264,93 @@ model ClientMembership {
 
   @@index([businessId, clientId])
   @@index([clientId])
+}
+
+// Conexión de Google Calendar del dueño (staffId null) o de un empleado.
+// Tokens OAuth cifrados con AES-256-GCM (clave derivada de AUTH_SECRET).
+// Saliente: las citas se reflejan como eventos. Entrante: el "ocupado"
+// personal del calendario bloquea huecos (freebusy en vivo + caché 60 s).
+model CalendarConnection {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  // null = conexión de nivel negocio (dueño); única por empleado
+  staffId String?      @unique
+  staff   StaffMember? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  googleEmail          String
+  accessTokenEnc       String
+  refreshTokenEnc      String
+  accessTokenExpiresAt DateTime?
+  calendarId           String    @default("primary")
+  syncOutbound         Boolean   @default(true)
+  syncInbound          Boolean   @default(true)
+  // active | error (p. ej. invalid_grant: hay que reconectar)
+  status       String    @default("active")
+  lastError    String?
+  lastSyncedAt DateTime?
+  // Conexión simulada en desarrollo (sin claves de Google)
+  simulated Boolean @default(false)
+
+  eventLinks CalendarEventLink[]
+  syncJobs   CalendarSyncJob[]
+  busyCache  CalendarBusyCache[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+// Evento de Google creado para una cita en una conexión concreta.
+model CalendarEventLink {
+  id            String             @id @default(cuid())
+  appointmentId String
+  appointment   Appointment        @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  connectionId  String
+  connection    CalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  googleEventId String
+
+  createdAt DateTime @default(now())
+
+  @@unique([appointmentId, connectionId])
+}
+
+// Outbox de sincronización saliente: se intenta en línea y, si falla, lo
+// recoge el cron (claim atómico PENDING→SENDING, mismo patrón que el outbox
+// de notificaciones).
+model CalendarSyncJob {
+  id            String             @id @default(cuid())
+  appointmentId String
+  appointment   Appointment        @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  connectionId  String
+  connection    CalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  // UPSERT | DELETE
+  action String
+  // PENDING | SENDING | SENT | FAILED
+  status       String   @default("PENDING")
+  attempts     Int      @default(0)
+  lastError    String?
+  scheduledFor DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledFor])
+}
+
+// Caché corta (60 s) del freebusy de una conexión y día, compartida entre
+// réplicas para no llamar a Google en cada consulta de disponibilidad.
+model CalendarBusyCache {
+  connectionId String
+  connection   CalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  dateISO      String
+  // JSON [{ "start": ISO, "end": ISO }]
+  busyJson  String
+  fetchedAt DateTime
+
+  @@id([connectionId, dateISO])
 }
 
 // Tarjeta de sellos: cada N citas completadas, un cupón personal de premio.
@@ -411,6 +499,8 @@ model StaffMember {
   waitlist     WaitlistEntry[]
   // Ausencias puntuales (vacaciones, baja): días completos sin agenda
   timeOff      StaffTimeOff[]
+  // Google Calendar del empleado (conectado desde su portal /personal)
+  calendarConnection CalendarConnection?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -578,6 +668,8 @@ model Appointment {
 
   notifications Notification[]
   invoices      Invoice[]
+  calendarEventLinks CalendarEventLink[]
+  calendarSyncJobs   CalendarSyncJob[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

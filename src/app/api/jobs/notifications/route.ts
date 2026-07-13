@@ -6,6 +6,8 @@ import { degradeExpiredTrials } from "@/lib/domain/plans";
 import { purgeExpiredData } from "@/lib/domain/retention";
 import { issuePendingInvoices } from "@/lib/domain/invoices";
 import { renewSimulatedMemberships } from "@/lib/payments/memberships";
+import { processCalendarSyncJobs } from "@/lib/calendar/sync";
+import { purgeBusyCache } from "@/lib/calendar/freebusy";
 import {
   expireStaleWaitlist,
   recycleNotifiedWaitlist,
@@ -49,6 +51,9 @@ async function handleCron(request: Request) {
   const invoicesIssued = await issuePendingInvoices();
   // Membresías simuladas (dev): renueva las vencidas o cierra las canceladas.
   const memberships = await renewSimulatedMemberships();
+  // Google Calendar: reintenta los eventos pendientes y purga la caché vieja.
+  const calendarSync = await processCalendarSyncJobs();
+  await purgeBusyCache();
   return NextResponse.json({
     ...result,
     autoClosed,
@@ -59,6 +64,7 @@ async function handleCron(request: Request) {
     invoicesIssued,
     membershipsRenewed: memberships.renewed,
     membershipsEnded: memberships.ended,
+    calendarEventsSynced: calendarSync.sent,
   });
 }
 

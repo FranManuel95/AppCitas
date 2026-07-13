@@ -79,6 +79,38 @@ tiene señalado el punto de extensión) y el webhook de entrada para respuestas.
 
 ---
 
+## 2b. Google Calendar (OAuth bidireccional)
+
+**Qué desbloquea**: cada cita aparece como evento en el Google Calendar del
+dueño o del empleado (saliente), y el "ocupado" personal de ese calendario
+bloquea huecos de la agenda (entrante, freebusy en vivo con caché de 60 s y
+fail-open). Todo el código está hecho; sin claves funciona en modo simulado
+en desarrollo.
+
+**Tú (≈20 min):**
+1. En [console.cloud.google.com](https://console.cloud.google.com): crea un
+   proyecto y activa la **Google Calendar API**.
+2. Pantalla de consentimiento OAuth (tipo External) con los scopes
+   `calendar.events`, `calendar.freebusy`, `openid` y `email`.
+3. Credenciales → **ID de cliente OAuth** (aplicación web) con estas URIs de
+   redirección autorizadas:
+   - `https://TU-DOMINIO/api/admin/calendar/google/callback`
+   - `https://TU-DOMINIO/api/staff/calendar/google/callback`
+4. Variables en Vercel: `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` +
+   Redeploy.
+
+**Prueba de humo**: Ajustes del negocio → "Conectar con Google" → autoriza →
+reserva una cita → aparece como evento; crea un evento personal en ese
+calendario → ese hueco deja de ofrecerse (tarda ≤60 s por la caché).
+
+**Notas**: los tokens se guardan cifrados (AES-256-GCM con clave derivada de
+`AUTH_SECRET`; rotar ese secreto obliga a reconectar con un clic). Mientras la
+app de Google esté en modo "Testing", añade los emails de prueba como test
+users; para uso público hace falta pasar la verificación de Google (proceso
+estándar, unos días).
+
+---
+
 ## 3. TWA — AppCitas en Google Play
 
 **Qué desbloquea**: "tener app" en la Play Store con la web actual (misma

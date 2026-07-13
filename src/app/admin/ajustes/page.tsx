@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { getDict } from "@/lib/i18n";
 import { SettingsForm } from "@/components/admin/settings-form";
+import { CalendarConnectCard } from "@/components/calendar-connect-card";
 import { LogoutAllButton } from "@/components/logout-all-button";
 import { TwoFactorSetup } from "@/components/two-factor-setup";
 import { AUDIT_EVENT_LABELS } from "@/lib/audit";
@@ -14,7 +15,7 @@ export const metadata = { title: "Ajustes" };
 export default async function SettingsPage() {
   const admin = await requireBusinessAdmin();
   const { locale, t } = await getDict();
-  const [business, activity] = await Promise.all([
+  const [business, activity, calendarConnection] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
     }),
@@ -22,6 +23,10 @@ export default async function SettingsPage() {
       where: { userId: admin.id },
       orderBy: { createdAt: "desc" },
       take: 15,
+    }),
+    prisma.calendarConnection.findFirst({
+      where: { businessId: admin.businessId, staffId: null },
+      select: { googleEmail: true, status: true, simulated: true },
     }),
   ]);
 
@@ -68,6 +73,8 @@ export default async function SettingsPage() {
           saveError: t.admin.common.saveError,
         }}
       />
+
+      <CalendarConnectCard kind="admin" connection={calendarConnection} />
 
       {/* Seguridad de la cuenta */}
       <Card>
