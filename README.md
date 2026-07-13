@@ -261,9 +261,14 @@ se persiste su hash SHA-256).
 npm test
 ```
 
-46 tests cubren el motor de disponibilidad (horarios, tramos, solapamientos,
-antelaciones, cierres, zona horaria), la agenda multi-empleado (horario
-propio/heredado, unión de huecos, asignación al menos cargado), la política
-de cancelación (límite exacto, porcentajes, redondeos), las promociones
-(descuentos de cupón, validez de bonos) y el rate limiter (ventana
-deslizante, aislamiento por clave, tiempo de espera).
+271 tests unitarios y de base de datos cubren el motor de disponibilidad
+(horarios, tramos, solapamientos, antelaciones, cierres, zona horaria,
+multi-sede), la agenda multi-empleado, la política de cancelación, las
+promociones (cupones, bonos, tarjeta de sellos, membresías, precedencia sin
+acumulación), la facturación fiscal (correlatividad, rectificativas), el
+importador CSV, las plantillas de mensajes, los informes, Google Calendar
+(cifrado, outbox, freebusy), el dominio propio y el rate limiter. Además,
+`npm run test:e2e` ejecuta 26 pruebas Playwright de extremo a extremo
+(reserva, cancelación, no-show, admin, aislamiento multi-tenant, SaaS, RGPD,
+lista de espera, móvil, invitado, ausencias, series recurrentes, widget,
+2FA y feed iCal).

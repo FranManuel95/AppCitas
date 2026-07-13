@@ -38,6 +38,9 @@ export default defineConfig({
       DATABASE_URL: E2E_DB,
       AUTH_SECRET: "e2e-secret-no-usar-en-produccion",
       APP_BASE_URL: `http://localhost:${PORT}`,
+      // La suite hace decenas de logins legítimos desde la misma IP: se
+      // relajan los límites (×20) sin desactivar el mecanismo.
+      RATE_LIMIT_MULTIPLIER: "20",
     },
   },
 });

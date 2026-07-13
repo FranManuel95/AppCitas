@@ -62,7 +62,7 @@ historial está resumido en **un solo script idempotente**.
    ```
    scripts/supabase-catchup.sql
    ```
-   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→26):
+   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→35):
    rate limit, autocierre y 2º recordatorio, reseñas, suscripción SaaS,
    idempotencia de webhooks, consentimiento RGPD, índices, búsqueda por
    trigramas, lista de espera, forma de pago, Stripe Connect, **señal al
@@ -71,14 +71,18 @@ historial está resumido en **un solo script idempotente**.
    plataforma** (costes editables del super-admin), **clientes invitados**
    (reserva sin registro y cita manual del negocio), **ausencias por
    empleado**, **citas recurrentes**, **feed de calendario** (Google/Outlook),
-   **marca por negocio** (color y logo), **push web** y **verificación en dos
-   pasos**.
+   **marca por negocio** (color y logo), **push web**, **verificación en dos
+   pasos con códigos de recuperación**, **facturas fiscales con numeración
+   correlativa**, **cumpleaños del cliente**, **plantillas de mensajes
+   editables**, **tarjeta de sellos**, **membresías de clientes**,
+   **Google Calendar OAuth**, **multi-sede** y **galería + dominio propio**.
    Es **idempotente**: usa `IF NOT EXISTS`, así que da igual cuánto tuvieras ya
    aplicado; solo añade lo que falte y no rompe nada si lo ejecutas dos veces.
 
    > **¿Ya lo pegaste antes?** Vuelve a pegarlo: al ser idempotente solo añade
-   > las migraciones que te falten (las últimas: 21 ausencias, 22 series,
-   > 23 feed de calendario, 24 marca, 25 push web y 26 2FA) sin tocar el resto.
+   > las migraciones que te falten (las últimas: 27 códigos de recuperación,
+   > 28 facturas, 29 cumpleaños, 30 plantillas, 31 sellos, 32 membresías,
+   > 33 Google Calendar, 34 multi-sede y 35 galería/dominio) sin tocar el resto.
 
 3. **(Opcional) Datos de demostración** — si quieres 2 negocios de ejemplo con
    citas para probar, pega después:
@@ -141,7 +145,7 @@ no-shows (a los clientes del negocio) y/o la suscripción del negocio.
 |----------|----------|
 | `STRIPE_SECRET_KEY` | Clave secreta de tu cuenta Stripe |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Clave pública (se usa en el navegador) |
-| `STRIPE_WEBHOOK_SECRET` | Del webhook a `https://TU-DOMINIO/api/payments/webhook` (eventos `payment_intent.succeeded`, `payment_intent.payment_failed` y `account.updated`) |
+| `STRIPE_WEBHOOK_SECRET` | Del webhook a `https://TU-DOMINIO/api/payments/webhook` (eventos `payment_intent.succeeded`, `payment_intent.payment_failed`, `account.updated`, `customer.subscription.*` e `invoice.paid`/`invoice.payment_failed` — estos últimos alimentan también las **membresías de clientes**) |
 | `STRIPE_PRICE_PRO` | **Novedad SaaS**: id del precio recurrente del plan Pro que paga el negocio. Sin él, la suscripción B2B activa Pro sin cobrar. |
 | `STRIPE_PLATFORM_FEE_PERCENT` | **Novedad Connect**: comisión (%) que te quedas de cada cobro B2C que va a la cuenta del negocio. `0` (por defecto) = el negocio recibe el importe íntegro. |
 
@@ -191,6 +195,10 @@ probablemente no tengas puestas:
 - `WHATSAPP_CLOUD_TOKEN` + `WHATSAPP_CLOUD_PHONE_ID` — WhatsApp por la **API oficial de Meta** (recomendada; sustituye a UltraMsg/Evolution sin riesgo de baneo).
 - `ERROR_WEBHOOK_URL`, `CSP_ENFORCE` — observabilidad y seguridad.
 - Todo el grupo `LEGAL_*` — datos del titular para las páginas legales.
+- `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` — **Google Calendar
+  bidireccional** (citas → eventos y "ocupado" personal que bloquea huecos).
+  Sin ellas, la conexión funciona en modo simulado solo en desarrollo. Guía:
+  `INTEGRACIONES-EXTERNAS.md` §2b.
 
 > **Sin variables nuevas obligatorias**: la señal, el descuento de última hora,
 > el modo privado, el CRM y las campañas se activan desde el panel del negocio
@@ -213,13 +221,17 @@ probablemente no tengas puestas:
    "Database schema is up to date!".
 3. **Supabase**: en el *Table Editor* deben verse las tablas nuevas
    `WaitlistEntry`, `Review`, `RateLimitCounter`, `ProcessedWebhookEvent`,
-   `PlatformSetting` (migración 19), `StaffTimeOff` (21) y `PushSubscription`
-   (25); en `Business`, las columnas `plan`, `subscriptionStatus`,
-   `trialEndsAt`, `autoCompleteEnabled`, `reminder2HoursBefore`,
-   `stripeAccountId`, `stripeChargesEnabled`, `icsFeedToken` (23),
-   `brandColor` y `logoUrl` (24); en `Appointment`, las columnas
-   `paymentMethod` y `seriesId` (22); y en `User`, las columnas `guest` (20),
-   `totpSecret` y `totpEnabledAt` (26).
+   `PlatformSetting` (19), `StaffTimeOff` (21), `PushSubscription` (25),
+   `Invoice` e `InvoiceCounter` (28), `LoyaltyProgram` y `LoyaltyCard` (31),
+   `MembershipPlan` y `ClientMembership` (32), `CalendarConnection`,
+   `CalendarEventLink`, `CalendarSyncJob` y `CalendarBusyCache` (33),
+   `Location` (34) y `BusinessPhoto` (35); en `Business`, entre otras, las
+   columnas `icsFeedToken` (23), `brandColor`/`logoUrl` (24),
+   `invoicingEnabled` (28), `notificationTemplates` (30) y `customDomain`
+   (35); en `Appointment`, `paymentMethod`/`seriesId` (22),
+   `loyaltyStampedAt` (31), `membershipId` (32) y `locationId` (34); y en
+   `User`, `guest` (20), `totpSecret`/`totpEnabledAt` (26),
+   `totpRecoveryCodes` (27) y `birthDate` (29).
 4. **Prueba de humo**: crea una reserva de prueba y comprueba en
    `/admin/notificaciones` que se encola el aviso. Con Stripe en modo test,
    haz una cancelación tardía con la tarjeta `4242 4242 4242 4242`.

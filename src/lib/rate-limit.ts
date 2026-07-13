@@ -64,6 +64,14 @@ class DbRateLimitStore implements RateLimitStore {
 
 const defaultStore: RateLimitStore = new DbRateLimitStore();
 
+// Multiplicador de límites para entornos de prueba (suite E2E: decenas de
+// logins legítimos desde la misma IP en minutos). Sin la variable, 1 — en
+// producción no cambia nada.
+function limitMultiplier(): number {
+  const raw = Number(process.env.RATE_LIMIT_MULTIPLIER ?? "1");
+  return Number.isFinite(raw) && raw >= 1 ? raw : 1;
+}
+
 export async function checkRateLimit(
   key: string,
   rule: RateLimitRule,
@@ -72,8 +80,9 @@ export async function checkRateLimit(
 ): Promise<RateLimitResult> {
   const windowStart = Math.floor(now / rule.windowMs) * rule.windowMs;
   const count = await store.increment(key, windowStart);
+  const limit = rule.limit * limitMultiplier();
 
-  if (count > rule.limit) {
+  if (count > limit) {
     return {
       ok: false,
       remaining: 0,
@@ -83,7 +92,7 @@ export async function checkRateLimit(
       ),
     };
   }
-  return { ok: true, remaining: rule.limit - count, retryAfterSeconds: 0 };
+  return { ok: true, remaining: limit - count, retryAfterSeconds: 0 };
 }
 
 // IP del cliente detrás de un proxy/inversores habituales
