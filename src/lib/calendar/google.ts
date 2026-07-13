@@ -297,6 +297,66 @@ export async function deleteEvent(
   }
 }
 
+export interface WatchResult {
+  resourceId: string;
+  expiration: Date | null; // la que decida Google (típicamente días)
+}
+
+/** Abre un canal watch sobre los eventos del calendario (push → webhook). */
+export async function watchEvents(
+  accessToken: string,
+  calendarId: string,
+  params: { channelId: string; token: string; address: string },
+): Promise<WatchResult> {
+  const res = await fetch(
+    `${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events/watch`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: params.channelId,
+        type: "web_hook",
+        address: params.address,
+        token: params.token,
+      }),
+      signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
+    },
+  );
+  if (!res.ok) throw new Error(`events watch ${res.status}`);
+  const json = (await res.json()) as {
+    resourceId?: string;
+    expiration?: string; // epoch ms como string
+  };
+  if (!json.resourceId) throw new Error("events watch: sin resourceId");
+  return {
+    resourceId: json.resourceId,
+    expiration: json.expiration ? new Date(Number(json.expiration)) : null,
+  };
+}
+
+/** Detiene un canal watch (404 = ya no existe, se considera éxito). */
+export async function stopChannel(
+  accessToken: string,
+  channelId: string,
+  resourceId: string,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/channels/stop`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id: channelId, resourceId }),
+    signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`channel stop ${res.status}`);
+  }
+}
+
 /** Borra una conexión revocando el token best-effort. */
 export async function disconnectCalendar(connectionId: string): Promise<void> {
   const connection = await prisma.calendarConnection.findUnique({
@@ -304,6 +364,20 @@ export async function disconnectCalendar(connectionId: string): Promise<void> {
   });
   if (!connection) return;
   if (!connection.simulated && isCalendarConfigured()) {
+    // Parar el watch ANTES de revocar (un token revocado ya no puede pararlo);
+    // best-effort: sin stop, el canal caduca solo.
+    if (connection.watchChannelId && connection.watchResourceId) {
+      try {
+        const token = await getAccessToken(connection);
+        await stopChannel(
+          token,
+          connection.watchChannelId,
+          connection.watchResourceId,
+        );
+      } catch (error) {
+        logError("calendar.watch.stop.failed", error, { connectionId });
+      }
+    }
     try {
       await revokeTokenBestEffort(decryptSecret(connection.refreshTokenEnc));
     } catch (error) {

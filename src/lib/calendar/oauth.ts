@@ -7,6 +7,7 @@ import {
   exchangeCode,
   isCalendarConfigured,
 } from "./google";
+import { ensureWatchForConnection } from "./watch";
 
 // Flujo OAuth de conexión de calendario (dueño y empleado). El `state` es un
 // JWT firmado con AUTH_SECRET (exp 10 min) que fija QUIÉN inició el flujo
@@ -65,7 +66,7 @@ export async function verifyCalendarState(
   }
 }
 
-/** Crea/actualiza la conexión (staffId null = nivel negocio). */
+/** Crea/actualiza la conexión (staffId null = nivel negocio). Devuelve su id. */
 export async function saveConnection(params: {
   businessId: string;
   staffId: string | null;
@@ -73,7 +74,7 @@ export async function saveConnection(params: {
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
-}): Promise<void> {
+}): Promise<string> {
   const data = {
     googleEmail: params.googleEmail,
     accessTokenEnc: encryptSecret(params.accessToken),
@@ -92,11 +93,13 @@ export async function saveConnection(params: {
       where: { id: existing.id },
       data,
     });
-  } else {
-    await prisma.calendarConnection.create({
-      data: { businessId: params.businessId, staffId: params.staffId, ...data },
-    });
+    return existing.id;
   }
+  const created = await prisma.calendarConnection.create({
+    data: { businessId: params.businessId, staffId: params.staffId, ...data },
+    select: { id: true },
+  });
+  return created.id;
 }
 
 /** Conexión simulada en desarrollo (sin claves de Google). */
@@ -151,7 +154,7 @@ export async function completeCallback(params: {
       502,
     );
   }
-  await saveConnection({
+  const connectionId = await saveConnection({
     businessId: params.state.businessId,
     staffId: params.state.staffId ?? null,
     googleEmail: tokens.email ?? "(sin email)",
@@ -159,5 +162,7 @@ export async function completeCallback(params: {
     refreshToken: tokens.refreshToken,
     expiresAt: tokens.expiresAt,
   });
+  // Push de cambios (mejora, no requisito): fail-open dentro de la función
+  await ensureWatchForConnection(connectionId);
   return tokens.email ?? "";
 }

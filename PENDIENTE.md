@@ -1,8 +1,10 @@
 # Trabajo pendiente y hoja de ruta
 
 Estado del proyecto a **julio de 2026**, tras las rondas de UX (U-1…U-5), de
-producto (V-1…V-7) y la ronda **W-1…W-12** que ejecutó prácticamente todo lo
-que este documento listaba como pendiente. Complementa a
+producto (V-1…V-7), la ronda **W-1…W-12** que ejecutó prácticamente todo lo
+que este documento listaba como pendiente, y la ronda **X-1…X-5** de cierre
+(cabos sueltos de integración, optimización de consultas/índices y watch
+channels de Google Calendar). Complementa a
 [`ANALISIS-COMPETENCIA.md`](./ANALISIS-COMPETENCIA.md) (dónde estamos frente a
 Booksy/Apúntalo/TuAgenda) y a [`PUESTA-AL-DIA.md`](./PUESTA-AL-DIA.md) (cómo
 aplicar SQL y variables).
@@ -42,7 +44,10 @@ aplicar SQL y variables).
   calor de ocupación, todo exportable a CSV).
 - **Calendario**: feed iCal de salida por URL y **Google Calendar OAuth
   bidireccional** (citas → eventos; el "ocupado" personal bloquea huecos;
-  env-gated con `GOOGLE_CLIENT_ID/SECRET`, simulado en dev).
+  env-gated con `GOOGLE_CLIENT_ID/SECRET`, simulado en dev) con **watch
+  channels** (push de Google que invalida la caché de disponibilidad en
+  segundos; requiere dominio verificado en Search Console, si no, caché de
+  60 s como siempre).
 - **Seguridad y RGPD**: 2FA (TOTP) **con códigos de recuperación**, paso de
   seguridad en el onboarding, auditoría, RGPD operativo, retención automática,
   script `scripts/remove-demo-accounts.sql` y `scripts/backup-pg.sh`.
@@ -50,7 +55,7 @@ aplicar SQL y variables).
   **JSON-LD LocalBusiness** (SEO local), **dominio propio por negocio (Pro)**,
   widget embebible, PWA instalable + guías `docs/TWA.md` y
   `docs/RESERVE-WITH-GOOGLE.md`.
-- **Calidad**: 271 tests unitarios/BD + 26 E2E (reserva, cancelación, no-show,
+- **Calidad**: 286 tests unitarios/BD + 26 E2E (reserva, cancelación, no-show,
   admin, aislamiento, SaaS, RGPD, lista de espera, móvil, invitado,
   **ausencias, series recurrentes, widget, 2FA y feed iCal**).
 
@@ -63,7 +68,7 @@ No es código: son cosas que hay que **configurar o revisar** en producción.
 | # | Tarea | Por qué | Dónde |
 |---|---|---|---|
 | 1 | 🔴 **Ejecutar `scripts/remove-demo-accounts.sql` en Supabase** | El seed crea `admin@demo.com`, `plataforma@demo.com`, etc. con la contraseña pública `admin1234`. El script (idempotente) ya existe: pégalo en el SQL Editor. | `scripts/remove-demo-accounts.sql` |
-| 2 | 🔴 **Pegar el catch-up de migraciones (2→35)** | Las olas W añadieron las migraciones 27…35 (facturas, sellos, membresías, calendario, sedes, galería/dominio…). `supabase-catchup.sql` es idempotente: una pasada lo deja todo al día. | `scripts/supabase-catchup.sql` |
+| 2 | 🔴 **Pegar el catch-up de migraciones (2→37)** | Las olas W y X añadieron las migraciones 27…37 (facturas, sellos, membresías, calendario, sedes, galería/dominio, índices de camino caliente, watch channels). `supabase-catchup.sql` es idempotente: una pasada lo deja todo al día. | `scripts/supabase-catchup.sql` |
 | 3 | 🟡 **Claves VAPID para el push web** | Sin ellas, el canal de avisos gratis del navegador queda apagado. `npx web-push generate-vapid-keys` → 3 variables en Vercel. | `VAPID_*` |
 | 4 | 🟡 **SMTP real** | Sin SMTP los emails se encolan pero no se envían (se ven en `/admin/notificaciones`). | `SMTP_*` |
 | 5 | 🟡 **Datos legales** | Razón social, NIF, dirección… se muestran como `[pendiente]` en `/legal/*`. Obligatorio LSSI-CE/RGPD. | `LEGAL_*` |
@@ -86,7 +91,7 @@ Tras la ronda W queda poco, y todo es opcional o depende de terceros:
 | **Alta en Reserve with Google** | ⚠️ Trámite externo | El código ya cumple (JSON-LD, availability API). El proceso de partner está documentado en `docs/RESERVE-WITH-GOOGLE.md`. |
 | **Publicar la TWA en Google Play** | ⚠️ Trámite externo | Receta completa en `docs/TWA.md` (Bubblewrap + `assetlinks.json` placeholder ya en el repo). |
 | **Más idiomas** | ❌ Excluido (sin señal de mercado) | es/en completos. Añadir catalán/francés cuando lo pida el mercado. |
-| **Webhooks push de Google Calendar (watch channels)** | 🟢 Mejora incremental | La entrada usa freebusy en vivo con caché de 60 s (documentado); los watch channels eliminarían esa ventana. |
+| **Webhooks push de Google Calendar (watch channels)** | ✅ Hecho (ronda X) | Push de Google → el webhook invalida la caché de disponibilidad en segundos; canales autorenovados desde el cron. Solo requiere verificar el dominio en Search Console (guía en `INTEGRACIONES-EXTERNAS.md` §2b); sin ello, caché de 60 s como antes. |
 | **Reordenar la galería / más control visual** | 🟢 Menor | La galería ordena por posición de alta; falta drag&drop para reordenar. |
 
 ---
@@ -99,9 +104,10 @@ Tras la ronda W queda poco, y todo es opcional o depende de terceros:
 - **Push web sin E2E real.** Cubierto por tests de API/BD
   (`webpush.db.test.ts`); un E2E de verdad necesita un push service externo —
   fuera de alcance, anotado.
-- **Freebusy con ventana de 60 s.** Un evento externo creado dentro de la
-  ventana de caché puede colisionar con una reserva simultánea (aceptado y
-  documentado; los watch channels lo eliminarían).
+- **Freebusy con ventana de caché.** Con watch channel activo (dominio
+  verificado en Search Console) los cambios llegan por push en segundos y la
+  caché vive 5 min; sin watch, la ventana es de 60 s. Un push perdido degrada
+  al peor caso de 5 min — mismo carácter fail-open, aceptado y documentado.
 - **Rotar `AUTH_SECRET` invalida los tokens cifrados de Google Calendar** —
   los usuarios reconectan con un clic (documentado en el código de
   `src/lib/crypto.ts`).

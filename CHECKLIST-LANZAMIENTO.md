@@ -33,12 +33,13 @@ Cualquiera puede entrar.
 devolver **0 filas**. Además, intenta entrar en la web con
 `plataforma@demo.com` / `admin1234`: debe fallar.
 
-### ☐ 1.2 Poner la base de datos al día (migraciones 2→35)
+### ☐ 1.2 Poner la base de datos al día (migraciones 2→37)
 
-**Por qué**: la ronda W añadió 9 migraciones (27→35: códigos de recuperación,
-facturas, cumpleaños, plantillas, sellos, membresías, Google Calendar,
-multi-sede, galería/dominio). Sin ellas, las funciones nuevas fallarán al
-tocar tablas que no existen.
+**Por qué**: las rondas W y X añadieron 11 migraciones (27→37: códigos de
+recuperación, facturas, cumpleaños, plantillas, sellos, membresías, Google
+Calendar, multi-sede, galería/dominio, índices de camino caliente y watch
+channels). Sin ellas, las funciones nuevas fallarán al tocar tablas o
+columnas que no existen.
 
 **Pasos**:
 1. Supabase → **SQL Editor** → pega TODO `scripts/supabase-catchup.sql` → **Run**.
@@ -192,7 +193,19 @@ personal en ese calendario → ese hueco deja de ofrecerse en ≤60 s.
 > Para abrirlo a cualquier usuario (no solo test users) hay que pasar la
 > **verificación de Google** del consent screen (trámite estándar, días).
 
-### ☐ 4.2 Aviso operativo
+### ☐ 4.2 Push instantáneo — opcional (≈5 min)
+
+Verifica el dominio en
+[Google Search Console](https://search.google.com/search-console) (registro
+DNS o archivo HTML). Con eso, al conectar un calendario la app abre un *watch
+channel*: los cambios en Google invalidan la caché por push y el hueco se
+actualiza en segundos en vez de en ≤60 s. Sin este paso todo funciona igual
+(es mejora, no requisito). Los canales se renuevan solos desde el cron.
+
+**Verificar**: conecta un calendario, crea un evento en Google y comprueba
+que el hueco desaparece de la reserva en segundos.
+
+### ☐ 4.3 Aviso operativo
 
 Si algún día rotas `AUTH_SECRET`, los tokens cifrados de calendario se
 invalidan: cada conexión mostrará "Reconectar" (un clic). No es avería.
@@ -247,7 +260,7 @@ No bloquean nada; son apuestas de crecimiento con guía propia:
 | Momento | Tarea | Referencia |
 |---|---|---|
 | **Ahora** | Borrar cuentas demo | `scripts/remove-demo-accounts.sql` |
-| **Ahora** | Catch-up SQL 2→35 | `scripts/supabase-catchup.sql` |
+| **Ahora** | Catch-up SQL 2→37 | `scripts/supabase-catchup.sql` |
 | **Ahora** | Datos legales `LEGAL_*` | `PUESTA-AL-DIA.md` §B.5 |
 | **Ahora** | Cron cada 5 min en verde | GitHub Actions |
 | Primer cliente | SMTP + VAPID (push) | §2 de este documento |

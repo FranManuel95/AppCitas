@@ -4,11 +4,18 @@ import { freeBusyQuery, getAccessToken, type BusySlot } from "./google";
 
 // Sincronización ENTRANTE: el "ocupado" del calendario personal bloquea
 // huecos. freebusy.query EN VIVO al consultar disponibilidad, con caché
-// compartida de 60 s (CalendarBusyCache) y timeout corto. FAIL-OPEN: un
-// error o timeout de Google devuelve "sin ocupación" y la reserva sigue —
-// mejor un posible solape externo que no poder reservar.
+// compartida (CalendarBusyCache) y timeout corto. FAIL-OPEN: un error o
+// timeout de Google devuelve "sin ocupación" y la reserva sigue — mejor un
+// posible solape externo que no poder reservar.
+//
+// TTL adaptativo: con un watch channel vigente, los cambios llegan por push
+// (el webhook borra la caché), así que la caché puede vivir 5 min — menos
+// llamadas a Google Y staleness real de segundos. Sin watch, 60 s como
+// siempre; un push perdido degrada al peor caso de 5 min, mismo carácter
+// fail-open.
 
 const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_WATCHED_MS = 5 * 60_000;
 const FETCH_TIMEOUT_MS = 2500;
 const ERROR_THRESHOLD = 5;
 
@@ -78,11 +85,16 @@ async function busyForConnection(
     accessTokenEnc: string;
     refreshTokenEnc: string;
     accessTokenExpiresAt: Date | null;
+    watchExpiresAt: Date | null;
   },
   params: { dateISO: string; dayStart: Date; dayEnd: Date },
   now: Date,
 ): Promise<BusySlot[]> {
-  // Caché compartida (60 s) por conexión y día
+  // Caché compartida por conexión y día (TTL según haya watch vigente o no)
+  const ttlMs =
+    connection.watchExpiresAt && connection.watchExpiresAt.getTime() > now.getTime()
+      ? CACHE_TTL_WATCHED_MS
+      : CACHE_TTL_MS;
   const cached = await prisma.calendarBusyCache.findUnique({
     where: {
       connectionId_dateISO: {
@@ -91,7 +103,7 @@ async function busyForConnection(
       },
     },
   });
-  if (cached && now.getTime() - cached.fetchedAt.getTime() < CACHE_TTL_MS) {
+  if (cached && now.getTime() - cached.fetchedAt.getTime() < ttlMs) {
     try {
       return JSON.parse(cached.busyJson) as BusySlot[];
     } catch {

@@ -334,6 +334,13 @@ model CalendarConnection {
   // Conexión simulada en desarrollo (sin claves de Google)
   simulated Boolean @default(false)
 
+  // Watch channel de Google (push de cambios → invalida la caché de freebusy
+  // al momento). Opcional: sin canal todo funciona con la caché de 60 s.
+  watchChannelId  String?
+  watchResourceId String?
+  watchExpiresAt  DateTime?
+  watchToken      String?
+
   eventLinks CalendarEventLink[]
   syncJobs   CalendarSyncJob[]
   busyCache  CalendarBusyCache[]
@@ -342,6 +349,7 @@ model CalendarConnection {
   updatedAt DateTime @updatedAt
 
   @@index([businessId])
+  @@index([watchChannelId])
 }
 
 // Evento de Google creado para una cita en una conexión concreta.

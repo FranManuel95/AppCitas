@@ -62,7 +62,7 @@ historial está resumido en **un solo script idempotente**.
    ```
    scripts/supabase-catchup.sql
    ```
-   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→35):
+   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→37):
    rate limit, autocierre y 2º recordatorio, reseñas, suscripción SaaS,
    idempotencia de webhooks, consentimiento RGPD, índices, búsqueda por
    trigramas, lista de espera, forma de pago, Stripe Connect, **señal al
@@ -75,14 +75,17 @@ historial está resumido en **un solo script idempotente**.
    pasos con códigos de recuperación**, **facturas fiscales con numeración
    correlativa**, **cumpleaños del cliente**, **plantillas de mensajes
    editables**, **tarjeta de sellos**, **membresías de clientes**,
-   **Google Calendar OAuth**, **multi-sede** y **galería + dominio propio**.
+   **Google Calendar OAuth**, **multi-sede**, **galería + dominio propio**,
+   **índices de camino caliente de membresía/cupones** y **watch channels de
+   Google Calendar** (push que invalida la caché de disponibilidad).
    Es **idempotente**: usa `IF NOT EXISTS`, así que da igual cuánto tuvieras ya
    aplicado; solo añade lo que falte y no rompe nada si lo ejecutas dos veces.
 
    > **¿Ya lo pegaste antes?** Vuelve a pegarlo: al ser idempotente solo añade
    > las migraciones que te falten (las últimas: 27 códigos de recuperación,
    > 28 facturas, 29 cumpleaños, 30 plantillas, 31 sellos, 32 membresías,
-   > 33 Google Calendar, 34 multi-sede y 35 galería/dominio) sin tocar el resto.
+   > 33 Google Calendar, 34 multi-sede, 35 galería/dominio, 36 índices y
+   > 37 watch channels) sin tocar el resto.
 
 3. **(Opcional) Datos de demostración** — si quieres 2 negocios de ejemplo con
    citas para probar, pega después:
@@ -229,9 +232,12 @@ probablemente no tengas puestas:
    columnas `icsFeedToken` (23), `brandColor`/`logoUrl` (24),
    `invoicingEnabled` (28), `notificationTemplates` (30) y `customDomain`
    (35); en `Appointment`, `paymentMethod`/`seriesId` (22),
-   `loyaltyStampedAt` (31), `membershipId` (32) y `locationId` (34); y en
+   `loyaltyStampedAt` (31), `membershipId` (32) y `locationId` (34); en
    `User`, `guest` (20), `totpSecret`/`totpEnabledAt` (26),
-   `totpRecoveryCodes` (27) y `birthDate` (29).
+   `totpRecoveryCodes` (27) y `birthDate` (29); en `CalendarConnection`, las
+   columnas `watchChannelId`/`watchResourceId`/`watchExpiresAt`/`watchToken`
+   (37); y los índices `Appointment_membershipId_startAt_idx` y
+   `Coupon_clientId_idx` (36).
 4. **Prueba de humo**: crea una reserva de prueba y comprueba en
    `/admin/notificaciones` que se encola el aviso. Con Stripe en modo test,
    haz una cancelación tardía con la tarjeta `4242 4242 4242 4242`.

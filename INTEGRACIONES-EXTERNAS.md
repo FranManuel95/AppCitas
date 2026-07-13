@@ -109,6 +109,15 @@ app de Google esté en modo "Testing", añade los emails de prueba como test
 users; para uso público hace falta pasar la verificación de Google (proceso
 estándar, unos días).
 
+**Opcional — push instantáneo (watch channels, ≈5 min)**: verifica tu dominio
+en [Google Search Console](https://search.google.com/search-console) (método
+DNS o archivo HTML). Con el dominio verificado, al conectar un calendario la
+app abre un *watch channel*: cuando el dueño crea o mueve un evento en Google,
+Google avisa a `https://TU-DOMINIO/api/calendar/google/webhook` y el hueco se
+actualiza en segundos (la caché pasa de 60 s a invalidación por push; los
+canales se renuevan solos desde el cron). Sin este paso todo funciona igual
+que antes con la caché de 60 s — es mejora, no requisito.
+
 ---
 
 ## 3. TWA — AppCitas en Google Play

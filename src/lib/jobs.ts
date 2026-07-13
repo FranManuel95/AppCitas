@@ -7,6 +7,7 @@ import { issuePendingInvoices } from "@/lib/domain/invoices";
 import { renewSimulatedMemberships } from "@/lib/payments/memberships";
 import { processCalendarSyncJobs } from "@/lib/calendar/sync";
 import { purgeBusyCache } from "@/lib/calendar/freebusy";
+import { renewExpiringWatchChannels } from "@/lib/calendar/watch";
 import {
   expireStaleWaitlist,
   recycleNotifiedWaitlist,
@@ -33,6 +34,7 @@ export interface ScheduledJobsResult {
   membershipsRenewed: number;
   membershipsEnded: number;
   calendarEventsSynced: number;
+  watchChannelsRenewed: number;
 }
 
 /**
@@ -83,6 +85,8 @@ export async function runScheduledJobs(
   // Google Calendar: reintenta los eventos pendientes y purga la caché vieja.
   const calendarSync = await processCalendarSyncJobs(now);
   await purgeBusyCache(now);
+  // Watch channels: renueva los que caducan en <24 h (y crea los que falten).
+  const watchChannelsRenewed = await renewExpiringWatchChannels(now);
 
   return {
     sent,
@@ -97,5 +101,6 @@ export async function runScheduledJobs(
     membershipsRenewed: memberships.renewed,
     membershipsEnded: memberships.ended,
     calendarEventsSynced: calendarSync.sent,
+    watchChannelsRenewed,
   };
 }

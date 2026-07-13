@@ -52,6 +52,7 @@ describe("runScheduledJobs (BD)", () => {
       "membershipsRenewed",
       "membershipsEnded",
       "calendarEventsSynced",
+      "watchChannelsRenewed",
     ] as const) {
       expect(result[key]).toBe(0);
     }
