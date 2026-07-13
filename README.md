@@ -100,6 +100,9 @@ DATABASE_URL empieza por postgres; en local sigue bastando SQLite.
 
 ## Estado y hoja de ruta
 
+- **[CHECKLIST-LANZAMIENTO.md](CHECKLIST-LANZAMIENTO.md)** — todo lo pendiente
+  del lado humano, organizado por momento (ahora / al activar cada cosa), con
+  pasos exactos y verificación. **Empieza por aquí.**
 - **[PENDIENTE.md](PENDIENTE.md)** — qué está hecho, qué queda por hacer
   (operativo y de producto) y limitaciones conocidas, con prioridades.
 - **[PUESTA-AL-DIA.md](PUESTA-AL-DIA.md)** — cómo poner al día la base de datos

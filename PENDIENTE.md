@@ -7,6 +7,11 @@ que este documento listaba como pendiente. Complementa a
 Booksy/Apúntalo/TuAgenda) y a [`PUESTA-AL-DIA.md`](./PUESTA-AL-DIA.md) (cómo
 aplicar SQL y variables).
 
+> **¿Buscas el paso a paso?** Todo lo pendiente del lado humano está en
+> [`CHECKLIST-LANZAMIENTO.md`](./CHECKLIST-LANZAMIENTO.md), organizado por
+> momento (qué hacer ahora, qué hacer al activar cada cosa) con pasos exactos
+> y verificación. Este documento es el "qué y por qué"; aquel, el "cómo".
+
 ---
 
 ## 0. Contexto — lo que YA está hecho
