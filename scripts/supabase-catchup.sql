@@ -550,6 +550,27 @@ BEGIN
   END IF;
 END $$;
 
+-- ── (35) Galería de trabajos + dominio propio ────────────────────────────────
+ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "customDomain" TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS "Business_customDomain_key" ON "Business"("customDomain");
+CREATE TABLE IF NOT EXISTS "BusinessPhoto" (
+    "id" TEXT NOT NULL,
+    "businessId" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "caption" TEXT,
+    "position" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "BusinessPhoto_pkey" PRIMARY KEY ("id")
+);
+ALTER TABLE "BusinessPhoto" ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS "BusinessPhoto_businessId_position_idx" ON "BusinessPhoto"("businessId", "position");
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'BusinessPhoto_businessId_fkey') THEN
+    ALTER TABLE "BusinessPhoto" ADD CONSTRAINT "BusinessPhoto_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "Business"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -586,7 +607,8 @@ FROM (VALUES
   ('20260713130000_tarjeta_sellos'),
   ('20260713140000_membresias'),
   ('20260713150000_google_calendar'),
-  ('20260713160000_multi_sede')
+  ('20260713160000_multi_sede'),
+  ('20260713170000_galeria_dominio')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

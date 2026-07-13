@@ -1,0 +1,13 @@
+[
+  {
+    "comment": "PLACEHOLDER para la TWA de Google Play (docs/TWA.md). Sustituye package_name y sha256_cert_fingerprints por los de tu app firmada (los da Bubblewrap / Play Console) y redeploya.",
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.example.appcitas.twa",
+      "sha256_cert_fingerprints": [
+        "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"
+      ]
+    }
+  }
+]

@@ -121,6 +121,9 @@ model Business {
   // (URL https externa; la app no aloja archivos)
   brandColor String?
   logoUrl    String?
+  // Dominio propio (Pro): p. ej. "reservas.miclinica.com" → sirve /b/{slug}.
+  // Hay que añadir el dominio también en Vercel (documentado en DEPLOY.md).
+  customDomain String? @unique
 
   // Facturación fiscal: emitir facturas numeradas correlativas por los cobros
   // de citas. Solo activable con taxId relleno (se valida en Ajustes).
@@ -207,6 +210,7 @@ model Business {
   clientMemberships ClientMembership[]
   calendarConnections CalendarConnection[]
   locations           Location[]
+  photos              BusinessPhoto[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -263,6 +267,22 @@ model ClientMembership {
 
   @@index([businessId, clientId])
   @@index([clientId])
+}
+
+// Foto de la galería "Trabajos" de la página pública. Igual que logoUrl, es
+// una URL externa https (la app no almacena archivos).
+model BusinessPhoto {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  url      String
+  caption  String?
+  position Int    @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId, position])
 }
 
 // Sede del negocio. Corte mínimo: la sede es un PRE-FILTRO de empleados —

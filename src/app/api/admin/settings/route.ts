@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { apiRequireBusinessAdmin } from "@/lib/auth/guards";
 import { DomainError } from "@/lib/domain/errors";
+import { normalizeCustomDomain } from "@/lib/custom-domain";
 import { validateTemplateOverrides } from "@/lib/notifications/templates";
 
 const updateSchema = z.object({
@@ -45,6 +46,8 @@ const updateSchema = z.object({
   // Textos propios de los mensajes (JSON por plantilla; se valida abajo con
   // validateTemplateOverrides: claves y variables conocidas, longitud máx.)
   notificationTemplates: z.unknown().optional(),
+  // Dominio propio (Pro; se normaliza y valida abajo)
+  customDomain: z.string().trim().max(253).nullable().optional(),
   // Marca en la página pública y el widget
   brandColor: z
     .string()
@@ -65,9 +68,50 @@ export const GET = apiHandler(async () => {
 
 export const PATCH = apiHandler(async (request: Request) => {
   const admin = await apiRequireBusinessAdmin();
-  const { notificationTemplates, ...data } = updateSchema.parse(
+  const { notificationTemplates, customDomain, ...data } = updateSchema.parse(
     await request.json(),
   );
+
+  // Dominio propio: normaliza (quita https:// y rutas), valida el formato y
+  // exige plan Pro. La unicidad la garantiza el índice (409 si está en uso).
+  let domainUpdate: { customDomain: string | null } | undefined;
+  if (customDomain !== undefined) {
+    if (customDomain === null || customDomain === "") {
+      domainUpdate = { customDomain: null };
+    } else {
+      const normalized = normalizeCustomDomain(customDomain);
+      if (!normalized) {
+        throw new DomainError(
+          "Dominio no válido (ejemplo: reservas.tunegocio.com)",
+          "DOMAIN_INVALID",
+          422,
+        );
+      }
+      const business = await prisma.business.findUniqueOrThrow({
+        where: { id: admin.businessId },
+        select: { plan: true },
+      });
+      if (business.plan !== "pro") {
+        throw new DomainError(
+          "El dominio propio es una función del plan Pro",
+          "DOMAIN_REQUIRES_PRO",
+          402,
+        );
+      }
+      const taken = await prisma.business.findFirst({
+        where: { customDomain: normalized, id: { not: admin.businessId } },
+        select: { id: true },
+      });
+      if (taken) {
+        throw new DomainError(
+          "Ese dominio ya está en uso por otro negocio",
+          "DOMAIN_TAKEN",
+          409,
+        );
+      }
+      domainUpdate = { customDomain: normalized };
+    }
+  }
 
   // Textos propios de los mensajes: se validan (claves/variables conocidas,
   // longitudes) y se guardan como JSON; objeto vacío = volver a los textos
@@ -106,7 +150,7 @@ export const PATCH = apiHandler(async (request: Request) => {
 
   const business = await prisma.business.update({
     where: { id: admin.businessId },
-    data: { ...data, ...templatesUpdate },
+    data: { ...data, ...templatesUpdate, ...domainUpdate },
   });
   return NextResponse.json({ business });
 });

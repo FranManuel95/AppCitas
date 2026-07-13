@@ -112,6 +112,7 @@ const es = {
     loyaltyTitle: "Tarjeta de sellos",
     loyaltyText:
       "Cada {required} citas completadas, un {percent}% de descuento en la siguiente. Se acumula solo al reservar aquí.",
+    worksTitle: "Trabajos",
     membershipsTitle: "Membresías",
     membershipsSubtitle:
       "Cuota mensual con descuento automático en tus citas.",
@@ -845,6 +846,7 @@ const en: Dict = {
     loyaltyTitle: "Stamp card",
     loyaltyText:
       "Every {required} completed appointments, {percent}% off your next one. It adds up automatically when you book here.",
+    worksTitle: "Our work",
     membershipsTitle: "Memberships",
     membershipsSubtitle:
       "A monthly fee with an automatic discount on your appointments.",

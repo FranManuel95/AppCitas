@@ -76,6 +76,10 @@ function getPublicBusinessData(slug: string) {
             },
             orderBy: { priceCents: "asc" },
           },
+          photos: {
+            orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+            select: { id: true, url: true, caption: true },
+          },
         },
       });
       if (!business) return null;
@@ -152,8 +156,49 @@ export default async function BusinessPage({
     ranges: business.hours.filter((h) => h.weekday === weekday),
   }));
 
+  // JSON-LD LocalBusiness (schema.org): mejora el SEO local y es la base de
+  // datos estructurados que pide Reserve with Google.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: business.name,
+    description: business.description ?? undefined,
+    address: business.address ?? undefined,
+    telephone: business.phone ?? undefined,
+    image: business.logoUrl ?? undefined,
+    openingHoursSpecification: business.hours.map((h) => ({
+      "@type": "OpeningHoursSpecification",
+      // schema.org usa nombres de día; weekday 0 = domingo (getUTCDay)
+      dayOfWeek: [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ][h.weekday],
+      opens: h.openTime,
+      closes: h.closeTime,
+    })),
+    ...(reviewSummary.count > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: reviewSummary.average,
+            reviewCount: reviewSummary.count,
+          },
+        }
+      : {}),
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        // Contenido controlado: se serializa desde datos propios de la BD
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <SiteHeader />
       <main className="flex-1" style={brandStyle(business.brandColor)}>
         <div className="bg-gradient-to-b from-brand-50 to-transparent">
@@ -317,6 +362,32 @@ export default async function BusinessPage({
                       </li>
                     ))}
                   </ul>
+                </Card>
+              )}
+
+              {business.photos.length > 0 && (
+                <Card>
+                  <h2 className="font-semibold tracking-tight text-ink">
+                    {t.business.worksTitle}
+                  </h2>
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {business.photos.map((p) => (
+                      <figure key={p.id}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={p.url}
+                          alt={p.caption ?? business.name}
+                          loading="lazy"
+                          className="aspect-square w-full rounded-lg border border-border object-cover"
+                        />
+                        {p.caption && (
+                          <figcaption className="mt-1 truncate text-xs text-ink-muted">
+                            {p.caption}
+                          </figcaption>
+                        )}
+                      </figure>
+                    ))}
+                  </div>
                 </Card>
               )}
             </section>

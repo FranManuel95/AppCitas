@@ -3,6 +3,8 @@ import { requireBusinessAdmin } from "@/lib/auth/guards";
 import { getDict } from "@/lib/i18n";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { CalendarConnectCard } from "@/components/calendar-connect-card";
+import { CustomDomainCard } from "@/components/admin/custom-domain-card";
+import { GalleryManager } from "@/components/admin/gallery-manager";
 import { LogoutAllButton } from "@/components/logout-all-button";
 import { TwoFactorSetup } from "@/components/two-factor-setup";
 import { AUDIT_EVENT_LABELS } from "@/lib/audit";
@@ -29,6 +31,11 @@ export default async function SettingsPage() {
       select: { googleEmail: true, status: true, simulated: true },
     }),
   ]);
+  const photos = await prisma.businessPhoto.findMany({
+    where: { businessId: admin.businessId },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    select: { id: true, url: true, caption: true },
+  });
 
   return (
     <div className="space-y-6">
@@ -75,6 +82,13 @@ export default async function SettingsPage() {
       />
 
       <CalendarConnectCard kind="admin" connection={calendarConnection} />
+
+      <GalleryManager photos={photos} />
+
+      <CustomDomainCard
+        initial={business.customDomain}
+        isPro={business.plan === "pro"}
+      />
 
       {/* Seguridad de la cuenta */}
       <Card>

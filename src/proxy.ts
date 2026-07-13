@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { customHostRewritePath } from "@/lib/custom-domain";
 
 // Content-Security-Policy con nonce por request. Next propaga el nonce a sus
 // propios <script> cuando lee la CSP de las cabeceras de la PETICIÓN, así que
@@ -46,7 +47,18 @@ export function proxy(request: NextRequest) {
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", csp);
 
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  // Dominio propio del negocio (Pro): un host ajeno a la app se reescribe a
+  // /d/{host}/…, que resuelve el negocio por Business.customDomain. El
+  // dominio también debe estar añadido en Vercel (DEPLOY.md).
+  const rewritePath = customHostRewritePath(
+    request.headers.get("host"),
+    request.nextUrl.pathname,
+  );
+  const response = rewritePath
+    ? NextResponse.rewrite(new URL(rewritePath, request.url), {
+        request: { headers: requestHeaders },
+      })
+    : NextResponse.next({ request: { headers: requestHeaders } });
 
   // Enforce solo si se pide explícitamente; por defecto, report-only.
   const header =

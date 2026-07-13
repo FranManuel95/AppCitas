@@ -102,7 +102,7 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
    todas las tablas (la API pública de Supabase no podrá leer tus datos; la
    app no se ve afectada) y deja el registro de migraciones coherente para
    futuros `prisma migrate deploy`. **Después**, ejecuta en orden los scripts
-   incrementales `scripts/supabase-migration-2-*.sql` … `-34-*.sql` (cada uno
+   incrementales `scripts/supabase-migration-2-*.sql` … `-35-*.sql` (cada uno
    añade las mejoras de una fase posterior: rate limit, autocierre/2º
    recordatorio, reseñas, suscripción SaaS, idempotencia de webhooks,
    consentimiento, el default de suscripción, los índices de camino caliente,
@@ -133,6 +133,23 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
 > ¿Y Airtable? No es apto como base de datos de esta app: sin transacciones
 > no se puede garantizar el anti doble-reserva, y su límite de 5 peticiones/s
 > no soporta tráfico real. Como PostgreSQL gestionado usa Supabase/Neon.
+
+### Dominio propio por negocio (Pro)
+
+Un negocio Pro puede usar su dominio (p. ej. `reservas.suclinica.com`) como
+portada de reservas: la raíz de ese host sirve su página pública (`/b/{slug}`
+sigue funcionando igual). Pasos:
+
+1. El negocio guarda su dominio en **Ajustes → Dominio propio** (la app lo
+   normaliza y comprueba que no esté en uso).
+2. El negocio crea en su DNS un **CNAME** apuntando al dominio de la app
+   (o el registro que indique Vercel).
+3. Tú añades el dominio en **Vercel → Settings → Domains** del proyecto
+   (Vercel emite el certificado automáticamente). Sin este paso, el dominio
+   no llega a la app.
+
+En la Opción B (VPS), añade el dominio al proxy inverso (Caddy/Nginx) con su
+certificado; la app resuelve el host automáticamente.
 
 ## Opción B — VPS con Docker Compose
 
