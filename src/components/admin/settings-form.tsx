@@ -38,7 +38,22 @@ interface BusinessSettings {
   invoicingEnabled: boolean;
   brandColor: string | null;
   logoUrl: string | null;
+  timezone: string;
+  currency: string;
 }
+
+const CURRENCIES = [
+  "EUR",
+  "USD",
+  "GBP",
+  "CHF",
+  "MXN",
+  "ARS",
+  "CLP",
+  "COP",
+  "PEN",
+  "BRL",
+] as const;
 
 // Textos resueltos en el servidor: el subárbol admin.ajustes completo más los
 // estados comunes de guardado.
@@ -101,6 +116,8 @@ export function SettingsForm({
         notifyByWhatsapp: bool("notifyByWhatsapp"),
         taxId: str("taxId") || null,
         taxPercent: num("taxPercent"),
+        timezone: str("timezone") || business.timezone,
+        currency: str("currency") || business.currency,
         invoicingEnabled: bool("invoicingEnabled"),
         brandColor: str("brandColor") || null,
         logoUrl: str("logoUrl") || null,
@@ -303,6 +320,37 @@ export function SettingsForm({
               required
               defaultValue={business.maxAdvanceBookingDays}
             />
+          </Field>
+          <Field
+            label={labels.timezoneLabel}
+            htmlFor="settings-timezone"
+            hint={labels.timezoneHint}
+          >
+            <Input
+              id="settings-timezone"
+              name="timezone"
+              list="settings-timezones"
+              defaultValue={business.timezone}
+            />
+            <datalist id="settings-timezones">
+              {Intl.supportedValuesOf("timeZone").map((tz) => (
+                <option key={tz} value={tz} />
+              ))}
+            </datalist>
+          </Field>
+          <Field label={labels.currencyLabel} htmlFor="settings-currency">
+            <select
+              id="settings-currency"
+              name="currency"
+              className="input"
+              defaultValue={business.currency}
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </Field>
         </div>
       </Card>

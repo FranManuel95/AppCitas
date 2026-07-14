@@ -436,6 +436,14 @@ const es = {
       next: "Siguiente",
       noAppointmentsThatDay: "No hay citas para este día.",
       emptyAction: "Comparte tu página de reservas",
+      internalNote: {
+        label: "Nota interna",
+        add: "Añadir nota interna",
+        edit: "Editar nota interna",
+        save: "Guardar",
+        cancel: "Cancelar",
+        error: "No se pudo guardar la nota",
+      },
     },
     citas: {
       title: "Citas",
@@ -638,6 +646,10 @@ const es = {
       slotGranularityLabel: "Granularidad de huecos (minutos)",
       minNoticeLabel: "Antelación mínima (minutos)",
       maxAdvanceLabel: "Reserva máxima con antelación (días)",
+      timezoneLabel: "Zona horaria",
+      timezoneHint:
+        "Identificador IANA (ej.: Europe/Madrid). Cambiarla reinterpreta tus horarios de apertura; las citas ya reservadas conservan su instante.",
+      currencyLabel: "Moneda",
       remindersTitle: "Recordatorios y notificaciones",
       remindersDescription:
         "Confirmación al reservar y recordatorio con enlace de asistencia (\"¿vas a venir?\") antes de cada cita.",
@@ -1172,6 +1184,14 @@ const en: Dict = {
       next: "Next",
       noAppointmentsThatDay: "No appointments for this day.",
       emptyAction: "Share your booking page",
+      internalNote: {
+        label: "Internal note",
+        add: "Add internal note",
+        edit: "Edit internal note",
+        save: "Save",
+        cancel: "Cancel",
+        error: "Could not save the note",
+      },
     },
     citas: {
       title: "Appointments",
@@ -1374,6 +1394,10 @@ const en: Dict = {
       slotGranularityLabel: "Slot granularity (minutes)",
       minNoticeLabel: "Minimum notice (minutes)",
       maxAdvanceLabel: "Maximum advance booking (days)",
+      timezoneLabel: "Time zone",
+      timezoneHint:
+        "IANA identifier (e.g. Europe/Madrid). Changing it reinterprets your opening hours; existing appointments keep their instant.",
+      currencyLabel: "Currency",
       remindersTitle: "Reminders and notifications",
       remindersDescription:
         "Confirmation on booking and a reminder with an attendance link (\"will you come?\") before each appointment.",

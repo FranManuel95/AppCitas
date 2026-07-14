@@ -6,8 +6,11 @@ import { getDict } from "@/lib/i18n";
 import { fmt } from "@/lib/i18n/shared";
 import { formatCents } from "@/lib/money";
 import { APPOINTMENT_STATUSES, STATUS_LABELS, type AppointmentStatus } from "@/lib/domain/types";
+import { addDaysISO, toLocalDateISO } from "@/lib/domain/dates";
 import { StatusBadge } from "@/components/status-badge";
 import { AppointmentActions } from "@/components/admin/appointment-actions";
+import { InternalNote } from "@/components/admin/internal-note";
+import { RescheduleAppointment } from "@/components/reschedule-appointment";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/field";
@@ -42,7 +45,12 @@ export default async function AppointmentsPage({
   const [business, services] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
-      select: { timezone: true, currency: true },
+      select: {
+        timezone: true,
+        currency: true,
+        slug: true,
+        maxAdvanceBookingDays: true,
+      },
     }),
     prisma.service.findMany({
       where: { businessId: admin.businessId },
@@ -50,6 +58,7 @@ export default async function AppointmentsPage({
       orderBy: { name: "asc" },
     }),
   ]);
+  const todayISO = toLocalDateISO(new Date(), business.timezone);
 
   const where = {
     businessId: admin.businessId,
@@ -238,6 +247,25 @@ export default async function AppointmentsPage({
                     isPast={a.startAt.getTime() < now}
                     seriesId={a.seriesId}
                     labels={t.admin.actions}
+                  />
+                  {a.status === "CONFIRMED" && a.startAt.getTime() > now && (
+                    <RescheduleAppointment
+                      appointmentId={a.id}
+                      businessSlug={business.slug}
+                      serviceId={a.serviceId}
+                      minDateISO={todayISO}
+                      maxDateISO={addDaysISO(
+                        todayISO,
+                        business.maxAdvanceBookingDays,
+                      )}
+                      labels={t.myAppointments}
+                      endpoint={`/api/admin/appointments/${a.id}/reschedule`}
+                    />
+                  )}
+                  <InternalNote
+                    appointmentId={a.id}
+                    note={a.internalNote}
+                    labels={t.admin.agenda.internalNote}
                   />
                   {a.chargedCents > 0 && (
                     <Link

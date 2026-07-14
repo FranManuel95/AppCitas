@@ -683,6 +683,9 @@ model Appointment {
   discountCents Int     @default(0)
   chargedCents  Int     @default(0)
   notes         String?
+  // Nota interna del equipo sobre la cita (nunca se muestra al cliente;
+  // la nota del cliente al reservar es `notes`)
+  internalNote  String?
   cancelledAt   DateTime?
 
   // Promoción aplicada al reservar (cupón o sesión de bono)

@@ -73,6 +73,8 @@ export default async function SettingsPage() {
           invoicingEnabled: business.invoicingEnabled,
           brandColor: business.brandColor,
           logoUrl: business.logoUrl,
+          timezone: business.timezone,
+          currency: business.currency,
         }}
         labels={{
           ...t.admin.ajustes,

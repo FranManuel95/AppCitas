@@ -13,6 +13,8 @@ import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { NewAppointmentForm } from "@/components/admin/new-appointment-form";
+import { InternalNote } from "@/components/admin/internal-note";
+import { RescheduleAppointment } from "@/components/reschedule-appointment";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Agenda" };
@@ -28,7 +30,12 @@ export default async function AgendaPage({
   const [business, services, staff] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
-      select: { timezone: true, currency: true },
+      select: {
+        timezone: true,
+        currency: true,
+        slug: true,
+        maxAdvanceBookingDays: true,
+      },
     }),
     prisma.service.findMany({
       where: { businessId: admin.businessId, active: true },
@@ -141,6 +148,11 @@ export default async function AgendaPage({
                       {a.notes}
                     </p>
                   )}
+                  <InternalNote
+                    appointmentId={a.id}
+                    note={a.internalNote}
+                    labels={t.admin.agenda.internalNote}
+                  />
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2">
@@ -151,6 +163,22 @@ export default async function AgendaPage({
                   isPast={a.startAt.getTime() < now}
                   labels={t.admin.actions}
                 />
+                {/* Mover UNA cita: mismo panel de reprogramación que el
+                    cliente, contra la ruta del negocio (sin ventana de plazo) */}
+                {a.status === "CONFIRMED" && a.startAt.getTime() > now && (
+                  <RescheduleAppointment
+                    appointmentId={a.id}
+                    businessSlug={business.slug}
+                    serviceId={a.serviceId}
+                    minDateISO={today}
+                    maxDateISO={addDaysISO(
+                      today,
+                      business.maxAdvanceBookingDays,
+                    )}
+                    labels={t.myAppointments}
+                    endpoint={`/api/admin/appointments/${a.id}/reschedule`}
+                  />
+                )}
               </div>
             </div>
           </Card>

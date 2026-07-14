@@ -24,6 +24,13 @@ const updateSchema = z.object({
   slotGranularityMinutes: z.number().int().min(5).max(120).optional(),
   maxAdvanceBookingDays: z.number().int().min(1).max(365).optional(),
   minNoticeMinutes: z.number().int().min(0).max(60 * 24 * 7).optional(),
+  // Zona horaria IANA (se valida abajo con Intl) y moneda de cobro. Cambiar
+  // la zona reinterpreta los horarios HH:mm del negocio; las citas existentes
+  // conservan su instante UTC.
+  timezone: z.string().trim().min(1).max(64).optional(),
+  currency: z
+    .enum(["EUR", "USD", "GBP", "CHF", "MXN", "ARS", "CLP", "COP", "PEN", "BRL"])
+    .optional(),
   // Pagos
   requireCardToBook: z.boolean().optional(),
   // Señal (prepago) al reservar: % del precio, 0 = desactivada
@@ -125,6 +132,19 @@ export const PATCH = apiHandler(async (request: Request) => {
     templatesUpdate = {
       notificationTemplates: result.value ? JSON.stringify(result.value) : null,
     };
+  }
+
+  // Zona horaria: cualquier identificador IANA que Intl acepte (incl. alias)
+  if (data.timezone !== undefined) {
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: data.timezone });
+    } catch {
+      throw new DomainError(
+        "Zona horaria no válida (ejemplo: Europe/Madrid)",
+        "TIMEZONE_INVALID",
+        422,
+      );
+    }
   }
 
   // Una factura sin NIF/CIF del emisor no es válida: la activación exige
