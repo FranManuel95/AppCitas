@@ -217,6 +217,58 @@ export function BookingWizard({
     };
   }, [isLoggedIn, serviceId, business.id]);
 
+  // Tira multi-día: nº de huecos de los próximos 7 días para la selección
+  // actual. Reutiliza el endpoint público existente (con rate limit) en vez
+  // de un endpoint agregado: mismo coste total y cero servidor nuevo.
+  const [dayCounts, setDayCounts] = useState<
+    Map<string, number | "loading">
+  >(new Map());
+
+  useEffect(() => {
+    if (!serviceId) return;
+    let cancelled = false;
+    const days = Array.from({ length: 7 }, (_, i) => addDays(todayISO(), i + 1));
+    setDayCounts(new Map(days.map((d) => [d, "loading" as const])));
+    const queue = [...days];
+    async function worker() {
+      for (let day = queue.shift(); day && !cancelled; day = queue.shift()) {
+        const current = day;
+        try {
+          const params = new URLSearchParams({ serviceId, date: current });
+          if (staffId) params.set("staffId", staffId);
+          if (locationId) params.set("location", locationId);
+          const res = await fetch(
+            `/api/businesses/${business.slug}/availability?${params.toString()}`,
+          );
+          const json = await res.json();
+          const count = res.ok ? ((json.slots?.length as number) ?? 0) : 0;
+          if (!cancelled) {
+            setDayCounts((prev) => new Map(prev).set(current, count));
+          }
+        } catch {
+          if (!cancelled) {
+            setDayCounts((prev) => new Map(prev).set(current, 0));
+          }
+        }
+      }
+    }
+    // Concurrencia 2: reparte las 7 consultas sin ráfaga
+    void Promise.all([worker(), worker()]);
+    return () => {
+      cancelled = true;
+    };
+  }, [business.slug, serviceId, staffId, locationId]);
+
+  const chipFmt = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en", {
+        weekday: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      }),
+    [locale],
+  );
+
   const loadSlots = useCallback(async () => {
     if (!serviceId || !dateISO) return;
     setLoadingSlots(true);
@@ -505,6 +557,37 @@ export function BookingWizard({
           {/* Fecha y hora */}
           <Card>
             <SectionHeader as="h2" title={stepLabel(t.stepDate)} />
+            {/* Próximos 7 días de un vistazo: chip = día + nº de huecos */}
+            {serviceId && dayCounts.size > 0 && (
+              <div
+                className="mt-4 flex gap-1.5 overflow-x-auto pb-1"
+                aria-label={t.nextDays}
+              >
+                {[...dayCounts.entries()].map(([day, count]) => (
+                  <button
+                    key={day}
+                    type="button"
+                    aria-pressed={dateISO === day}
+                    disabled={count === 0}
+                    onClick={() => setDateISO(day)}
+                    className={`shrink-0 rounded-lg border px-2.5 py-1.5 text-center text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                      dateISO === day
+                        ? "border-brand-600 bg-brand-50 text-brand-800 dark:bg-brand-950/40 dark:text-brand-200"
+                        : "border-border bg-surface text-ink-soft hover:border-brand-400"
+                    }`}
+                  >
+                    <span className="block font-medium capitalize">
+                      {chipFmt.format(new Date(`${day}T12:00:00Z`))}
+                    </span>
+                    <span className="mt-0.5 block tabular-nums text-ink-muted">
+                      {count === "loading"
+                        ? "…"
+                        : fmt(t.slotsShort, { n: count })}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
             <Field label={t.date} htmlFor="fecha" className="mt-4">
               <Input
                 id="fecha"

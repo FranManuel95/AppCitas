@@ -158,6 +158,8 @@ const es = {
     date: "Fecha",
     searchingSlots: "Buscando huecos…",
     noSlots: "No hay huecos disponibles ese día. Prueba con otra fecha.",
+    nextDays: "Próximos días con disponibilidad",
+    slotsShort: "{n} huecos",
     usePackage: "Usar mi bono: {name} ({n} sesiones restantes)",
     packageNote:
       "Esta cita se descuenta del bono: no se cobra nada. Si cancelas en plazo, la sesión vuelve a tu bono; si cancelas tarde, la sesión se pierde.",
@@ -916,6 +918,8 @@ const en: Dict = {
     date: "Date",
     searchingSlots: "Searching for slots…",
     noSlots: "No slots available that day. Try another date.",
+    nextDays: "Next days with availability",
+    slotsShort: "{n} slots",
     usePackage: "Use my pack: {name} ({n} sessions left)",
     packageNote:
       "This appointment is deducted from your pack: nothing is charged. If you cancel in time, the session returns to your pack; if you cancel late, the session is lost.",
