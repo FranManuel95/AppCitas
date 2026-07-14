@@ -607,6 +607,9 @@ BEGIN
   END IF;
 END $$;
 
+-- ── (43) Idioma preferido del usuario (notificaciones bilingües) ────────────
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "locale" TEXT;
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -651,7 +654,8 @@ FROM (VALUES
   ('20260714100000_nota_interna'),
   ('20260714110000_buffers_servicio'),
   ('20260714120000_consentimiento_winback'),
-  ('20260714130000_comisiones_sede_espera')
+  ('20260714130000_comisiones_sede_espera'),
+  ('20260714140000_locale_usuario')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

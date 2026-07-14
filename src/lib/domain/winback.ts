@@ -98,6 +98,7 @@ async function processBusiness(
           name: true,
           email: true,
           phone: true,
+          locale: true,
           marketingConsent: true,
         },
       },
@@ -136,6 +137,7 @@ async function processBusiness(
     const message = winbackMessage(
       {
         clientName: candidate.client.name,
+        locale: candidate.client.locale === "en" ? ("en" as const) : ("es" as const),
         businessName: business.name,
         serviceName: candidate.service.name,
         startAt: candidate.startAt,

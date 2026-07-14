@@ -74,6 +74,31 @@ describe("plantillas de notificación editables", () => {
     ).toBe(true);
   });
 
+  it("cliente en inglés: texto y fecha en inglés; override del negocio gana; null → es", () => {
+    const enMsg = bookingConfirmedMessage({ ...CTX, locale: "en" });
+    expect(enMsg.subject).toBe("Appointment confirmed at Estudio Aurora");
+    expect(enMsg.body).toContain("your appointment is confirmed");
+    expect(enMsg.body).toContain("Friday"); // fecha formateada en inglés
+
+    // El texto propio del negocio es monolingüe y gana SIEMPRE
+    const overridden = bookingConfirmedMessage(
+      { ...CTX, locale: "en" },
+      { BOOKING_CONFIRMED: { body: "Texto del negocio: {enlace}" } },
+    );
+    expect(overridden.body).toContain("Texto del negocio:");
+
+    // Sin locale → español
+    expect(bookingConfirmedMessage(CTX).subject).toBe(
+      "Cita confirmada en Estudio Aurora",
+    );
+    expect(reminderMessage({ ...CTX, locale: "en" }).subject).toBe(
+      "Reminder: your appointment at Estudio Aurora",
+    );
+    expect(cancellationMessage({ ...CTX, locale: "en" }, 0).body).toContain(
+      "has been cancelled",
+    );
+  });
+
   it("un override parcial (solo subject) mantiene el body por defecto", () => {
     const msg = bookingConfirmedMessage(CTX, {
       BOOKING_CONFIRMED: { subject: "Reserva OK en {negocio}" },

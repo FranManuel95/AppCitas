@@ -1,4 +1,5 @@
 import { formatCents } from "@/lib/money";
+import { intlLocale, type Locale } from "@/lib/i18n/shared";
 
 // Plantillas de mensajes en texto plano: válidas para email, SMS y WhatsApp.
 //
@@ -9,6 +10,9 @@ import { formatCents } from "@/lib/money";
 
 export interface AppointmentMessageContext {
   clientName: string;
+  // Idioma del CLIENTE para los textos por defecto ("es" si no se conoce).
+  // Los textos propios del negocio (overrides) son monolingües y ganan SIEMPRE.
+  locale?: Locale;
   businessName: string;
   serviceName: string;
   staffName?: string | null;
@@ -129,23 +133,27 @@ export function parseTemplateOverrides(
   }
 }
 
-function formatDateTime(date: Date, timezone: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+function localeOf(ctx: AppointmentMessageContext): Locale {
+  return ctx.locale ?? "es";
+}
+
+function formatDateTime(date: Date, timezone: string, locale: Locale = "es"): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     dateStyle: "full",
     timeStyle: "short",
     timeZone: timezone,
   }).format(date);
 }
 
-function formatDateOnly(date: Date, timezone: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+function formatDateOnly(date: Date, timezone: string, locale: Locale = "es"): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     dateStyle: "full",
     timeZone: timezone,
   }).format(date);
 }
 
-function formatTimeOnly(date: Date, timezone: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+function formatTimeOnly(date: Date, timezone: string, locale: Locale = "es"): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     timeStyle: "short",
     timeZone: timezone,
   }).format(date);
@@ -171,8 +179,8 @@ export function renderTemplate(
     cliente: ctx.clientName,
     negocio: ctx.businessName,
     servicio: ctx.serviceName,
-    fecha: formatDateOnly(ctx.startAt, ctx.timezone),
-    hora: formatTimeOnly(ctx.startAt, ctx.timezone),
+    fecha: formatDateOnly(ctx.startAt, ctx.timezone, localeOf(ctx)),
+    hora: formatTimeOnly(ctx.startAt, ctx.timezone, localeOf(ctx)),
     precio: formatCents(ctx.priceCents, ctx.currency),
     enlace: ctx.confirmationUrl,
     sede: locationLabel(ctx),
@@ -189,22 +197,36 @@ export function bookingConfirmedMessage(
   subject: string;
   body: string;
 } {
-  const when = formatDateTime(ctx.startAt, ctx.timezone);
-  const staffLine = ctx.staffName ? `\nTe atenderá: ${ctx.staffName}` : "";
+  const en = localeOf(ctx) === "en";
+  const when = formatDateTime(ctx.startAt, ctx.timezone, localeOf(ctx));
+  const staffLine = ctx.staffName
+    ? en
+      ? `\nYou'll be seen by: ${ctx.staffName}`
+      : `\nTe atenderá: ${ctx.staffName}`
+    : "";
   const custom = overrides?.BOOKING_CONFIRMED;
+  const defaultBody = en
+    ? `Hi ${ctx.clientName}, your appointment is confirmed. ✅\n\n` +
+      `${ctx.serviceName} at ${ctx.businessName}\n` +
+      `📅 ${when}${staffLine}${locationLine(ctx)}\n` +
+      `💶 ${formatCents(ctx.priceCents, ctx.currency)}\n\n` +
+      `You can cancel free of charge up to ${ctx.cancellationWindowHours} hours before. ` +
+      `After that, ${ctx.lateCancellationFeePercent}% of the service is charged.\n` +
+      `Manage your appointment: ${ctx.confirmationUrl}`
+    : `Hola ${ctx.clientName}, tu cita está confirmada. ✅\n\n` +
+      `${ctx.serviceName} en ${ctx.businessName}\n` +
+      `📅 ${when}${staffLine}${locationLine(ctx)}\n` +
+      `💶 ${formatCents(ctx.priceCents, ctx.currency)}\n\n` +
+      `Puedes cancelar gratis hasta ${ctx.cancellationWindowHours} horas antes. ` +
+      `Después se cobra el ${ctx.lateCancellationFeePercent}% del servicio.\n` +
+      `Gestiona tu cita: ${ctx.confirmationUrl}`;
   return {
     subject: custom?.subject
       ? renderTemplate(custom.subject, ctx)
-      : `Cita confirmada en ${ctx.businessName}`,
-    body: custom?.body
-      ? renderTemplate(custom.body, ctx)
-      : `Hola ${ctx.clientName}, tu cita está confirmada. ✅\n\n` +
-        `${ctx.serviceName} en ${ctx.businessName}\n` +
-        `📅 ${when}${staffLine}${locationLine(ctx)}\n` +
-        `💶 ${formatCents(ctx.priceCents, ctx.currency)}\n\n` +
-        `Puedes cancelar gratis hasta ${ctx.cancellationWindowHours} horas antes. ` +
-        `Después se cobra el ${ctx.lateCancellationFeePercent}% del servicio.\n` +
-        `Gestiona tu cita: ${ctx.confirmationUrl}`,
+      : en
+        ? `Appointment confirmed at ${ctx.businessName}`
+        : `Cita confirmada en ${ctx.businessName}`,
+    body: custom?.body ? renderTemplate(custom.body, ctx) : defaultBody,
   };
 }
 
@@ -215,8 +237,16 @@ export function reminderMessage(
   subject: string;
   body: string;
 } {
-  const when = formatDateTime(ctx.startAt, ctx.timezone);
-  const staffLine = ctx.staffName ? ` con ${ctx.staffName}` : "";
+  const en = localeOf(ctx) === "en";
+  const when = formatDateTime(ctx.startAt, ctx.timezone, localeOf(ctx));
+  const staffLine = ctx.staffName
+    ? en
+      ? ` with ${ctx.staffName}`
+      : ` con ${ctx.staffName}`
+    : "";
+  const defaultSubject = en
+    ? `Reminder: your appointment at ${ctx.businessName}`
+    : `Recordatorio: tu cita en ${ctx.businessName}`;
   const custom = overrides?.REMINDER;
   if (custom?.subject || custom?.body) {
     // El enlace de confirmación no puede perderse: si el texto propio no
@@ -228,14 +258,14 @@ export function reminderMessage(
     return {
       subject: custom.subject
         ? renderTemplate(custom.subject, ctx)
-        : `Recordatorio: tu cita en ${ctx.businessName}`,
+        : defaultSubject,
       body: bodyTemplate
         ? renderTemplate(bodyTemplate, ctx)
         : defaultReminderBody(ctx, when, staffLine),
     };
   }
   return {
-    subject: `Recordatorio: tu cita en ${ctx.businessName}`,
+    subject: defaultSubject,
     body: defaultReminderBody(ctx, when, staffLine),
   };
 }
@@ -245,6 +275,22 @@ function defaultReminderBody(
   when: string,
   staffLine: string,
 ): string {
+  const fee = formatCents(
+    Math.round((ctx.priceCents * ctx.lateCancellationFeePercent) / 100),
+    ctx.currency,
+  );
+  if (localeOf(ctx) === "en") {
+    return (
+      `Hi ${ctx.clientName} 👋 This is a reminder of your ${ctx.serviceName} appointment` +
+      `${staffLine} at ${ctx.businessName}:\n` +
+      `📅 ${when}${locationLine(ctx)}\n\n` +
+      `Are you coming? Confirm here (one tap):\n` +
+      `${ctx.confirmationUrl}\n\n` +
+      `If you can't make it, cancel from that same link. Remember: cancelling ` +
+      `less than ${ctx.cancellationWindowHours} hours before carries a ` +
+      `${ctx.lateCancellationFeePercent}% charge (${fee}).`
+    );
+  }
   return (
     `Hola ${ctx.clientName} 👋 Te recordamos tu cita de ${ctx.serviceName}` +
     `${staffLine} en ${ctx.businessName}:\n` +
@@ -253,10 +299,7 @@ function defaultReminderBody(
     `${ctx.confirmationUrl}\n\n` +
     `Si no puedes venir, cancela desde ese mismo enlace. Recuerda: cancelar ` +
     `con menos de ${ctx.cancellationWindowHours} horas tiene un cargo del ` +
-    `${ctx.lateCancellationFeePercent}% (${formatCents(
-      Math.round((ctx.priceCents * ctx.lateCancellationFeePercent) / 100),
-      ctx.currency,
-    )}).`
+    `${ctx.lateCancellationFeePercent}% (${fee}).`
   );
 }
 
@@ -265,22 +308,32 @@ export function cancellationMessage(
   chargedCents: number,
   overrides?: TemplateOverrides,
 ): { subject: string; body: string } {
-  const when = formatDateTime(ctx.startAt, ctx.timezone);
+  const en = localeOf(ctx) === "en";
+  const when = formatDateTime(ctx.startAt, ctx.timezone, localeOf(ctx));
   const chargeLine =
     chargedCents > 0
-      ? `Por cancelación fuera de plazo se aplica un cargo de ${formatCents(chargedCents, ctx.currency)}.`
-      : "La cancelación se realizó dentro de plazo: sin coste.";
+      ? en
+        ? `A late-cancellation fee of ${formatCents(chargedCents, ctx.currency)} applies.`
+        : `Por cancelación fuera de plazo se aplica un cargo de ${formatCents(chargedCents, ctx.currency)}.`
+      : en
+        ? "The cancellation was made in time: no charge."
+        : "La cancelación se realizó dentro de plazo: sin coste.";
   const custom = overrides?.CANCELLED;
   return {
     subject: custom?.subject
       ? renderTemplate(custom.subject, ctx)
-      : `Cita cancelada en ${ctx.businessName}`,
+      : en
+        ? `Appointment cancelled at ${ctx.businessName}`
+        : `Cita cancelada en ${ctx.businessName}`,
     // El cargo depende de cada cancelación (no hay variable): con texto
     // propio, la línea del cargo se añade siempre al final.
     body: custom?.body
       ? `${renderTemplate(custom.body, ctx)}\n${chargeLine}`
-      : `Hola ${ctx.clientName}, tu cita de ${ctx.serviceName} en ` +
-        `${ctx.businessName} (${when}) ha quedado cancelada.\n${chargeLine}`,
+      : en
+        ? `Hi ${ctx.clientName}, your ${ctx.serviceName} appointment at ` +
+          `${ctx.businessName} (${when}) has been cancelled.\n${chargeLine}`
+        : `Hola ${ctx.clientName}, tu cita de ${ctx.serviceName} en ` +
+          `${ctx.businessName} (${when}) ha quedado cancelada.\n${chargeLine}`,
   };
 }
 
@@ -292,16 +345,23 @@ export function winbackMessage(
   ctx: AppointmentMessageContext,
   overrides?: TemplateOverrides,
 ): { subject: string; body: string } {
+  const en = localeOf(ctx) === "en";
   const custom = overrides?.WINBACK;
   return {
     subject: custom?.subject
       ? renderTemplate(custom.subject, ctx)
-      : `Te echamos de menos en ${ctx.businessName}`,
+      : en
+        ? `We miss you at ${ctx.businessName}`
+        : `Te echamos de menos en ${ctx.businessName}`,
     body: custom?.body
       ? renderTemplate(custom.body, ctx)
-      : `Hola ${ctx.clientName} 👋 Hace tiempo que no nos vemos por ` +
-        `${ctx.businessName}. ¿Reservamos tu próxima cita de ${ctx.serviceName}?\n\n` +
-        `Reserva en un minuto: ${ctx.confirmationUrl}`,
+      : en
+        ? `Hi ${ctx.clientName} 👋 It's been a while since your last visit to ` +
+          `${ctx.businessName}. Shall we book your next ${ctx.serviceName}?\n\n` +
+          `Book in a minute: ${ctx.confirmationUrl}`
+        : `Hola ${ctx.clientName} 👋 Hace tiempo que no nos vemos por ` +
+          `${ctx.businessName}. ¿Reservamos tu próxima cita de ${ctx.serviceName}?\n\n` +
+          `Reserva en un minuto: ${ctx.confirmationUrl}`,
   };
 }
 
@@ -310,19 +370,29 @@ export function noShowMessage(
   chargedCents: number,
   overrides?: TemplateOverrides,
 ): { subject: string; body: string } {
-  const when = formatDateTime(ctx.startAt, ctx.timezone);
+  const en = localeOf(ctx) === "en";
+  const when = formatDateTime(ctx.startAt, ctx.timezone, localeOf(ctx));
   const chargeLine =
     chargedCents > 0
-      ? `Se ha aplicado un cargo por no presentarse de ${formatCents(chargedCents, ctx.currency)}.`
-      : "No se ha aplicado ningún cargo por esta ausencia.";
+      ? en
+        ? `A no-show fee of ${formatCents(chargedCents, ctx.currency)} has been applied.`
+        : `Se ha aplicado un cargo por no presentarse de ${formatCents(chargedCents, ctx.currency)}.`
+      : en
+        ? "No fee has been applied for this absence."
+        : "No se ha aplicado ningún cargo por esta ausencia.";
   const custom = overrides?.NO_SHOW;
   return {
     subject: custom?.subject
       ? renderTemplate(custom.subject, ctx)
-      : `No presentado · ${ctx.businessName}`,
+      : en
+        ? `No-show · ${ctx.businessName}`
+        : `No presentado · ${ctx.businessName}`,
     body: custom?.body
       ? `${renderTemplate(custom.body, ctx)}\n${chargeLine}`
-      : `Hola ${ctx.clientName}, constas como no presentado/a en tu cita de ` +
-        `${ctx.serviceName} en ${ctx.businessName} (${when}).\n${chargeLine}`,
+      : en
+        ? `Hi ${ctx.clientName}, you were marked as a no-show for your ` +
+          `${ctx.serviceName} appointment at ${ctx.businessName} (${when}).\n${chargeLine}`
+        : `Hola ${ctx.clientName}, constas como no presentado/a en tu cita de ` +
+          `${ctx.serviceName} en ${ctx.businessName} (${when}).\n${chargeLine}`,
   };
 }

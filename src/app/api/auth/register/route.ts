@@ -6,6 +6,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { createAuthToken } from "@/lib/auth/tokens";
 import { sendClaimAccountEmail, sendVerificationEmail } from "@/lib/auth/mailer";
+import { getLocale } from "@/lib/i18n";
 import { DomainError } from "@/lib/domain/errors";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
@@ -58,6 +59,8 @@ export const POST = apiHandler(async (request: Request) => {
       role: "CLIENT",
       // Consentimiento de términos y privacidad aceptado al registrarse.
       consentedAt: new Date(),
+      // Idioma actual de la interfaz: las notificaciones saldrán en él
+      locale: await getLocale(),
     },
   });
 

@@ -4,6 +4,8 @@ import { apiHandler } from "@/lib/api";
 import { createGuestAppointment } from "@/lib/domain/guest-booking";
 import { cancellationDeadline } from "@/lib/domain/cancellation";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { getLocale } from "@/lib/i18n";
+import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
   businessId: z.string().min(1),
@@ -49,6 +51,15 @@ export const POST = apiHandler(async (request: Request) => {
     guest: data.guest,
     consent: data.consent,
   });
+
+  // Idioma de la interfaz al reservar: solo se fija si el cliente (nuevo o
+  // invitado recurrente) aún no tenía preferencia guardada.
+  await prisma.user
+    .updateMany({
+      where: { id: appointment.clientId, locale: null },
+      data: { locale: await getLocale() },
+    })
+    .catch(() => {});
 
   return NextResponse.json(
     {

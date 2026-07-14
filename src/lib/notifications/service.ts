@@ -48,6 +48,7 @@ type AppointmentForNotify = {
     name: string;
     email: string;
     phone: string | null;
+    locale: string | null;
     pushSubscriptions: Array<{ id: string }>;
   };
   service: { name: string };
@@ -86,6 +87,7 @@ async function loadAppointment(
           name: true,
           email: true,
           phone: true,
+          locale: true,
           pushSubscriptions: { select: { id: true }, take: 1 },
         },
       },
@@ -119,6 +121,8 @@ function templateOverrides(a: AppointmentForNotify): TemplateOverrides {
 function messageContext(a: AppointmentForNotify): AppointmentMessageContext {
   return {
     clientName: a.client.name,
+    // Preferencia del cliente; sin ella, español (mercado por defecto)
+    locale: a.client.locale === "en" ? ("en" as const) : ("es" as const),
     businessName: a.business.name,
     serviceName: a.service.name,
     staffName: a.staff?.name ?? null,

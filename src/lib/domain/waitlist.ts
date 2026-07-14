@@ -278,7 +278,7 @@ export async function notifyWaitlistForFreedSlot(
       },
       select: {
         id: true,
-        client: { select: { email: true, phone: true } },
+        client: { select: { email: true, phone: true, locale: true } },
       },
     });
     if (entries.length === 0) return { notified: 0 };
@@ -301,8 +301,6 @@ export async function notifyWaitlistForFreedSlot(
     if (!business || !service) return { notified: 0 };
 
     const url = `${baseUrl()}/b/${business.slug}/reservar?servicio=${slot.serviceId}`;
-    const subject = `Se ha liberado un hueco en ${business.name}`;
-    const body = `¡Buenas noticias! Se ha liberado un hueco para "${service.name}" en ${business.name} el ${slot.desiredDate}. Reserva antes de que lo cojan: ${url}`;
     // Gancho de última hora: si el negocio lo tiene activo, el aviso anuncia
     // el PRECIO exacto rebajado (el descuento se aplica solo al reservar una
     // cita que empieza en <24 h).
@@ -311,11 +309,27 @@ export async function notifyWaitlistForFreedSlot(
       Math.round(
         (service.priceCents * business.lastMinuteDiscountPercent) / 100,
       );
-    const discountNote =
-      business.lastMinuteDiscountPercent > 0
-        ? ` Además, si tu cita empieza en menos de 24 h se aplica solo un ${business.lastMinuteDiscountPercent}% de descuento: "${service.name}" te quedaría en ${(discountedCents / 100).toFixed(2).replace(".", ",")} €.`
-        : "";
-    const fullBody = body + discountNote;
+    // Texto en el idioma de cada cliente (es por defecto)
+    const messageFor = (locale: string | null) => {
+      if (locale === "en") {
+        const note =
+          business.lastMinuteDiscountPercent > 0
+            ? ` Plus, appointments starting within 24 h get a ${business.lastMinuteDiscountPercent}% discount: "${service.name}" would be ${(discountedCents / 100).toFixed(2)} €.`
+            : "";
+        return {
+          subject: `A slot just opened up at ${business.name}`,
+          body: `Good news! A slot for "${service.name}" at ${business.name} on ${slot.desiredDate} just freed up. Book before it's gone: ${url}${note}`,
+        };
+      }
+      const note =
+        business.lastMinuteDiscountPercent > 0
+          ? ` Además, si tu cita empieza en menos de 24 h se aplica solo un ${business.lastMinuteDiscountPercent}% de descuento: "${service.name}" te quedaría en ${(discountedCents / 100).toFixed(2).replace(".", ",")} €.`
+          : "";
+      return {
+        subject: `Se ha liberado un hueco en ${business.name}`,
+        body: `¡Buenas noticias! Se ha liberado un hueco para "${service.name}" en ${business.name} el ${slot.desiredDate}. Reserva antes de que lo cojan: ${url}${note}`,
+      };
+    };
 
     const rows: Array<{
       businessId: string;
@@ -339,14 +353,15 @@ export async function notifyWaitlistForFreedSlot(
       if (business.notifyByWhatsapp && entry.client.phone) {
         deliveries.push({ channel: "WHATSAPP", recipient: entry.client.phone });
       }
+      const message = messageFor(entry.client.locale);
       for (const d of deliveries) {
         rows.push({
           businessId: slot.businessId,
           channel: d.channel,
           template: "WAITLIST_SLOT_FREED",
           recipient: d.recipient,
-          subject,
-          body: fullBody,
+          subject: message.subject,
+          body: message.body,
           scheduledFor: now,
         });
       }
