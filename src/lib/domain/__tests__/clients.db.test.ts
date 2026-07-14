@@ -210,4 +210,38 @@ describe("clientes del negocio (BD)", () => {
       }),
     ).rejects.toMatchObject({ code: "CLIENT_NOT_FOUND", httpStatus: 404 });
   });
+
+  it("filtra la cartera por nombre o email (buscador)", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    const marta = await prisma.user.create({
+      data: {
+        email: "marta@ejemplo.local",
+        name: "Marta García",
+        passwordHash: "x",
+        role: "CLIENT",
+      },
+    });
+    const juan = await prisma.user.create({
+      data: {
+        email: "juan@ejemplo.local",
+        name: "Juan Pérez",
+        passwordHash: "x",
+        role: "CLIENT",
+      },
+    });
+    await seedAppointment(businessId, serviceId, marta.id, "COMPLETED", 1000);
+    await seedAppointment(businessId, serviceId, juan.id, "COMPLETED", 1000);
+
+    expect(await getBusinessClients(businessId)).toHaveLength(2);
+
+    const byName = await getBusinessClients(businessId, "mar");
+    expect(byName).toHaveLength(1);
+    expect(byName[0].name).toBe("Marta García");
+
+    const byEmail = await getBusinessClients(businessId, "juan@ejemplo");
+    expect(byEmail).toHaveLength(1);
+    expect(byEmail[0].name).toBe("Juan Pérez");
+
+    expect(await getBusinessClients(businessId, "nadie")).toHaveLength(0);
+  });
 });

@@ -36,6 +36,7 @@ export interface HoursEditorLabels {
     | "closuresTitle"
     | "closuresDescription"
     | "closureDate"
+    | "closureEndDate"
     | "closureReason"
     | "closureReasonPlaceholder"
     | "addClosure"
@@ -100,11 +101,17 @@ export function HoursEditor({
 
   async function addClosure(formData: FormData) {
     const date = String(formData.get("date") ?? "");
+    const endDate = String(formData.get("endDate") ?? "");
     const reason = String(formData.get("reason") ?? "");
     const res = await fetch("/api/admin/closures", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, reason: reason || undefined }),
+      body: JSON.stringify({
+        date,
+        // Solo se envía si hay fin de rango y difiere del inicio.
+        endDate: endDate && endDate !== date ? endDate : undefined,
+        reason: reason || undefined,
+      }),
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -231,6 +238,14 @@ export function HoursEditor({
               type="date"
               name="date"
               required
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label={labels.horario.closureEndDate} htmlFor="closure-end-date">
+            <Input
+              id="closure-end-date"
+              type="date"
+              name="endDate"
               className="tabular-nums"
             />
           </Field>

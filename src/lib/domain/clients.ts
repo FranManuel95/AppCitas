@@ -30,6 +30,9 @@ function reliability(completed: number, noShows: number): number | null {
 
 export async function getBusinessClients(
   businessId: string,
+  // Filtro opcional por nombre o email (insensible a mayúsculas). Se aplica
+  // sobre la cartera ya materializada: no añade consultas.
+  q?: string,
 ): Promise<ClientSummary[]> {
   const [grouped, noted] = await Promise.all([
     prisma.appointment.groupBy({
@@ -105,7 +108,7 @@ export async function getBusinessClients(
   });
   const userById = new Map(users.map((u) => [u.id, u]));
 
-  return [...byClient.entries()]
+  const all = [...byClient.entries()]
     .map(([clientId, m]) => {
       const u = userById.get(clientId);
       return {
@@ -123,6 +126,14 @@ export async function getBusinessClients(
       };
     })
     .sort((a, b) => b.totalAppointments - a.totalAppointments);
+
+  const query = q?.trim().toLowerCase();
+  if (!query) return all;
+  return all.filter(
+    (c) =>
+      c.name.toLowerCase().includes(query) ||
+      c.email.toLowerCase().includes(query),
+  );
 }
 
 export async function getClientDetail(businessId: string, clientId: string) {

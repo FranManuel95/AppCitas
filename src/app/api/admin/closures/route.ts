@@ -5,9 +5,12 @@ import { apiHandler } from "@/lib/api";
 import { apiRequireBusinessAdmin } from "@/lib/auth/guards";
 import { isValidDateISO } from "@/lib/domain/dates";
 import { DomainError } from "@/lib/domain/errors";
+import { createClosureRange } from "@/lib/domain/closures";
 
 const createSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  // Fin del rango (inclusive). Si se omite, es un cierre de un solo día.
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   reason: z.string().trim().max(200).optional(),
 });
 
@@ -26,6 +29,18 @@ export const POST = apiHandler(async (request: Request) => {
   const data = createSchema.parse(await request.json());
   if (!isValidDateISO(data.date)) {
     throw new DomainError("Fecha no válida", "INVALID_DATE");
+  }
+
+  // Rango de fechas (p. ej. cerrar una semana de vacaciones): una fila por día,
+  // saltando los ya cerrados.
+  if (data.endDate) {
+    const created = await createClosureRange(
+      admin.businessId,
+      data.date,
+      data.endDate,
+      data.reason,
+    );
+    return NextResponse.json({ created }, { status: 201 });
   }
 
   const existing = await prisma.closure.findUnique({

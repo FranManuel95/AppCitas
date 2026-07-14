@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/field";
+import { buttonClasses } from "@/components/ui/button";
 import { CsvImportCard } from "@/components/admin/csv-import-card";
 
 const CLIENTS_TEMPLATE = `nombre;email;telefono;nacimiento
@@ -36,10 +38,16 @@ const dateFmt = new Intl.DateTimeFormat("es-ES", {
 
 // Cartera de clientes del negocio, derivada de sus citas, con métricas de
 // fiabilidad y gasto. La ficha individual añade historial y notas privadas.
-export default async function ClientesPage() {
+export default async function ClientesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const admin = await requireBusinessAdmin();
+  const { q } = await searchParams;
+  const query = typeof q === "string" ? q.trim() : "";
   const [clients, business] = await Promise.all([
-    getBusinessClients(admin.businessId),
+    getBusinessClients(admin.businessId, query),
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
       select: { currency: true },
@@ -52,17 +60,38 @@ export default async function ClientesPage() {
         as="h1"
         title="Clientes"
         description={
-          clients.length === 0
-            ? "Tu cartera de clientes se construye sola con cada reserva."
-            : `${clients.length} cliente(s) con al menos una cita. Fiabilidad = citas a las que acudió frente a no presentados.`
+          query
+            ? `${clients.length} resultado(s) para "${query}".`
+            : clients.length === 0
+              ? "Tu cartera de clientes se construye sola con cada reserva."
+              : `${clients.length} cliente(s) con al menos una cita. Fiabilidad = citas a las que acudió frente a no presentados.`
         }
       />
+
+      {(clients.length > 0 || query) && (
+        <form method="get" className="flex flex-wrap items-end gap-2">
+          <Input
+            name="q"
+            defaultValue={query}
+            placeholder="Buscar por nombre o email…"
+            aria-label="Buscar clientes"
+            className="min-w-56 flex-1"
+          />
+          <button type="submit" className={buttonClasses({ variant: "secondary" })}>
+            Buscar
+          </button>
+        </form>
+      )}
 
       {clients.length === 0 ? (
         <EmptyState
           icon={BookUser}
-          title="Aún no hay clientes"
-          description="Cuando alguien reserve su primera cita aparecerá aquí, con su historial y métricas."
+          title={query ? "Sin resultados" : "Aún no hay clientes"}
+          description={
+            query
+              ? `Ningún cliente coincide con "${query}".`
+              : "Cuando alguien reserve su primera cita aparecerá aquí, con su historial y métricas."
+          }
         />
       ) : (
         <div className="space-y-3">
