@@ -33,6 +33,11 @@ test.describe("reserva", () => {
     // Paso 2/3: fecha laborable futura y primer hueco libre
     const date = toDateISO(nextMonday(14));
     await page.locator('input[type="date"]').fill(date);
+    // Espera a que lleguen los huecos DE ESA fecha: sin esto se puede clicar
+    // un hueco obsoleto del día por defecto (carrera real bajo carga).
+    await page.waitForResponse(
+      (r) => r.url().includes(`date=${date}`) && r.ok(),
+    );
     const slot = page.getByRole("button", { name: /^\d{2}:\d{2}$/ }).first();
     await expect(slot).toBeVisible({ timeout: 15_000 });
     const slotLabel = await slot.textContent();
@@ -85,6 +90,11 @@ test.describe("reserva", () => {
 
     const date = toDateISO(nextMonday(28));
     await page.locator('input[type="date"]').fill(date);
+    // Espera a que lleguen los huecos DE ESA fecha: sin esto se puede clicar
+    // un hueco obsoleto del día por defecto (carrera real bajo carga).
+    await page.waitForResponse(
+      (r) => r.url().includes(`date=${date}`) && r.ok(),
+    );
     const slot = page.getByRole("button", { name: /^\d{2}:\d{2}$/ }).first();
     await expect(slot).toBeVisible({ timeout: 15_000 });
     await slot.click();

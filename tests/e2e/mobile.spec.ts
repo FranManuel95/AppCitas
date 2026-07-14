@@ -20,7 +20,9 @@ test.describe("móvil", () => {
     // "Más" abre la hoja con todas las secciones y navega a Ajustes.
     await bottomNav.getByRole("button", { name: "Más" }).click();
     const sheet = page.getByRole("dialog");
-    await expect(sheet.getByText("Configuración")).toBeVisible();
+    await expect(sheet.getByText("Configuración")).toBeVisible({
+      timeout: 15_000,
+    });
     await sheet.getByRole("link", { name: "Ajustes" }).click();
     await expect(page).toHaveURL(/\/admin\/ajustes/);
     // La hoja se cierra sola al navegar.

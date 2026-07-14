@@ -569,7 +569,11 @@ export function BookingWizard({
                     type="button"
                     aria-pressed={dateISO === day}
                     disabled={count === 0}
-                    onClick={() => setDateISO(day)}
+                    onClick={() => {
+                      setSlots(null);
+                      setSelectedSlot(null);
+                      setDateISO(day);
+                    }}
                     className={`shrink-0 rounded-lg border px-2.5 py-1.5 text-center text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                       dateISO === day
                         ? "border-brand-600 bg-brand-50 text-brand-800 dark:bg-brand-950/40 dark:text-brand-200"
@@ -596,7 +600,13 @@ export function BookingWizard({
                 value={dateISO}
                 min={todayISO()}
                 max={addDays(todayISO(), business.maxAdvanceBookingDays)}
-                onChange={(e) => setDateISO(e.target.value)}
+                onChange={(e) => {
+                  // Vaciar los huecos obsoletos en el MISMO evento: nadie
+                  // puede clicar un hueco del día anterior mientras cargan
+                  setSlots(null);
+                  setSelectedSlot(null);
+                  setDateISO(e.target.value);
+                }}
               />
             </Field>
             <div className="mt-4" role="status" aria-live="polite">
