@@ -436,6 +436,10 @@ const es = {
       next: "Siguiente",
       noAppointmentsThatDay: "No hay citas para este día.",
       emptyAction: "Comparte tu página de reservas",
+      weeklyTitle: "Agenda semanal",
+      weeklyView: "Vista semanal",
+      dailyView: "Vista diaria",
+      noAppointmentsThatWeek: "No hay citas esta semana.",
       internalNote: {
         label: "Nota interna",
         add: "Añadir nota interna",
@@ -1184,6 +1188,10 @@ const en: Dict = {
       next: "Next",
       noAppointmentsThatDay: "No appointments for this day.",
       emptyAction: "Share your booking page",
+      weeklyTitle: "Weekly agenda",
+      weeklyView: "Weekly view",
+      dailyView: "Daily view",
+      noAppointmentsThatWeek: "No appointments this week.",
       internalNote: {
         label: "Internal note",
         add: "Add internal note",

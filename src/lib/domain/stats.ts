@@ -284,6 +284,40 @@ export async function getDashboardStats(
   };
 }
 
+// Agenda de una semana (7 días desde el lunes pedido) para la vista de
+// calendario del panel: una sola consulta, filas estrechas, sin canceladas
+// (solo lo que bloquea agenda; el ruido de canceladas vive en /admin/citas).
+export async function getWeekAgenda(businessId: string, mondayISO: string) {
+  const business = await prisma.business.findUniqueOrThrow({
+    where: { id: businessId },
+    select: { timezone: true },
+  });
+  const weekStart = wallTimeToUtc(mondayISO, "00:00", business.timezone);
+  const weekEnd = wallTimeToUtc(
+    addDaysISO(mondayISO, 7),
+    "00:00",
+    business.timezone,
+  );
+  return prisma.appointment.findMany({
+    where: {
+      businessId,
+      status: { in: [...BLOCKING_STATUSES] },
+      startAt: { gte: weekStart, lt: weekEnd },
+    },
+    select: {
+      id: true,
+      startAt: true,
+      endAt: true,
+      status: true,
+      service: { select: { name: true, color: true } },
+      client: { select: { name: true } },
+      staff: { select: { id: true, name: true, color: true } },
+      location: { select: { name: true } },
+    },
+    orderBy: { startAt: "asc" },
+  });
+}
+
 // Agenda de un día concreto (por defecto hoy) para el panel del negocio.
 export async function getDayAgenda(
   businessId: string,

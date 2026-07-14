@@ -6,7 +6,7 @@ import {
   getBookableLocations,
   updateLocation,
 } from "../locations";
-import { getDayAgenda } from "../stats";
+import { getDayAgenda, getWeekAgenda } from "../stats";
 import { resetDb, seedBusiness, seedClient, seedStaff, slotAt } from "@/lib/test/factories";
 
 const NOW = new Date("2026-07-12T12:00:00.000Z");
@@ -146,6 +146,32 @@ describe("multi-sede (BD)", () => {
     const agenda = await getDayAgenda(businessId, "2026-07-20");
     expect(agenda).toHaveLength(1);
     expect(agenda[0].location?.name).toBe("Centro");
+  });
+
+  it("la agenda semanal devuelve solo la semana pedida y excluye canceladas", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    const clientId = await seedClient();
+    const mk = (date: string, hhmm: string, status = "CONFIRMED") =>
+      prisma.appointment.create({
+        data: {
+          businessId,
+          serviceId,
+          clientId,
+          startAt: slotAt(date, hhmm),
+          endAt: new Date(slotAt(date, hhmm).getTime() + 30 * 60_000),
+          status,
+          priceCents: 1000,
+        },
+      });
+
+    await mk("2026-07-20", "10:00"); // lunes de la semana pedida
+    await mk("2026-07-26", "10:00"); // domingo de la misma semana
+    await mk("2026-07-27", "10:00"); // lunes SIGUIENTE (fuera)
+    await mk("2026-07-21", "11:00", "CANCELLED"); // no bloquea → fuera
+
+    const week = await getWeekAgenda(businessId, "2026-07-20");
+    expect(week).toHaveLength(2);
+    expect(week.every((a) => a.status === "CONFIRMED")).toBe(true);
   });
 
   it("la cita guarda la sede y valida que sea del negocio", async () => {

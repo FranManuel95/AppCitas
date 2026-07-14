@@ -71,6 +71,12 @@ export default async function AgendaPage({
         </div>
         <div className="flex items-center gap-2">
           <Link
+            href={`/admin/agenda/semana?semana=${day}`}
+            className={buttonClasses({ variant: "ghost", size: "sm" })}
+          >
+            {t.admin.agenda.weeklyView}
+          </Link>
+          <Link
             href={`/admin/agenda?fecha=${addDaysISO(day, -1)}`}
             className={buttonClasses({ variant: "secondary", size: "sm" })}
           >
