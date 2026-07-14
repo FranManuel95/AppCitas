@@ -23,10 +23,14 @@ test.describe("móvil", () => {
     await expect(sheet.getByText("Configuración")).toBeVisible({
       timeout: 15_000,
     });
-    await sheet.getByRole("link", { name: "Ajustes" }).click();
-    await expect(page).toHaveURL(/\/admin\/ajustes/);
+    // La hoja entra con animación: espera a que el enlace esté visible y
+    // estable antes de pulsarlo, para no clicar sobre el overlay en transición.
+    const ajustesLink = sheet.getByRole("link", { name: "Ajustes" });
+    await expect(ajustesLink).toBeVisible({ timeout: 15_000 });
+    await ajustesLink.click();
+    await expect(page).toHaveURL(/\/admin\/ajustes/, { timeout: 15_000 });
     // La hoja se cierra sola al navegar.
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15_000 });
   });
 
   test("reserva: el CTA fijo está visible sin llegar al final", async ({
