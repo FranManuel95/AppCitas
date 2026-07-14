@@ -50,6 +50,12 @@ interface StaffOption {
   color: string;
   serviceIds: string[]; // vacío = realiza todos
   locationId: string | null; // null = todas las sedes
+  // Overrides de duración/precio por servicio (subconjunto); ausencia = base.
+  overrides?: {
+    serviceId: string;
+    durationMinutes: number | null;
+    priceCents: number | null;
+  }[];
 }
 
 interface LocationOption {
@@ -180,6 +186,18 @@ export function BookingWizard({
     [staff, serviceId, locationId],
   );
   const hasStaff = staff.length > 0;
+
+  // Con un empleado concreto elegido, su override de duración/precio para este
+  // servicio manda sobre la base (coincide con lo que se reservará/cobrará).
+  const staffOverride = useMemo(() => {
+    if (!staffId) return null;
+    const member = staff.find((m) => m.id === staffId);
+    return member?.overrides?.find((o) => o.serviceId === serviceId) ?? null;
+  }, [staff, staffId, serviceId]);
+  const effectiveDurationMinutes =
+    staffOverride?.durationMinutes ?? service?.durationMinutes ?? 0;
+  const effectivePriceCents =
+    staffOverride?.priceCents ?? service?.priceCents ?? 0;
 
   // ¿Tiene ya tarjeta guardada? (solo si el negocio la exige)
   useEffect(() => {
@@ -865,7 +883,7 @@ export function BookingWizard({
                   {t.duration}
                 </dt>
                 <dd className="text-right font-medium text-ink">
-                  {service ? `${service.durationMinutes} min` : "—"}
+                  {service ? `${effectiveDurationMinutes} min` : "—"}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-3">
@@ -889,13 +907,13 @@ export function BookingWizard({
                     <>
                       <span className="mr-1 font-normal text-ink-muted line-through">
                         {service
-                          ? formatCents(service.priceCents, business.currency)
+                          ? formatCents(effectivePriceCents, business.currency)
                           : ""}
                       </span>
                       {t.packagePrice}
                     </>
                   ) : service ? (
-                    formatCents(service.priceCents, business.currency)
+                    formatCents(effectivePriceCents, business.currency)
                   ) : (
                     "—"
                   )}
@@ -919,9 +937,9 @@ export function BookingWizard({
                   {fmt(t.lastMinuteLine, {
                     percent: business.lastMinuteDiscountPercent,
                     amount: formatCents(
-                      service.priceCents -
+                      effectivePriceCents -
                         Math.round(
-                          (service.priceCents *
+                          (effectivePriceCents *
                             business.lastMinuteDiscountPercent) /
                             100,
                         ),
@@ -937,7 +955,7 @@ export function BookingWizard({
                   percent: business.depositPercent,
                   amount: formatCents(
                     Math.round(
-                      (service.priceCents * business.depositPercent) / 100,
+                      (effectivePriceCents * business.depositPercent) / 100,
                     ),
                     business.currency,
                   ),
@@ -1019,7 +1037,7 @@ export function BookingWizard({
                 {usePackageId
                   ? t.packagePrice
                   : service
-                    ? formatCents(service.priceCents, business.currency)
+                    ? formatCents(effectivePriceCents, business.currency)
                     : "—"}
               </p>
             </div>

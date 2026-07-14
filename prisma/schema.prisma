@@ -633,6 +633,11 @@ model StaffService {
   serviceId String
   service   Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
+  // Overrides opcionales por empleado (null = usa la base del servicio). Solo
+  // se aplican cuando la cita lleva ese empleado concreto.
+  durationMinutes Int?
+  priceCents      Int?
+
   @@id([staffId, serviceId])
 }
 

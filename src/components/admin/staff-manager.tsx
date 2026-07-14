@@ -43,6 +43,13 @@ interface StaffDTO {
   hasAccess: boolean;
   hours: HourRange[];
   serviceIds: string[];
+  // Overrides opcionales de duración/precio por servicio (subconjunto de los
+  // serviceIds); ausencia = usa la base del servicio.
+  serviceOverrides?: {
+    serviceId: string;
+    durationMinutes: number | null;
+    priceCents: number | null;
+  }[];
   locationId: string | null;
   commissionPercent: number | null;
 }
@@ -68,6 +75,8 @@ export interface StaffManagerLabels {
     | "phoneLabel"
     | "servicesPerformed"
     | "servicesPerformedHint"
+    | "serviceOverrideDuration"
+    | "serviceOverridePrice"
     | "ownHoursLabel"
     | "addRange"
     | "submitCreate"
@@ -132,6 +141,20 @@ function StaffForm({
   const [serviceIds, setServiceIds] = useState<string[]>(
     initial?.serviceIds ?? [],
   );
+  // Overrides por servicio como texto de formulario (duración en min, precio en
+  // €). Ausencia o vacío = usa la base del servicio.
+  const [overrides, setOverrides] = useState<
+    Record<string, { duration: string; price: string }>
+  >(() => {
+    const init: Record<string, { duration: string; price: string }> = {};
+    for (const o of initial?.serviceOverrides ?? []) {
+      init[o.serviceId] = {
+        duration: o.durationMinutes != null ? String(o.durationMinutes) : "",
+        price: o.priceCents != null ? (o.priceCents / 100).toString() : "",
+      };
+    }
+    return init;
+  });
   // Sede asignada ("" = todas las sedes)
   const [locationId, setLocationId] = useState(initial?.locationId ?? "");
 
@@ -139,6 +162,21 @@ function StaffForm({
     setServiceIds((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
     );
+  }
+
+  function setOverride(
+    serviceId: string,
+    field: "duration" | "price",
+    value: string,
+  ) {
+    setOverrides((prev) => ({
+      ...prev,
+      [serviceId]: {
+        duration: prev[serviceId]?.duration ?? "",
+        price: prev[serviceId]?.price ?? "",
+        [field]: value,
+      },
+    }));
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -154,6 +192,19 @@ function StaffForm({
       phone: String(form.get("phone") ?? "") || null,
       color: String(form.get("color") ?? "#0ea5e9"),
       serviceIds,
+      // Solo se envían los overrides de servicios asignados con algún valor.
+      serviceOverrides: serviceIds
+        .map((sid) => {
+          const o = overrides[sid];
+          const duration = o?.duration?.trim();
+          const price = o?.price?.trim();
+          return {
+            serviceId: sid,
+            durationMinutes: duration ? Number(duration) : null,
+            priceCents: price ? Math.round(Number(price) * 100) : null,
+          };
+        })
+        .filter((o) => o.durationMinutes != null || o.priceCents != null),
       locationId: locationId || null,
       commissionPercent: rawCommission === "" ? null : Number(rawCommission),
       hours: useOwnHours ? ownHours : [],
@@ -251,26 +302,61 @@ function StaffForm({
         <p className="mb-2 text-xs text-ink-muted">
           {labels.equipo.servicesPerformedHint}
         </p>
-        <div className="flex flex-wrap gap-2">
-          {services.map((s) => (
-            <label
-              key={s.id}
-              className={cn(
-                "cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
-                serviceIds.includes(s.id)
-                  ? "border-brand-500 bg-brand-50 text-brand-700"
-                  : "border-border-strong bg-surface text-ink-soft hover:bg-surface-2",
-              )}
-            >
-              <input
-                type="checkbox"
-                className="sr-only"
-                checked={serviceIds.includes(s.id)}
-                onChange={() => toggleService(s.id)}
-              />
-              {s.name}
-            </label>
-          ))}
+        <div className="flex flex-col gap-2">
+          {services.map((s) => {
+            const checked = serviceIds.includes(s.id);
+            const ov = overrides[s.id] ?? { duration: "", price: "" };
+            return (
+              <div
+                key={s.id}
+                className={cn(
+                  "rounded-lg border p-2 transition-colors",
+                  checked
+                    ? "border-brand-500 bg-brand-50"
+                    : "border-border-strong bg-surface",
+                )}
+              >
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-ink-soft">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleService(s.id)}
+                  />
+                  {s.name}
+                </label>
+                {checked && (
+                  <div className="mt-2 flex flex-wrap gap-2 pl-6">
+                    <input
+                      type="number"
+                      min={1}
+                      max={600}
+                      inputMode="numeric"
+                      value={ov.duration}
+                      onChange={(e) =>
+                        setOverride(s.id, "duration", e.target.value)
+                      }
+                      placeholder={labels.equipo.serviceOverrideDuration}
+                      aria-label={labels.equipo.serviceOverrideDuration}
+                      className="w-36 rounded-md border border-border-strong bg-surface px-2 py-1 text-sm tabular-nums"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      inputMode="decimal"
+                      value={ov.price}
+                      onChange={(e) =>
+                        setOverride(s.id, "price", e.target.value)
+                      }
+                      placeholder={labels.equipo.serviceOverridePrice}
+                      aria-label={labels.equipo.serviceOverridePrice}
+                      className="w-36 rounded-md border border-border-strong bg-surface px-2 py-1 text-sm tabular-nums"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

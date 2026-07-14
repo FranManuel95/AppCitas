@@ -620,6 +620,10 @@ CREATE INDEX IF NOT EXISTS "CalendarSyncJob_status_createdAt_idx" ON "CalendarSy
 -- ── (45) Avisos al equipo de reservas y cancelaciones ───────────────────────
 ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "notifyStaffEvents" BOOLEAN NOT NULL DEFAULT true;
 
+-- ── (46) Duración/precio por empleado (override StaffService) ────────────────
+ALTER TABLE "StaffService" ADD COLUMN IF NOT EXISTS "durationMinutes" INTEGER;
+ALTER TABLE "StaffService" ADD COLUMN IF NOT EXISTS "priceCents" INTEGER;
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -667,7 +671,8 @@ FROM (VALUES
   ('20260714130000_comisiones_sede_espera'),
   ('20260714140000_locale_usuario'),
   ('20260715090000_observabilidad_purga'),
-  ('20260715100000_avisos_staff')
+  ('20260715100000_avisos_staff'),
+  ('20260715110000_override_staff_service')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

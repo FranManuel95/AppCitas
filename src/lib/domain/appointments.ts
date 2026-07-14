@@ -247,6 +247,20 @@ async function loadAvailabilityContext(params: {
     ? 0
     : business.minNoticeMinutes;
 
+  // Con un empleado concreto pedido, los huecos se generan con SU duración
+  // (override de StaffService si la tiene); con "cualquiera" se usa la base del
+  // servicio (limitación aceptada: no se ramifican los huecos por empleado).
+  const staffDurationOverride = staffId
+    ? (
+        await prisma.staffService.findUnique({
+          where: { staffId_serviceId: { staffId, serviceId } },
+          select: { durationMinutes: true },
+        })
+      )?.durationMinutes ?? null
+    : null;
+  const engineDurationMinutes =
+    staffDurationOverride ?? service.durationMinutes;
+
   return {
     business: {
       id: business.id,
@@ -280,7 +294,7 @@ async function loadAvailabilityContext(params: {
       dateISO,
       timezone: business.timezone,
       closedDates: business.closures.map((c) => c.date),
-      durationMinutes: service.durationMinutes,
+      durationMinutes: engineDurationMinutes,
       bufferBeforeMinutes: service.bufferBeforeMinutes,
       bufferAfterMinutes: service.bufferAfterMinutes,
       granularityMinutes: business.slotGranularityMinutes,
@@ -446,8 +460,24 @@ export async function createAppointment(params: {
     );
   }
 
+  // Override por empleado (StaffService): si la cita lleva un empleado concreto
+  // con duración/precio propios para este servicio, mandan sobre la base. Con
+  // hueco "sin preferencia" (aún sin asignar) se usa la base del servicio.
+  const staffOverride = assignedStaffId
+    ? await prisma.staffService.findUnique({
+        where: {
+          staffId_serviceId: { staffId: assignedStaffId, serviceId },
+        },
+        select: { durationMinutes: true, priceCents: true },
+      })
+    : null;
+  const effectiveDurationMinutes =
+    staffOverride?.durationMinutes ?? ctx.service.durationMinutes;
+  const effectivePriceCents =
+    staffOverride?.priceCents ?? ctx.service.priceCents;
+
   const endAt = new Date(
-    startAt.getTime() + ctx.service.durationMinutes * 60_000,
+    startAt.getTime() + effectiveDurationMinutes * 60_000,
   );
 
   // Transacción: re-comprueba el solapamiento justo antes de insertar para
@@ -491,7 +521,7 @@ export async function createAppointment(params: {
       );
     }
 
-    let priceCents = ctx.service.priceCents;
+    let priceCents = effectivePriceCents;
     let discountCents = 0;
     let couponId: string | null = null;
     let usedPackageId: string | null = null;

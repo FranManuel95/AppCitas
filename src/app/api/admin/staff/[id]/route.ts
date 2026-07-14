@@ -18,6 +18,17 @@ const updateSchema = z.object({
     .optional(),
   active: z.boolean().optional(),
   serviceIds: z.array(z.string()).max(100).optional(),
+  // Overrides opcionales de duración/precio por servicio de este empleado.
+  serviceOverrides: z
+    .array(
+      z.object({
+        serviceId: z.string(),
+        durationMinutes: z.number().int().min(1).max(600).nullable().optional(),
+        priceCents: z.number().int().min(0).max(1_000_000).nullable().optional(),
+      }),
+    )
+    .max(100)
+    .optional(),
   // Sede asignada (null = todas las sedes)
   locationId: z.string().nullable().optional(),
   // % de comisión (informe de ingresos por empleado); null = sin comisión
@@ -76,13 +87,21 @@ export const PATCH = apiHandler(
         });
       }
       if (data.serviceIds) {
+        const overrides = new Map(
+          (data.serviceOverrides ?? []).map((o) => [o.serviceId, o]),
+        );
         await tx.staffService.deleteMany({ where: { staffId: id } });
         await tx.staffService.createMany({
           // Dedupe: ids repetidos violarían el PK compuesto (P2002 → 500).
-          data: [...new Set(data.serviceIds)].map((serviceId) => ({
-            staffId: id,
-            serviceId,
-          })),
+          data: [...new Set(data.serviceIds)].map((serviceId) => {
+            const o = overrides.get(serviceId);
+            return {
+              staffId: id,
+              serviceId,
+              durationMinutes: o?.durationMinutes ?? null,
+              priceCents: o?.priceCents ?? null,
+            };
+          }),
         });
       }
       return tx.staffMember.update({
@@ -102,7 +121,9 @@ export const PATCH = apiHandler(
         },
         include: {
           hours: { orderBy: [{ weekday: "asc" }, { openTime: "asc" }] },
-          services: { select: { serviceId: true } },
+          services: {
+            select: { serviceId: true, durationMinutes: true, priceCents: true },
+          },
         },
       });
     });

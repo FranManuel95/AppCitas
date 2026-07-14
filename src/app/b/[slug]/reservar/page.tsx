@@ -29,7 +29,15 @@ export default async function BookingPage({
         services: { where: { active: true }, orderBy: { priceCents: "asc" } },
         staff: {
           where: { active: true },
-          include: { services: { select: { serviceId: true } } },
+          include: {
+            services: {
+              select: {
+                serviceId: true,
+                durationMinutes: true,
+                priceCents: true,
+              },
+            },
+          },
           orderBy: { name: "asc" },
         },
       },
@@ -92,6 +100,15 @@ export default async function BookingPage({
               name: m.name,
               color: m.color,
               serviceIds: m.services.map((x) => x.serviceId),
+              overrides: m.services
+                .filter(
+                  (x) => x.durationMinutes != null || x.priceCents != null,
+                )
+                .map((x) => ({
+                  serviceId: x.serviceId,
+                  durationMinutes: x.durationMinutes,
+                  priceCents: x.priceCents,
+                })),
               locationId: m.locationId,
             }))}
             locations={locations}

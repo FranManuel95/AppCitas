@@ -33,7 +33,7 @@ Cualquiera puede entrar.
 devolver **0 filas**. Además, intenta entrar en la web con
 `plataforma@demo.com` / `admin1234`: debe fallar.
 
-### ☐ 1.2 Poner la base de datos al día (migraciones 2→45)
+### ☐ 1.2 Poner la base de datos al día (migraciones 2→46)
 
 **Por qué**: las rondas W, X e Y añadieron 17 migraciones (27→43: códigos de
 recuperación, facturas, cumpleaños, plantillas, sellos, membresías, Google
@@ -261,7 +261,7 @@ No bloquean nada; son apuestas de crecimiento con guía propia:
 | Momento | Tarea | Referencia |
 |---|---|---|
 | **Ahora** | Borrar cuentas demo | `scripts/remove-demo-accounts.sql` |
-| **Ahora** | Catch-up SQL 2→45 | `scripts/supabase-catchup.sql` |
+| **Ahora** | Catch-up SQL 2→46 | `scripts/supabase-catchup.sql` |
 | **Ahora** | Datos legales `LEGAL_*` | `PUESTA-AL-DIA.md` §B.5 |
 | **Ahora** | Cron cada 5 min en verde | GitHub Actions |
 | Primer cliente | SMTP + VAPID (push) | §2 de este documento |

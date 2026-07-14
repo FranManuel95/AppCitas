@@ -19,7 +19,9 @@ export default async function StaffPage() {
       where: { businessId: admin.businessId },
       include: {
         hours: { orderBy: [{ weekday: "asc" }, { openTime: "asc" }] },
-        services: { select: { serviceId: true } },
+        services: {
+          select: { serviceId: true, durationMinutes: true, priceCents: true },
+        },
       },
       orderBy: [{ active: "desc" }, { name: "asc" }],
     }),
@@ -57,6 +59,15 @@ export default async function StaffPage() {
             closeTime: h.closeTime,
           })),
           serviceIds: m.services.map((s) => s.serviceId),
+          serviceOverrides: m.services
+            .filter(
+              (s) => s.durationMinutes != null || s.priceCents != null,
+            )
+            .map((s) => ({
+              serviceId: s.serviceId,
+              durationMinutes: s.durationMinutes,
+              priceCents: s.priceCents,
+            })),
           locationId: m.locationId,
           commissionPercent: m.commissionPercent,
         }))}
