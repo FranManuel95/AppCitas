@@ -22,6 +22,14 @@ test.describe("reserva", () => {
       .first()
       .click();
 
+    // Tira multi-día: los chips de los próximos días aparecen con su nº de
+    // huecos y hacer click cambia la fecha seleccionada
+    const strip = page.getByLabel("Próximos días con disponibilidad");
+    await expect(strip).toBeVisible();
+    await expect(
+      strip.getByRole("button", { name: /huecos/ }).first(),
+    ).toBeVisible({ timeout: 15_000 });
+
     // Paso 2/3: fecha laborable futura y primer hueco libre
     const date = toDateISO(nextMonday(14));
     await page.locator('input[type="date"]').fill(date);

@@ -2,9 +2,14 @@
 
 Estado del proyecto a **julio de 2026**, tras las rondas de UX (U-1…U-5), de
 producto (V-1…V-7), la ronda **W-1…W-12** que ejecutó prácticamente todo lo
-que este documento listaba como pendiente, y la ronda **X-1…X-5** de cierre
+que este documento listaba como pendiente, la ronda **X-1…X-5** de cierre
 (cabos sueltos de integración, optimización de consultas/índices y watch
-channels de Google Calendar). Complementa a
+channels de Google Calendar) y la ronda **Y-1…Y-10** (multi-sede de cara al
+cliente, purga del outbox y cota en solapamientos, reprogramar desde el
+admin, nota interna por cita, vista de calendario semanal, tira multi-día en
+el wizard, buffers por servicio, consentimiento de marketing con baja de un
+clic + win-back, comisiones por empleado, lista de espera por sede y
+notificaciones bilingües). Complementa a
 [`ANALISIS-COMPETENCIA.md`](./ANALISIS-COMPETENCIA.md) (dónde estamos frente a
 Booksy/Apúntalo/TuAgenda) y a [`PUESTA-AL-DIA.md`](./PUESTA-AL-DIA.md) (cómo
 aplicar SQL y variables).
@@ -55,9 +60,10 @@ aplicar SQL y variables).
   **JSON-LD LocalBusiness** (SEO local), **dominio propio por negocio (Pro)**,
   widget embebible, PWA instalable + guías `docs/TWA.md` y
   `docs/RESERVE-WITH-GOOGLE.md`.
-- **Calidad**: 286 tests unitarios/BD + 26 E2E (reserva, cancelación, no-show,
+- **Calidad**: 301 tests unitarios/BD + 30 E2E (reserva, cancelación, no-show,
   admin, aislamiento, SaaS, RGPD, lista de espera, móvil, invitado,
-  **ausencias, series recurrentes, widget, 2FA y feed iCal**).
+  **ausencias, series recurrentes, widget, 2FA, feed iCal, membresías,
+  sellos, multi-sede e informes**).
 
 ---
 
@@ -68,7 +74,7 @@ No es código: son cosas que hay que **configurar o revisar** en producción.
 | # | Tarea | Por qué | Dónde |
 |---|---|---|---|
 | 1 | 🔴 **Ejecutar `scripts/remove-demo-accounts.sql` en Supabase** | El seed crea `admin@demo.com`, `plataforma@demo.com`, etc. con la contraseña pública `admin1234`. El script (idempotente) ya existe: pégalo en el SQL Editor. | `scripts/remove-demo-accounts.sql` |
-| 2 | 🔴 **Pegar el catch-up de migraciones (2→37)** | Las olas W y X añadieron las migraciones 27…37 (facturas, sellos, membresías, calendario, sedes, galería/dominio, índices de camino caliente, watch channels). `supabase-catchup.sql` es idempotente: una pasada lo deja todo al día. | `scripts/supabase-catchup.sql` |
+| 2 | 🔴 **Pegar el catch-up de migraciones (2→43)** | Las olas W, X e Y añadieron las migraciones 27…43 (facturas, sellos, membresías, calendario, sedes, galería/dominio, índices, watch channels, nota interna, buffers, consentimiento/win-back, comisiones, sede en lista de espera, idioma del usuario). `supabase-catchup.sql` es idempotente: una pasada lo deja todo al día. | `scripts/supabase-catchup.sql` |
 | 3 | 🟡 **Claves VAPID para el push web** | Sin ellas, el canal de avisos gratis del navegador queda apagado. `npx web-push generate-vapid-keys` → 3 variables en Vercel. | `VAPID_*` |
 | 4 | 🟡 **SMTP real** | Sin SMTP los emails se encolan pero no se envían (se ven en `/admin/notificaciones`). | `SMTP_*` |
 | 5 | 🟡 **Datos legales** | Razón social, NIF, dirección… se muestran como `[pendiente]` en `/legal/*`. Obligatorio LSSI-CE/RGPD. | `LEGAL_*` |

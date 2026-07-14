@@ -62,7 +62,7 @@ historial está resumido en **un solo script idempotente**.
    ```
    scripts/supabase-catchup.sql
    ```
-   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→37):
+   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→43):
    rate limit, autocierre y 2º recordatorio, reseñas, suscripción SaaS,
    idempotencia de webhooks, consentimiento RGPD, índices, búsqueda por
    trigramas, lista de espera, forma de pago, Stripe Connect, **señal al
@@ -76,16 +76,21 @@ historial está resumido en **un solo script idempotente**.
    correlativa**, **cumpleaños del cliente**, **plantillas de mensajes
    editables**, **tarjeta de sellos**, **membresías de clientes**,
    **Google Calendar OAuth**, **multi-sede**, **galería + dominio propio**,
-   **índices de camino caliente de membresía/cupones** y **watch channels de
-   Google Calendar** (push que invalida la caché de disponibilidad).
+   **índices de camino caliente de membresía/cupones**, **watch channels de
+   Google Calendar** (push que invalida la caché de disponibilidad), **nota
+   interna por cita**, **buffers por servicio**, **consentimiento de marketing
+   + win-back**, **comisiones por empleado**, **lista de espera por sede** y
+   **notificaciones bilingües**.
    Es **idempotente**: usa `IF NOT EXISTS`, así que da igual cuánto tuvieras ya
    aplicado; solo añade lo que falte y no rompe nada si lo ejecutas dos veces.
 
    > **¿Ya lo pegaste antes?** Vuelve a pegarlo: al ser idempotente solo añade
    > las migraciones que te falten (las últimas: 27 códigos de recuperación,
    > 28 facturas, 29 cumpleaños, 30 plantillas, 31 sellos, 32 membresías,
-   > 33 Google Calendar, 34 multi-sede, 35 galería/dominio, 36 índices y
-   > 37 watch channels) sin tocar el resto.
+   > 33 Google Calendar, 34 multi-sede, 35 galería/dominio, 36 índices,
+   > 37 watch channels, 38 índice de autocierre, 39 nota interna, 40 buffers,
+   > 41 consentimiento/win-back, 42 comisiones y sede en lista de espera y
+   > 43 idioma del usuario) sin tocar el resto.
 
 3. **(Opcional) Datos de demostración** — si quieres 2 negocios de ejemplo con
    citas para probar, pega después:
@@ -236,8 +241,13 @@ probablemente no tengas puestas:
    `User`, `guest` (20), `totpSecret`/`totpEnabledAt` (26),
    `totpRecoveryCodes` (27) y `birthDate` (29); en `CalendarConnection`, las
    columnas `watchChannelId`/`watchResourceId`/`watchExpiresAt`/`watchToken`
-   (37); y los índices `Appointment_membershipId_startAt_idx` y
-   `Coupon_clientId_idx` (36).
+   (37); los índices `Appointment_membershipId_startAt_idx` y
+   `Coupon_clientId_idx` (36) y `Appointment_status_endAt_idx` (38); en
+   `Appointment`, `internalNote` (39) y `winbackQueuedAt` (41); en `Service`,
+   `bufferBeforeMinutes`/`bufferAfterMinutes` (40); en `User`,
+   `marketingConsent` (41) y `locale` (43); en `Business`, `winbackDays`
+   (41); en `StaffMember`, `commissionPercent` (42); y en `WaitlistEntry`,
+   `locationId` (42).
 4. **Prueba de humo**: crea una reserva de prueba y comprueba en
    `/admin/notificaciones` que se encola el aviso. Con Stripe en modo test,
    haz una cancelación tardía con la tarjeta `4242 4242 4242 4242`.

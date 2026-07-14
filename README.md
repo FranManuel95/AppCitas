@@ -264,7 +264,7 @@ se persiste su hash SHA-256).
 npm test
 ```
 
-286 tests unitarios y de base de datos cubren el motor de disponibilidad
+301 tests unitarios y de base de datos cubren el motor de disponibilidad
 (horarios, tramos, solapamientos, antelaciones, cierres, zona horaria,
 multi-sede), la agenda multi-empleado, la política de cancelación, las
 promociones (cupones, bonos, tarjeta de sellos, membresías, precedencia sin

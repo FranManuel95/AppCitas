@@ -33,13 +33,14 @@ Cualquiera puede entrar.
 devolver **0 filas**. Además, intenta entrar en la web con
 `plataforma@demo.com` / `admin1234`: debe fallar.
 
-### ☐ 1.2 Poner la base de datos al día (migraciones 2→37)
+### ☐ 1.2 Poner la base de datos al día (migraciones 2→43)
 
-**Por qué**: las rondas W y X añadieron 11 migraciones (27→37: códigos de
+**Por qué**: las rondas W, X e Y añadieron 17 migraciones (27→43: códigos de
 recuperación, facturas, cumpleaños, plantillas, sellos, membresías, Google
-Calendar, multi-sede, galería/dominio, índices de camino caliente y watch
-channels). Sin ellas, las funciones nuevas fallarán al tocar tablas o
-columnas que no existen.
+Calendar, multi-sede, galería/dominio, índices de camino caliente, watch
+channels, nota interna, buffers, consentimiento/win-back, comisiones, sede
+en lista de espera e idioma del usuario). Sin ellas, las funciones nuevas
+fallarán al tocar tablas o columnas que no existen.
 
 **Pasos**:
 1. Supabase → **SQL Editor** → pega TODO `scripts/supabase-catchup.sql` → **Run**.
@@ -260,7 +261,7 @@ No bloquean nada; son apuestas de crecimiento con guía propia:
 | Momento | Tarea | Referencia |
 |---|---|---|
 | **Ahora** | Borrar cuentas demo | `scripts/remove-demo-accounts.sql` |
-| **Ahora** | Catch-up SQL 2→37 | `scripts/supabase-catchup.sql` |
+| **Ahora** | Catch-up SQL 2→43 | `scripts/supabase-catchup.sql` |
 | **Ahora** | Datos legales `LEGAL_*` | `PUESTA-AL-DIA.md` §B.5 |
 | **Ahora** | Cron cada 5 min en verde | GitHub Actions |
 | Primer cliente | SMTP + VAPID (push) | §2 de este documento |
