@@ -25,7 +25,7 @@ vi.mock("@/lib/notifications/channels/email", () => {
   };
 });
 
-import { processDueNotifications } from "../service";
+import { flushDueNotifications, processDueNotifications } from "../service";
 
 const NOW = new Date("2020-01-06T10:00:00.000Z");
 
@@ -109,6 +109,31 @@ describe("processDueNotifications (BD)", () => {
     expect(mock.send).not.toHaveBeenCalled();
     const after = await prisma.notification.findUniqueOrThrow({ where: { id: n.id } });
     expect(after.status).toBe("SENDING");
+  });
+
+  it("despacha varias notificaciones vencidas en una pasada (envío en paralelo)", async () => {
+    await Promise.all([
+      seedNotification({}),
+      seedNotification({}),
+      seedNotification({}),
+    ]);
+    const res = await processDueNotifications(NOW);
+
+    expect(res.sent).toBe(3);
+    expect(mock.send).toHaveBeenCalledTimes(3);
+    const sentCount = await prisma.notification.count({
+      where: { status: "SENT" },
+    });
+    expect(sentCount).toBe(3);
+  });
+
+  it("flushDueNotifications saca las vencidas en el acto y nunca lanza", async () => {
+    const n = await seedNotification({});
+    await expect(flushDueNotifications(NOW)).resolves.toBeUndefined();
+
+    expect(mock.send).toHaveBeenCalledTimes(1);
+    const after = await prisma.notification.findUniqueOrThrow({ where: { id: n.id } });
+    expect(after.status).toBe("SENT");
   });
 
   it("recupera un SENDING huérfano (worker caído) y lo procesa", async () => {

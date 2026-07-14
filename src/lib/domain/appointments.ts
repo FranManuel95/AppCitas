@@ -42,6 +42,7 @@ import {
   enqueueBookingNotifications,
   enqueueCancellationNotifications,
   enqueueNoShowNotification,
+  flushDueNotifications,
 } from "@/lib/notifications/service";
 import { syncInvoiceForAppointment } from "./invoices";
 import { syncLoyaltyForStatusChange } from "./loyalty";
@@ -685,6 +686,10 @@ export async function createAppointment(params: {
     desiredDate: toLocalDateISO(startAt, ctx.business.timezone),
   });
 
+  // Saca la confirmación en el acto (best-effort): quien acaba de reservar
+  // espera el email en segundos, no en el próximo ciclo del cron.
+  await flushDueNotifications(now);
+
   return { ...appointment, depositCents, depositStatus, depositRef };
 }
 
@@ -830,6 +835,10 @@ export async function cancelAppointment(params: {
     desiredDate: toLocalDateISO(appointment.startAt, appointment.business.timezone),
     now,
   });
+
+  // El aviso de hueco libre es time-sensitive (varios clientes compiten por él):
+  // se drena en el acto para que salga en segundos, no en hasta 5 min.
+  await flushDueNotifications(now);
 
   // Cancelación tardía cobrada → factura del cargo (best-effort). La forma
   // de pago del cargo tardío es siempre la tarjeta guardada.

@@ -29,6 +29,11 @@ const RETRY_DELAY_MS = 5 * 60_000;
 // a PENDING para reintentarlo. Debe superar con holgura el tiempo máximo de un
 // lote de envíos.
 const SENDING_STALE_MS = 10 * 60_000;
+// Los envíos son I/O externo (SMTP, HTTP a los proveedores): se lanzan con esta
+// concurrencia máxima aunque `PG_POOL_MAX=1`, porque no compiten por la única
+// conexión de BD. Sube el techo de mensajes/ejecución ~10× respecto al envío
+// secuencial sin tocar la arquitectura.
+const SEND_CONCURRENCY = 10;
 
 function baseUrl(): string {
   return (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(
@@ -367,6 +372,16 @@ export async function processDueNotifications(
     return sender;
   }
 
+  // Fase 1 (secuencial, BD): reclama cada fila y resuelve en el acto lo que no
+  // requiere I/O externo (centinela sin email, canal desconocido o no
+  // configurado). Lo que sí necesita un envío real se acumula en `toSend`.
+  type Deliverable = {
+    n: (typeof due)[number];
+    channel: Channel;
+    options: { fromName: string | null; replyTo: string | null } | undefined;
+  };
+  const toSend: Deliverable[] = [];
+
   for (const n of due) {
     // Claim atómico: solo un proceso gana la transición PENDING→SENDING de esta
     // fila; el resto ve count 0 y la salta, evitando envíos duplicados.
@@ -420,7 +435,34 @@ export async function processDueNotifications(
 
     const options =
       n.channel === "EMAIL" ? await senderFor(n.businessId) : undefined;
-    const result = await channel.send(n.recipient, n.subject, n.body, options);
+    toSend.push({ n, channel, options });
+  }
+
+  // Fase 2 (paralela, I/O): despacha los envíos reclamados con concurrencia
+  // acotada. Un proveedor lento ya no bloquea al resto del lote.
+  const results: Array<{
+    n: (typeof due)[number];
+    result: Awaited<ReturnType<Channel["send"]>>;
+  }> = [];
+  let cursor = 0;
+  async function worker(): Promise<void> {
+    while (cursor < toSend.length) {
+      const item = toSend[cursor++];
+      const result = await item.channel.send(
+        item.n.recipient,
+        item.n.subject,
+        item.n.body,
+        item.options,
+      );
+      results.push({ n: item.n, result });
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(SEND_CONCURRENCY, toSend.length) }, worker),
+  );
+
+  // Fase 3 (secuencial, BD): persiste el desenlace de cada envío.
+  for (const { n, result } of results) {
     if (result.ok) {
       await prisma.notification.update({
         where: { id: n.id },
@@ -452,4 +494,20 @@ export async function processDueNotifications(
   }
 
   return { sent, failed, skipped };
+}
+
+// Drenado inline best-effort para mensajes time-sensitive (confirmación de
+// reserva recién creada, aviso de hueco libre de la lista de espera): saca los
+// envíos vencidos en el acto en lugar de esperar al próximo ciclo del cron
+// (hasta 5 min). NUNCA lanza: si falla o el runtime se congela tras responder,
+// el cron sigue siendo la garantía de entrega.
+export async function flushDueNotifications(
+  now = new Date(),
+  limit = 20,
+): Promise<void> {
+  try {
+    await processDueNotifications(now, limit);
+  } catch {
+    // best-effort: el cron reintentará los que queden PENDING.
+  }
 }
