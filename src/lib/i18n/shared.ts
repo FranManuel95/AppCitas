@@ -690,6 +690,9 @@ const es = {
       channelWhatsapp: "WhatsApp",
       channelsNote:
         "Cada canal requiere su proveedor configurado en el servidor (SMTP, Twilio, UltraMsg o Evolution API). Sin configurar, los mensajes quedan registrados pero no se envían.",
+      staffEventsLabel: "Avisar al equipo de reservas y cancelaciones",
+      staffEventsHint:
+        "El empleado asignado (o el negocio, si no hay empleado) recibe un aviso al entrar una nueva reserva o al cancelarse una cita.",
       billingTitle: "Facturación (recibos)",
       taxIdLabel: "NIF/CIF (aparece en los recibos)",
       taxPercentLabel: "% de IVA a desglosar (0 = sin desglose)",
@@ -1461,6 +1464,9 @@ const en: Dict = {
       channelWhatsapp: "WhatsApp",
       channelsNote:
         "Each channel requires its provider configured on the server (SMTP, Twilio, UltraMsg or Evolution API). Without configuration, messages are logged but not sent.",
+      staffEventsLabel: "Notify the team of bookings and cancellations",
+      staffEventsHint:
+        "The assigned staff member (or the business, if none) gets an alert when a new booking comes in or an appointment is cancelled.",
       billingTitle: "Billing (receipts)",
       taxIdLabel: "Tax ID (appears on receipts)",
       taxPercentLabel: "VAT % to itemize (0 = no breakdown)",

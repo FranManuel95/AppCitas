@@ -44,6 +44,7 @@ import {
   enqueueNoShowNotification,
   flushDueNotifications,
 } from "@/lib/notifications/service";
+import { enqueueStaffEventNotification } from "@/lib/notifications/staff-notify";
 import { syncInvoiceForAppointment } from "./invoices";
 import { syncLoyaltyForStatusChange } from "./loyalty";
 import { activeMembershipBenefitTx } from "./memberships";
@@ -671,6 +672,13 @@ export async function createAppointment(params: {
     skipConfirmation: params.suppressConfirmation,
   });
 
+  // Aviso interno al equipo (best-effort: la cita ya está creada).
+  try {
+    await enqueueStaffEventNotification(appointment.id, "STAFF_BOOKING", now);
+  } catch {
+    // no bloquea la reserva.
+  }
+
   // Google Calendar saliente: refleja la cita como evento (best-effort)
   await enqueueCalendarSync(appointment.id, "UPSERT", now, {
     businessId,
@@ -824,6 +832,13 @@ export async function cancelAppointment(params: {
     outcome.chargedCents,
     now,
   );
+
+  // Aviso interno al equipo (best-effort: la cita ya está cancelada).
+  try {
+    await enqueueStaffEventNotification(appointmentId, "STAFF_CANCELLED", now);
+  } catch {
+    // no bloquea la cancelación.
+  }
 
   // Se ha liberado el hueco: avisar a la lista de espera de ese servicio y día
   // (en la zona del negocio). Mejor esfuerzo, no rompe la cancelación.

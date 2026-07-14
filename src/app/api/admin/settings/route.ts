@@ -48,6 +48,8 @@ const updateSchema = z.object({
   notifyByEmail: z.boolean().optional(),
   notifyBySms: z.boolean().optional(),
   notifyByWhatsapp: z.boolean().optional(),
+  // Avisar al equipo de nuevas reservas y cancelaciones
+  notifyStaffEvents: z.boolean().optional(),
   // Facturación de recibos
   taxId: z.string().trim().max(30).nullable().optional(),
   taxPercent: z.number().int().min(0).max(50).optional(),

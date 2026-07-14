@@ -68,6 +68,7 @@ export default async function SettingsPage() {
           notifyByEmail: business.notifyByEmail,
           notifyBySms: business.notifyBySms,
           notifyByWhatsapp: business.notifyByWhatsapp,
+          notifyStaffEvents: business.notifyStaffEvents,
           taxId: business.taxId,
           taxPercent: business.taxPercent,
           invoicingEnabled: business.invoicingEnabled,

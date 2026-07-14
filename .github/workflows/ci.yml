@@ -92,10 +92,13 @@ jobs:
           cache: npm
       - name: Instalar dependencias
         run: npm ci
+      # prisma.config.ts elige schema (schema.postgres.prisma) y url del
+      # datasource automáticamente según DATABASE_URL: no se pasa --schema (ese
+      # fichero no declara url; la aporta la config).
       - name: Generar cliente Prisma para PostgreSQL
-        run: npx prisma generate --schema prisma/schema.postgres.prisma
+        run: npx prisma generate
       - name: Aplicar esquema a PostgreSQL
-        run: npx prisma db push --schema prisma/schema.postgres.prisma --skip-generate --accept-data-loss
+        run: npx prisma db push --skip-generate --accept-data-loss
       - name: Sembrar datos de demo
         run: npm run db:seed
       - name: Verificar bloqueo anti doble-reserva (advisory locks reales)

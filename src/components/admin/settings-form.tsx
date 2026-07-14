@@ -33,6 +33,7 @@ interface BusinessSettings {
   notifyByEmail: boolean;
   notifyBySms: boolean;
   notifyByWhatsapp: boolean;
+  notifyStaffEvents: boolean;
   taxId: string | null;
   taxPercent: number;
   invoicingEnabled: boolean;
@@ -114,6 +115,7 @@ export function SettingsForm({
         notifyByEmail: bool("notifyByEmail"),
         notifyBySms: bool("notifyBySms"),
         notifyByWhatsapp: bool("notifyByWhatsapp"),
+        notifyStaffEvents: bool("notifyStaffEvents"),
         taxId: str("taxId") || null,
         taxPercent: num("taxPercent"),
         timezone: str("timezone") || business.timezone,
@@ -430,6 +432,16 @@ export function SettingsForm({
             </div>
           </div>
           <p className="text-xs text-ink-muted">{labels.channelsNote}</p>
+          <div className="border-t border-border pt-4">
+            <Switch
+              name="notifyStaffEvents"
+              defaultChecked={business.notifyStaffEvents}
+              label={labels.staffEventsLabel}
+            />
+            <p className="mt-1.5 text-xs text-ink-muted">
+              {labels.staffEventsHint}
+            </p>
+          </div>
         </div>
       </Card>
 
