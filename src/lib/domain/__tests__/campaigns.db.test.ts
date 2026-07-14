@@ -150,6 +150,13 @@ describe("campañas de marketing (BD)", () => {
       data: { email: `walkin-abc123@sin-email.appcitas.local` },
     });
     await seedApptAt(businessId, serviceId, sombra, new Date("2026-07-02T10:00:00Z"));
+    // Cliente dado de baja de promociones: fuera de TODOS los segmentos
+    const optOut = await seedClient();
+    await prisma.user.update({
+      where: { id: optOut },
+      data: { marketingConsent: false },
+    });
+    await seedApptAt(businessId, serviceId, optOut, new Date("2026-07-03T10:00:00Z"));
 
     const counts = await getSegmentCounts(businessId, NOW);
     for (const segment of CAMPAIGN_SEGMENTS) {

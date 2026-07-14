@@ -9,7 +9,12 @@ import { Card } from "@/components/ui/card";
 // Editor de los textos de los mensajes al cliente. Cada plantilla puede
 // personalizarse con variables {…}; vacío = texto por defecto de la app.
 
-type TemplateKey = "BOOKING_CONFIRMED" | "REMINDER" | "CANCELLED" | "NO_SHOW";
+type TemplateKey =
+  | "BOOKING_CONFIRMED"
+  | "REMINDER"
+  | "CANCELLED"
+  | "NO_SHOW"
+  | "WINBACK";
 
 const TEMPLATE_META: Array<{
   key: TemplateKey;
@@ -31,6 +36,11 @@ const TEMPLATE_META: Array<{
     key: "NO_SHOW",
     label: "No presentado",
     hint: "La línea del cargo (si lo hubo) se añade siempre al final.",
+  },
+  {
+    key: "WINBACK",
+    label: "Vuelve a reservar (win-back)",
+    hint: "{servicio} y {fecha} son los de la última cita del cliente; {enlace} lleva a tu página de reservas. Se activa en Marketing.",
   },
 ];
 

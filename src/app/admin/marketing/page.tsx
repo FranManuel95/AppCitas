@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Badge } from "@/components/ui/badge";
 import { CampaignForm } from "@/components/admin/campaign-form";
+import { WinbackCard } from "@/components/admin/winback-card";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Marketing" };
@@ -39,7 +40,7 @@ export default async function MarketingPage() {
   const admin = await requireBusinessAdmin();
   const business = await prisma.business.findUniqueOrThrow({
     where: { id: admin.businessId },
-    select: { plan: true, subscriptionStatus: true },
+    select: { plan: true, subscriptionStatus: true, winbackDays: true },
   });
   const isPro = effectivePlan(business).id === "pro";
   const [counts, campaigns] = await Promise.all([
@@ -126,6 +127,8 @@ export default async function MarketingPage() {
           </ul>
         </Card>
       </div>
+
+      <WinbackCard initialDays={business.winbackDays} />
     </div>
   );
 }

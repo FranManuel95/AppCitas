@@ -14,9 +14,11 @@ import { type Dict } from "@/lib/i18n/shared";
 export function MyDataPanel({
   t,
   initialBirthDate = null,
+  initialMarketingConsent = true,
 }: {
   t: Dict["myData"];
   initialBirthDate?: string | null;
+  initialMarketingConsent?: boolean;
 }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
@@ -25,6 +27,21 @@ export function MyDataPanel({
   const [birthDate, setBirthDate] = useState(initialBirthDate ?? "");
   const [birthSaved, setBirthSaved] = useState(false);
   const [savingBirth, setSavingBirth] = useState(false);
+  const [consent, setConsent] = useState(initialMarketingConsent);
+  const [savingConsent, setSavingConsent] = useState(false);
+
+  async function toggleConsent() {
+    const next = !consent;
+    setConsent(next); // optimista
+    setSavingConsent(true);
+    const res = await fetch("/api/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ marketingConsent: next }),
+    });
+    setSavingConsent(false);
+    if (!res.ok) setConsent(!next);
+  }
 
   async function saveBirthDate() {
     setSavingBirth(true);
@@ -82,6 +99,24 @@ export function MyDataPanel({
           {birthSaved ? t.birthDateSaved : t.birthDateSave}
         </Button>
         <p className="w-full text-xs text-ink-muted">{t.birthDateHint}</p>
+      </div>
+
+      <div className="border-t border-border pt-4">
+        <label className="flex cursor-pointer items-start gap-2.5 text-sm text-ink-soft">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 accent-brand-600"
+            checked={consent}
+            disabled={savingConsent}
+            onChange={toggleConsent}
+          />
+          <span>
+            <span className="font-medium text-ink">{t.marketingLabel}</span>
+            <span className="mt-0.5 block text-xs text-ink-muted">
+              {t.marketingHint}
+            </span>
+          </span>
+        </label>
       </div>
 
       <div className="border-t border-border pt-4">

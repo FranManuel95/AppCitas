@@ -2,6 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { DomainError } from "./errors";
 import { effectivePlan } from "./plans";
 import { isSentinelEmail } from "./guest-clients";
+import { unsubscribeToken } from "@/lib/marketing-token";
+
+function baseUrl(): string {
+  return (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+}
+
+/** Pie de baja obligatorio de todo envío promocional (LSSI: opt-out fácil). */
+export function unsubscribeFooter(clientId: string): string {
+  return `\n\nPara dejar de recibir promociones: ${baseUrl()}/baja/${unsubscribeToken(clientId)}`;
+}
 
 // Campañas de marketing a la cartera de clientes del negocio, con segmentos
 // calculados sobre su historial de citas. Los envíos van por el outbox de
@@ -127,6 +137,8 @@ export async function resolveSegment(
   const users = await prisma.user.findMany({
     where: {
       id: { in: clientIds },
+      // Solo destinatarios con consentimiento comercial vigente (opt-out)
+      marketingConsent: true,
       // BIRTHDAY: solo clientes que aportaron su fecha de nacimiento
       ...(segment === "BIRTHDAY" ? { birthDate: { not: null } } : {}),
     },
@@ -192,15 +204,19 @@ export async function getSegmentCounts(
 
   const users = await prisma.user.findMany({
     where: { id: { in: [...portfolio] } },
-    select: { id: true, email: true, birthDate: true },
+    select: { id: true, email: true, birthDate: true, marketingConsent: true },
   });
+  // Mismas reglas que resolveSegment: sentinel fuera y sin consentimiento fuera
   const reachable = new Set(
-    users.filter((u) => !isSentinelEmail(u.email)).map((u) => u.id),
+    users
+      .filter((u) => u.marketingConsent && !isSentinelEmail(u.email))
+      .map((u) => u.id),
   );
   const birthdayIds = new Set(
     users
       .filter(
         (u) =>
+          u.marketingConsent &&
           !isSentinelEmail(u.email) &&
           u.birthDate &&
           isBirthdayUpcoming(u.birthDate, now),
@@ -286,7 +302,8 @@ export async function sendCampaign(params: {
           template: "CAMPAIGN",
           recipient: channel === "EMAIL" ? r.email : r.phone!,
           subject: subject?.trim() || null,
-          body: body.trim(),
+          // Pie de baja personalizado por destinatario (opt-out de un clic)
+          body: `${body.trim()}${unsubscribeFooter(r.clientId)}`,
           scheduledFor: now,
         })),
       });

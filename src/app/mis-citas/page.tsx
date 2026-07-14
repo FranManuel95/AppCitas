@@ -43,7 +43,7 @@ export default async function MyAppointmentsPage() {
   const [account, myPackages, waitlist, loyalty] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.id },
-      select: { emailVerifiedAt: true, birthDate: true },
+      select: { emailVerifiedAt: true, birthDate: true, marketingConsent: true },
     }),
     prisma.clientPackage.findMany({
       where: { clientId: user.id },
@@ -597,6 +597,7 @@ export default async function MyAppointmentsPage() {
               initialBirthDate={
                 account?.birthDate?.toISOString().slice(0, 10) ?? null
               }
+              initialMarketingConsent={account?.marketingConsent ?? true}
             />
           </div>
         </section>

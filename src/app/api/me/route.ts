@@ -13,6 +13,8 @@ const patchSchema = z.object({
     .nullable()
     .optional(),
   phone: z.string().trim().max(30).nullable().optional(),
+  // Consentimiento de comunicaciones comerciales (campañas, win-back)
+  marketingConsent: z.boolean().optional(),
 });
 
 // PATCH /api/me — datos de perfil editables por el propio usuario.
@@ -31,11 +33,15 @@ export const PATCH = apiHandler(async (request: Request) => {
           }
         : {}),
       ...(data.phone !== undefined ? { phone: data.phone || null } : {}),
+      ...(data.marketingConsent !== undefined
+        ? { marketingConsent: data.marketingConsent }
+        : {}),
     },
-    select: { id: true, birthDate: true, phone: true },
+    select: { id: true, birthDate: true, phone: true, marketingConsent: true },
   });
   return NextResponse.json({
     birthDate: updated.birthDate?.toISOString().slice(0, 10) ?? null,
     phone: updated.phone,
+    marketingConsent: updated.marketingConsent,
   });
 });

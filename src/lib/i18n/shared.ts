@@ -244,6 +244,15 @@ const es = {
         "Este negocio requiere tarjeta guardada: crea una cuenta para reservar.",
     },
   },
+  unsubscribe: {
+    title: "Baja de comunicaciones comerciales",
+    description:
+      "Si confirmas, dejarás de recibir promociones y recordatorios comerciales. Los avisos de tus citas (confirmaciones, recordatorios de asistencia) no se ven afectados.",
+    confirm: "Darme de baja",
+    working: "Procesando…",
+    done: "Listo: no recibirás más promociones.",
+    error: "El enlace no es válido o ha ocurrido un error.",
+  },
   myAppointments: {
     title: "Mis citas",
     pushEnable: "Activar avisos en este dispositivo",
@@ -319,6 +328,9 @@ const es = {
       "Solo se usa para que los negocios donde eres cliente puedan felicitarte u ofrecerte un detalle por tu cumpleaños.",
     birthDateSave: "Guardar",
     birthDateSaved: "Guardado",
+    marketingLabel: "Recibir promociones y recordatorios comerciales",
+    marketingHint:
+      "Campañas y avisos tipo \"vuelve a reservar\" de los negocios donde eres cliente. Los avisos de tus citas no se ven afectados.",
     exportCta: "Descargar mis datos",
     exportHint:
       "Exporta en un archivo JSON tu cuenta, tus citas, tus valoraciones y tus bonos.",
@@ -617,6 +629,7 @@ const es = {
       templateCampaign: "Campaña",
       templateLoyaltyReward: "Premio de fidelidad",
       templateWaitlistSlotFreed: "Hueco libre (lista de espera)",
+      templateWinback: "Vuelve a reservar (win-back)",
       statusPending: "Pendiente",
       statusSent: "Enviada",
       statusFailed: "Fallida",
@@ -1004,6 +1017,15 @@ const en: Dict = {
         "This business requires a saved card: create an account to book.",
     },
   },
+  unsubscribe: {
+    title: "Unsubscribe from marketing",
+    description:
+      "If you confirm, you will stop receiving promotions and commercial reminders. Your appointment notifications (confirmations, attendance reminders) are not affected.",
+    confirm: "Unsubscribe",
+    working: "Processing…",
+    done: "Done: you won't receive more promotions.",
+    error: "The link is not valid or an error occurred.",
+  },
   myAppointments: {
     title: "My appointments",
     pushEnable: "Enable alerts on this device",
@@ -1078,6 +1100,9 @@ const en: Dict = {
       "Only used so the businesses you visit can wish you a happy birthday or send you a treat.",
     birthDateSave: "Save",
     birthDateSaved: "Saved",
+    marketingLabel: "Receive promotions and commercial reminders",
+    marketingHint:
+      "Campaigns and \"book again\" nudges from the businesses you visit. Your appointment notifications are not affected.",
     exportCta: "Download my data",
     exportHint:
       "Export your account, appointments, reviews and packages as a JSON file.",
@@ -1375,6 +1400,7 @@ const en: Dict = {
       templateCampaign: "Campaign",
       templateLoyaltyReward: "Loyalty reward",
       templateWaitlistSlotFreed: "Freed slot (waitlist)",
+      templateWinback: "Book again (win-back)",
       statusPending: "Pending",
       statusSent: "Sent",
       statusFailed: "Failed",

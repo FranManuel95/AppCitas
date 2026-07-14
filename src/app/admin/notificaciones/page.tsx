@@ -12,6 +12,7 @@ import {
   bookingConfirmedMessage,
   cancellationMessage,
   noShowMessage,
+  winbackMessage,
   parseTemplateOverrides,
   renderTemplate,
   reminderMessage,
@@ -58,6 +59,7 @@ export default async function NotificationsPage() {
     CAMPAIGN: nt.templateCampaign,
     LOYALTY_REWARD: nt.templateLoyaltyReward,
     WAITLIST_SLOT_FREED: nt.templateWaitlistSlotFreed,
+    WINBACK: nt.templateWinback,
   };
 
   const statusLabels: Record<string, string> = {
@@ -122,9 +124,10 @@ export default async function NotificationsPage() {
     REMINDER: reminderMessage(sampleCtx),
     CANCELLED: cancellationMessage(sampleCtx, 0),
     NO_SHOW: noShowMessage(sampleCtx, 0),
+    WINBACK: winbackMessage(sampleCtx),
   };
   const sampleValues = Object.fromEntries(
-    (["cliente", "negocio", "servicio", "fecha", "hora", "precio", "enlace"] as const).map(
+    (["cliente", "negocio", "servicio", "fecha", "hora", "precio", "enlace", "sede"] as const).map(
       (v) => [v, renderTemplate(`{${v}}`, sampleCtx)],
     ),
   );

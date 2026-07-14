@@ -29,6 +29,7 @@ export const CUSTOMIZABLE_TEMPLATES = [
   "REMINDER",
   "CANCELLED",
   "NO_SHOW",
+  "WINBACK",
 ] as const;
 export type CustomizableTemplate = (typeof CUSTOMIZABLE_TEMPLATES)[number];
 
@@ -280,6 +281,27 @@ export function cancellationMessage(
       ? `${renderTemplate(custom.body, ctx)}\n${chargeLine}`
       : `Hola ${ctx.clientName}, tu cita de ${ctx.serviceName} en ` +
         `${ctx.businessName} (${when}) ha quedado cancelada.\n${chargeLine}`,
+  };
+}
+
+/**
+ * Win-back "vuelve a reservar": {servicio} y {fecha} se refieren a la ÚLTIMA
+ * cita completada del cliente; {enlace} es la página de reserva del negocio.
+ */
+export function winbackMessage(
+  ctx: AppointmentMessageContext,
+  overrides?: TemplateOverrides,
+): { subject: string; body: string } {
+  const custom = overrides?.WINBACK;
+  return {
+    subject: custom?.subject
+      ? renderTemplate(custom.subject, ctx)
+      : `Te echamos de menos en ${ctx.businessName}`,
+    body: custom?.body
+      ? renderTemplate(custom.body, ctx)
+      : `Hola ${ctx.clientName} 👋 Hace tiempo que no nos vemos por ` +
+        `${ctx.businessName}. ¿Reservamos tu próxima cita de ${ctx.serviceName}?\n\n` +
+        `Reserva en un minuto: ${ctx.confirmationUrl}`,
   };
 }
 

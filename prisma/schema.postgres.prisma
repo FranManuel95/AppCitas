@@ -23,6 +23,10 @@ model User {
   // Fecha de nacimiento (opcional, la aporta el cliente): habilita el
   // segmento de campañas "cumpleaños próximos".
   birthDate    DateTime?
+  // Consentimiento de comunicaciones comerciales (LSSI 21.2: clientes
+  // existentes con opt-out fácil). Solo afecta a envíos promocionales
+  // (campañas, win-back); las transaccionales no se filtran.
+  marketingConsent Boolean @default(true)
   // CLIENT | OWNER | STAFF | SUPER_ADMIN
   role         String  @default("CLIENT")
   businessId   String?
@@ -141,6 +145,9 @@ model Business {
   // empiezan en menos de 24 h (0 = desactivado). Llena huecos que se quedarían
   // vacíos (cancelaciones tardías); no se acumula con cupones ni bonos.
   lastMinuteDiscountPercent Int @default(0)
+  // Win-back: días tras la última cita completada para el aviso automático
+  // "vuelve a reservar" (null = desactivado)
+  winbackDays Int?
 
   // Visibilidad en el marketplace: si es false, el negocio no aparece en la
   // landing, la búsqueda ni el sitemap — su página pública solo es accesible
@@ -706,6 +713,9 @@ model Appointment {
   // Marcador idempotente de la tarjeta de sellos: la cita selló una vez
   // (se limpia si el negocio revierte el estado COMPLETED)
   loyaltyStampedAt DateTime?
+  // Marcador idempotente del win-back: esta cita ya generó (o descartó) su
+  // aviso "vuelve a reservar" (claim atómico, patrón loyaltyStampedAt)
+  winbackQueuedAt DateTime?
   // Membresía cuyo descuento se aplicó a esta cita (snapshot del beneficio)
   membershipId String?
   membership   ClientMembership? @relation(fields: [membershipId], references: [id])

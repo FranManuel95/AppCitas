@@ -8,6 +8,7 @@ import { renewSimulatedMemberships } from "@/lib/payments/memberships";
 import { processCalendarSyncJobs } from "@/lib/calendar/sync";
 import { purgeBusyCache } from "@/lib/calendar/freebusy";
 import { renewExpiringWatchChannels } from "@/lib/calendar/watch";
+import { processWinbacks } from "@/lib/domain/winback";
 import {
   expireStaleWaitlist,
   recycleNotifiedWaitlist,
@@ -35,6 +36,7 @@ export interface ScheduledJobsResult {
   membershipsEnded: number;
   calendarEventsSynced: number;
   watchChannelsRenewed: number;
+  winbacksQueued: number;
 }
 
 /**
@@ -87,6 +89,8 @@ export async function runScheduledJobs(
   await purgeBusyCache(now);
   // Watch channels: renueva los que caducan en <24 h (y crea los que falten).
   const watchChannelsRenewed = await renewExpiringWatchChannels(now);
+  // Win-back: "vuelve a reservar" para clientes sin cita posterior.
+  const winbacksQueued = await processWinbacks(now);
 
   return {
     sent,
@@ -102,5 +106,6 @@ export async function runScheduledJobs(
     membershipsEnded: memberships.ended,
     calendarEventsSynced: calendarSync.sent,
     watchChannelsRenewed,
+    winbacksQueued,
   };
 }

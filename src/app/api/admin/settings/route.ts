@@ -42,6 +42,9 @@ const updateSchema = z.object({
   reminder2HoursBefore: z.number().int().min(1).max(168).nullable().optional(),
   // Cierre automático de citas pasadas (CONFIRMED → COMPLETED tras 24 h)
   autoCompleteEnabled: z.boolean().optional(),
+  // Win-back: días tras la última cita para el aviso "vuelve a reservar"
+  // (null = desactivado)
+  winbackDays: z.number().int().min(7).max(365).nullable().optional(),
   notifyByEmail: z.boolean().optional(),
   notifyBySms: z.boolean().optional(),
   notifyByWhatsapp: z.boolean().optional(),
