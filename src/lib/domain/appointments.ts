@@ -49,6 +49,11 @@ import { activeMembershipBenefitTx } from "./memberships";
 import { getExternalBusy } from "@/lib/calendar/freebusy";
 import { enqueueCalendarSync } from "@/lib/calendar/sync";
 
+// Cota superior de duración de una cita (servicio más largo + margen): las
+// consultas de solapamiento la usan como cota inferior de startAt para no
+// recorrer el histórico completo del negocio (endAt no está indexado).
+const MAX_APPOINTMENT_SPAN_MS = 24 * 3_600_000;
+
 interface AvailabilityContext {
   business: {
     id: string;
@@ -71,7 +76,10 @@ interface AvailabilityContext {
 }
 
 async function loadAvailabilityContext(params: {
-  businessId: string;
+  // Negocio por id (dominio) o por slug (rutas públicas: evita que la ruta
+  // haga su propio fetch solo para resolver id + timezone)
+  businessId?: string;
+  businessSlug?: string;
   serviceId: string;
   // Día pedido: como fecha local del negocio, o como instante (startAt) del
   // que se deriva la fecha con la zona del negocio ya cargada — así el
@@ -90,25 +98,31 @@ async function loadAvailabilityContext(params: {
   // antelación mínima que protege al negocio no aplica cuando reserva él.
   relaxMinNotice?: boolean;
 }): Promise<AvailabilityContext> {
-  const { businessId, serviceId, now, staffId, excludeAppointmentId } = params;
+  const { serviceId, now, staffId, excludeAppointmentId } = params;
 
   if (params.dateISO !== undefined && !isValidDateISO(params.dateISO)) {
     throw new DomainError("Fecha no válida", "INVALID_DATE");
   }
 
-  const [business, service] = await Promise.all([
-    prisma.business.findFirst({
-      where: { id: businessId, active: true },
-      // Todos los cierres del negocio (filas mínimas): el motor solo comprueba
-      // pertenencia del día pedido, y así la consulta no depende de dateISO.
-      include: { hours: true, closures: { select: { date: true } } },
-    }),
-    prisma.service.findFirst({
-      where: { id: serviceId, businessId, active: true },
-    }),
-  ]);
-
+  // Secuencial a propósito: con el pool de una conexión de producción el
+  // Promise.all no paralelizaba, y el filtro del servicio necesita el id.
+  const business = await prisma.business.findFirst({
+    where: {
+      ...(params.businessId
+        ? { id: params.businessId }
+        : { slug: params.businessSlug }),
+      active: true,
+    },
+    // Todos los cierres del negocio (filas mínimas): el motor solo comprueba
+    // pertenencia del día pedido, y así la consulta no depende de dateISO.
+    include: { hours: true, closures: { select: { date: true } } },
+  });
   if (!business) throw new DomainError("Negocio no encontrado", "BUSINESS_NOT_FOUND", 404);
+  const businessId = business.id;
+
+  const service = await prisma.service.findFirst({
+    where: { id: serviceId, businessId, active: true },
+  });
   if (!service) throw new DomainError("Servicio no encontrado", "SERVICE_NOT_FOUND", 404);
 
   const dateISO =
@@ -172,7 +186,14 @@ async function loadAvailabilityContext(params: {
     where: {
       businessId,
       status: { in: [...BLOCKING_STATUSES] },
-      startAt: { lt: dayEnd },
+      // Cota inferior: sin ella, "endAt > dayStart" obliga a recorrer TODO el
+      // histórico del negocio (endAt no está indexado). Ninguna cita dura más
+      // de MAX_APPOINTMENT_SPAN_MS, así que las que solapan el día empiezan
+      // como muy pronto en dayStart − span (cubre las que cruzan medianoche).
+      startAt: {
+        lt: dayEnd,
+        gte: new Date(dayStart.getTime() - MAX_APPOINTMENT_SPAN_MS),
+      },
       endAt: { gt: dayStart },
       ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
     },
@@ -284,6 +305,33 @@ export async function getAvailability(params: {
     now: params.now ?? new Date(),
   });
   return slotsFromContext(ctx);
+}
+
+/**
+ * Disponibilidad para las rutas públicas, resolviendo el negocio por slug en
+ * la MISMA consulta del contexto (la ruta no necesita su propio fetch).
+ */
+export async function getPublicAvailability(params: {
+  slug: string;
+  serviceId: string;
+  dateISO: string;
+  staffId?: string;
+  locationId?: string;
+  now?: Date;
+}): Promise<{ businessId: string; timezone: string; slots: StaffSlot[] }> {
+  const ctx = await loadAvailabilityContext({
+    businessSlug: params.slug,
+    serviceId: params.serviceId,
+    dateISO: params.dateISO,
+    staffId: params.staffId,
+    locationId: params.locationId,
+    now: params.now ?? new Date(),
+  });
+  return {
+    businessId: ctx.business.id,
+    timezone: ctx.business.timezone,
+    slots: slotsFromContext(ctx),
+  };
 }
 
 // Ventana del "descuento de última hora": reservas que empiezan dentro de
@@ -401,7 +449,12 @@ export async function createAppointment(params: {
       where: {
         businessId,
         status: { in: [...BLOCKING_STATUSES] },
-        startAt: { lt: endAt },
+        // Misma cota inferior que en loadAvailabilityContext: el caso feliz
+        // (sin conflicto) no debe recorrer el histórico bajo el advisory lock.
+        startAt: {
+          lt: endAt,
+          gte: new Date(startAt.getTime() - MAX_APPOINTMENT_SPAN_MS),
+        },
         endAt: { gt: startAt },
         // Con empleado asignado solo chocan sus propias citas (o las de sala,
         // sin empleado); sin equipo choca cualquiera.
@@ -952,7 +1005,10 @@ export async function rescheduleAppointment(params: {
         businessId: appointment.businessId,
         id: { not: appointmentId },
         status: { in: [...BLOCKING_STATUSES] },
-        startAt: { lt: newEndAt },
+        startAt: {
+          lt: newEndAt,
+          gte: new Date(newStartAt.getTime() - MAX_APPOINTMENT_SPAN_MS),
+        },
         endAt: { gt: newStartAt },
         ...(assignedStaffId
           ? { OR: [{ staffId: assignedStaffId }, { staffId: null }] }

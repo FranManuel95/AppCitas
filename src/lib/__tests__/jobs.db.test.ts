@@ -38,6 +38,45 @@ describe("runScheduledJobs (BD)", () => {
     expect(pending).toBe(0);
   });
 
+  it("purga el outbox resuelto: SENT>90d fuera, FAILED 90-180d se conserva, PENDING nunca", async () => {
+    const { businessId } = await seedBusiness();
+    const DAY = 86_400_000;
+    const mk = (status: string, ageDays: number, scheduledFor: Date) =>
+      prisma.notification.create({
+        data: {
+          businessId,
+          channel: "EMAIL",
+          template: "REMINDER",
+          recipient: "x@test.local",
+          body: "b",
+          status,
+          scheduledFor,
+          createdAt: new Date(NOW.getTime() - ageDays * DAY),
+        },
+      });
+    const past = new Date(NOW.getTime() - 100 * DAY);
+    const future = new Date(NOW.getTime() + DAY);
+
+    await mk("SENT", 100, past); // se purga
+    await mk("SKIPPED", 100, past); // se purga
+    await mk("FAILED", 100, past); // se conserva (<180d)
+    await mk("FAILED", 200, past); // se purga
+    // Antigua pero programada a futuro: el drenaje no la toca y la purga
+    // jamás borra PENDING, por vieja que sea su fila
+    const pending = await mk("PENDING", 200, future);
+
+    const result = await runScheduledJobs(NOW);
+    expect(result.purged.notifications).toBe(3);
+
+    const remaining = await prisma.notification.findMany({
+      select: { id: true, status: true },
+    });
+    expect(remaining.map((n) => n.id)).toContain(pending.id);
+    expect(
+      remaining.filter((n) => n.status === "FAILED"),
+    ).toHaveLength(1);
+  });
+
   it("devuelve el agregado completo de todas las tareas", async () => {
     const result = await runScheduledJobs(NOW);
     for (const key of [
@@ -56,6 +95,11 @@ describe("runScheduledJobs (BD)", () => {
     ] as const) {
       expect(result[key]).toBe(0);
     }
-    expect(result.purged).toEqual({ auditLogs: 0, webhookEvents: 0 });
+    expect(result.purged).toEqual({
+      auditLogs: 0,
+      webhookEvents: 0,
+      notifications: 0,
+      calendarSyncJobs: 0,
+    });
   });
 });

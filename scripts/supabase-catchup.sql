@@ -582,6 +582,9 @@ ALTER TABLE "CalendarConnection" ADD COLUMN IF NOT EXISTS "watchExpiresAt" TIMES
 ALTER TABLE "CalendarConnection" ADD COLUMN IF NOT EXISTS "watchToken" TEXT;
 CREATE INDEX IF NOT EXISTS "CalendarConnection_watchChannelId_idx" ON "CalendarConnection"("watchChannelId");
 
+-- ── (38) Índice para autocierre y win-back ──────────────────────────────────
+CREATE INDEX IF NOT EXISTS "Appointment_status_endAt_idx" ON "Appointment"("status", "endAt");
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -621,7 +624,8 @@ FROM (VALUES
   ('20260713160000_multi_sede'),
   ('20260713170000_galeria_dominio'),
   ('20260713180000_indices_membresia_cupon'),
-  ('20260713190000_calendar_watch')
+  ('20260713190000_calendar_watch'),
+  ('20260714090000_indice_autocierre')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

@@ -749,6 +749,9 @@ model Appointment {
   // Tope mensual de la membresía: se cuenta por membershipId + rango de mes
   // DENTRO de la transacción de reserva (bajo el advisory lock).
   @@index([membershipId, startAt])
+  // Autocierre (CONFIRMED con endAt pasado) y win-back (COMPLETED por endAt):
+  // barren TODOS los negocios sin businessId, así que necesitan su índice.
+  @@index([status, endAt])
 }
 
 // Factura fiscal emitida por un cobro de cita: snapshot legal INMUTABLE con

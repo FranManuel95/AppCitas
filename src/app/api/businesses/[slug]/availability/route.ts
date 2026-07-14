@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
-import { getAvailability } from "@/lib/domain/appointments";
-import { DomainError } from "@/lib/domain/errors";
+import { getPublicAvailability } from "@/lib/domain/appointments";
 import { toLocalTime } from "@/lib/domain/dates";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const querySchema = z.object({
   serviceId: z.string().min(1),
@@ -20,22 +19,21 @@ export const GET = apiHandler(
     request: Request,
     { params }: { params: Promise<{ slug: string }> },
   ) => {
+    // Endpoint anónimo que dispara varias consultas por petición: límite por
+    // IP generoso (el wizard consulta día a día; 120/min da de sobra).
+    await enforceRateLimit(request, "availability", {
+      limit: 120,
+      windowMs: 60_000,
+    });
+
     const { slug } = await params;
     const url = new URL(request.url);
     const { serviceId, date, staffId, location } = querySchema.parse(
       Object.fromEntries(url.searchParams),
     );
 
-    const business = await prisma.business.findFirst({
-      where: { slug, active: true },
-      select: { id: true, timezone: true },
-    });
-    if (!business) {
-      throw new DomainError("Negocio no encontrado", "BUSINESS_NOT_FOUND", 404);
-    }
-
-    const slots = await getAvailability({
-      businessId: business.id,
+    const { timezone, slots } = await getPublicAvailability({
+      slug,
       serviceId,
       dateISO: date,
       staffId,
@@ -44,11 +42,11 @@ export const GET = apiHandler(
 
     return NextResponse.json({
       date,
-      timezone: business.timezone,
+      timezone,
       slots: slots.map((s) => ({
         startAt: s.start.toISOString(),
         endAt: s.end.toISOString(),
-        label: toLocalTime(s.start, business.timezone),
+        label: toLocalTime(s.start, timezone),
         staffIds: s.staffIds,
       })),
     });

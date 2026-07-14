@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { createAppointment } from "../appointments";
+import {
+  createAppointment,
+  getAvailability,
+  getPublicAvailability,
+} from "../appointments";
 import {
   resetDb,
   seedBusiness,
@@ -49,6 +53,74 @@ describe("createAppointment (BD)", () => {
       createAppointment({ businessId, serviceId, clientId, startAt, now: NOW }),
     ).rejects.toMatchObject({ httpStatus: 409 });
     expect(await prisma.appointment.count()).toBe(1);
+  });
+
+  it("una cita que cruza medianoche sigue bloqueando el día siguiente (cota inferior)", async () => {
+    const { businessId, serviceId } = await seedBusiness({
+      durationMinutes: 60,
+    });
+    const clientId = await seedClient();
+    // Cita 23:30–00:30 sembrada a mano (cruza al día 2020-01-07)
+    await prisma.appointment.create({
+      data: {
+        businessId,
+        serviceId,
+        clientId,
+        startAt: slotAt(DATE, "23:30"),
+        endAt: new Date(slotAt(DATE, "23:30").getTime() + 60 * 60_000),
+        status: "CONFIRMED",
+        priceCents: 1000,
+      },
+    });
+
+    const slots = await getAvailability({
+      businessId,
+      serviceId,
+      dateISO: "2020-01-07",
+      now: NOW,
+    });
+    const starts = slots.map((s) => s.start.toISOString());
+    // 00:00 del día siguiente choca con la cita que viene de la víspera
+    expect(starts).not.toContain("2020-01-07T00:00:00.000Z");
+    expect(starts).toContain("2020-01-07T01:00:00.000Z");
+
+    // Y la reserva directa de ese hueco también se rechaza
+    await expect(
+      createAppointment({
+        businessId,
+        serviceId,
+        clientId,
+        startAt: slotAt("2020-01-07", "00:00"),
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ httpStatus: 409 });
+  });
+
+  it("getPublicAvailability resuelve el negocio por slug en una sola pasada", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    const business = await prisma.business.findUniqueOrThrow({
+      where: { id: businessId },
+      select: { slug: true },
+    });
+
+    const result = await getPublicAvailability({
+      slug: business.slug,
+      serviceId,
+      dateISO: DATE,
+      now: NOW,
+    });
+    expect(result.businessId).toBe(businessId);
+    expect(result.timezone).toBe("UTC");
+    expect(result.slots.length).toBeGreaterThan(0);
+
+    await expect(
+      getPublicAvailability({
+        slug: "no-existe",
+        serviceId,
+        dateISO: DATE,
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ code: "BUSINESS_NOT_FOUND" });
   });
 
   it("aplica un cupón PERCENT y cuenta el canje de forma atómica con la reserva", async () => {

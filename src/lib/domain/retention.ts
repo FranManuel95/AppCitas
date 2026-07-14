@@ -8,14 +8,25 @@ const AUDIT_LOG_RETENTION_DAYS = 90;
 // Los ids de webhook procesados solo evitan reprocesar reintentos de Stripe,
 // que ocurren en horas/días; 90 días es un margen holgado.
 const WEBHOOK_EVENT_RETENTION_DAYS = 90;
+// Outbox: lo entregado se purga a los 90 días; lo fallido se conserva el
+// doble para diagnóstico. PENDING/SENDING no se tocan jamás.
+const OUTBOX_SENT_RETENTION_DAYS = 90;
+const OUTBOX_FAILED_RETENTION_DAYS = 180;
 
 const DAY_MS = 24 * 60 * 60_000;
 
 export async function purgeExpiredData(
   now = new Date(),
-): Promise<{ auditLogs: number; webhookEvents: number }> {
+): Promise<{
+  auditLogs: number;
+  webhookEvents: number;
+  notifications: number;
+  calendarSyncJobs: number;
+}> {
   let auditLogs = 0;
   let webhookEvents = 0;
+  let notifications = 0;
+  let calendarSyncJobs = 0;
 
   try {
     const cutoff = new Date(now.getTime() - AUDIT_LOG_RETENTION_DAYS * DAY_MS);
@@ -37,5 +48,39 @@ export async function purgeExpiredData(
     // idem.
   }
 
-  return { auditLogs, webhookEvents };
+  // Notificaciones ya resueltas: sin purga crecen sin cota (las de campaña ni
+  // siquiera caen en cascada al borrar citas, appointmentId null).
+  try {
+    const sentCutoff = new Date(now.getTime() - OUTBOX_SENT_RETENTION_DAYS * DAY_MS);
+    const failedCutoff = new Date(now.getTime() - OUTBOX_FAILED_RETENTION_DAYS * DAY_MS);
+    const res = await prisma.notification.deleteMany({
+      where: {
+        OR: [
+          { status: { in: ["SENT", "SKIPPED"] }, createdAt: { lt: sentCutoff } },
+          { status: "FAILED", createdAt: { lt: failedCutoff } },
+        ],
+      },
+    });
+    notifications = res.count;
+  } catch {
+    // idem.
+  }
+
+  try {
+    const sentCutoff = new Date(now.getTime() - OUTBOX_SENT_RETENTION_DAYS * DAY_MS);
+    const failedCutoff = new Date(now.getTime() - OUTBOX_FAILED_RETENTION_DAYS * DAY_MS);
+    const res = await prisma.calendarSyncJob.deleteMany({
+      where: {
+        OR: [
+          { status: "SENT", createdAt: { lt: sentCutoff } },
+          { status: "FAILED", createdAt: { lt: failedCutoff } },
+        ],
+      },
+    });
+    calendarSyncJobs = res.count;
+  } catch {
+    // idem.
+  }
+
+  return { auditLogs, webhookEvents, notifications, calendarSyncJobs };
 }
