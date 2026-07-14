@@ -35,12 +35,13 @@ devolver **0 filas**. Además, intenta entrar en la web con
 
 ### ☐ 1.2 Poner la base de datos al día (migraciones 2→46)
 
-**Por qué**: las rondas W, X e Y añadieron 17 migraciones (27→43: códigos de
+**Por qué**: las rondas W, X, Y y Z añadieron 20 migraciones (27→46: códigos de
 recuperación, facturas, cumpleaños, plantillas, sellos, membresías, Google
 Calendar, multi-sede, galería/dominio, índices de camino caliente, watch
 channels, nota interna, buffers, consentimiento/win-back, comisiones, sede
-en lista de espera e idioma del usuario). Sin ellas, las funciones nuevas
-fallarán al tocar tablas o columnas que no existen.
+en lista de espera, idioma del usuario, observabilidad del cron + índices de
+purga, avisos al equipo y precio/duración por empleado). Sin ellas, las
+funciones nuevas fallarán al tocar tablas o columnas que no existen.
 
 **Pasos**:
 1. Supabase → **SQL Editor** → pega TODO `scripts/supabase-catchup.sql` → **Run**.

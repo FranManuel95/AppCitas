@@ -109,7 +109,7 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
    todas las tablas (la API pública de Supabase no podrá leer tus datos; la
    app no se ve afectada) y deja el registro de migraciones coherente para
    futuros `prisma migrate deploy`. **Después**, ejecuta en orden los scripts
-   incrementales `scripts/supabase-migration-2-*.sql` … `-43-*.sql` (cada uno
+   incrementales `scripts/supabase-migration-2-*.sql` … `-46-*.sql` (cada uno
    añade las mejoras de una fase posterior: rate limit, autocierre/2º
    recordatorio, reseñas, suscripción SaaS, idempotencia de webhooks,
    consentimiento, el default de suscripción, los índices de camino caliente,
@@ -119,9 +119,17 @@ Supabase es PostgreSQL gestionado: no requiere ningún cambio en el código.
    las notas de cliente, las campañas de marketing, la economía de la
    plataforma, las cuentas de invitado, las ausencias por empleado, las
    citas recurrentes, el feed de calendario, la marca por negocio, el push
-   web, la verificación en dos pasos, sus códigos de recuperación y las
-   facturas fiscales). Son
-   idempotentes: registran su propia entrada en `_prisma_migrations`.
+   web, la verificación en dos pasos, sus códigos de recuperación, las
+   facturas fiscales, la tarjeta de sellos, las membresías, Google Calendar,
+   la multi-sede, la galería y el dominio propio, los watch channels, la nota
+   interna por cita, los buffers por servicio, el consentimiento de marketing
+   y el win-back, las comisiones por empleado, la sede en la lista de espera,
+   el idioma del usuario, la observabilidad del cron y sus índices de purga,
+   los avisos al equipo, los cierres por rango y el precio/duración por
+   empleado). Son
+   idempotentes: registran su propia entrada en `_prisma_migrations`. Como
+   atajo, `scripts/supabase-catchup.sql` aplica todo el rango 2→46 de una
+   pasada.
 
 > **⚠️ Antes de abrir a clientes reales**: si alguna vez cargaste los datos
 > de demostración en producción, ejecuta `scripts/remove-demo-accounts.sql`
