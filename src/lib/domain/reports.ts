@@ -216,6 +216,60 @@ export async function getServiceReport(
     .sort((a, b) => b.revenueCents - a.revenueCents);
 }
 
+// ── Ingresos y comisiones por empleado ───────────────────────────────────────
+
+export interface StaffReportRow {
+  staffId: string | null; // null = citas sin profesional asignado
+  name: string;
+  completed: number;
+  revenueCents: number;
+  commissionPercent: number | null;
+  commissionCents: number; // 0 si el empleado no tiene % configurado
+}
+
+export async function getStaffReport(
+  businessId: string,
+  range: DateRange,
+): Promise<StaffReportRow[]> {
+  // La comisión se calcula solo sobre lo COBRADO de citas COMPLETADAS: los
+  // cargos de no-show/cancelación tardía no comisionan.
+  const [rows, staff] = await Promise.all([
+    prisma.appointment.groupBy({
+      by: ["staffId"],
+      where: {
+        businessId,
+        status: "COMPLETED",
+        startAt: { gte: range.from, lt: range.to },
+      },
+      _count: { _all: true },
+      _sum: { chargedCents: true },
+    }),
+    prisma.staffMember.findMany({
+      where: { businessId },
+      select: { id: true, name: true, commissionPercent: true },
+    }),
+  ]);
+  const staffById = new Map(staff.map((s) => [s.id, s]));
+
+  return rows
+    .map((row) => {
+      const member = row.staffId ? staffById.get(row.staffId) : null;
+      const revenue = row._sum.chargedCents ?? 0;
+      const pct = member?.commissionPercent ?? null;
+      return {
+        staffId: row.staffId,
+        name: row.staffId
+          ? (member?.name ?? "(empleado eliminado)")
+          : "(sin asignar)",
+        completed: row._count._all,
+        revenueCents: revenue,
+        commissionPercent: pct,
+        commissionCents: pct ? Math.round((revenue * pct) / 100) : 0,
+      };
+    })
+    .sort((a, b) => b.revenueCents - a.revenueCents);
+}
+
 // ── Rendimiento de promociones ───────────────────────────────────────────────
 
 export interface CouponReportRow {

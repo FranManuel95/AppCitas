@@ -463,6 +463,7 @@ export default async function MyAppointmentsPage() {
                     <p className="mt-1 pl-6 text-sm text-ink-muted">
                       {formatDayISO(w.desiredDate)}
                       {w.staff ? ` · ${w.staff.name}` : ""}
+                      {w.location ? ` · 📍 ${w.location.name}` : ""}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">

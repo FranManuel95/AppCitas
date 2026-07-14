@@ -23,6 +23,8 @@ export interface JoinWaitlistParams {
   clientId: string;
   desiredDate: string; // "YYYY-MM-DD" (zona del negocio)
   staffId?: string;
+  // Preferencia opcional de sede (negocios multi-sede)
+  locationId?: string;
   now?: Date;
 }
 
@@ -32,7 +34,8 @@ export interface JoinWaitlistParams {
  * que no exista ya una entrada viva idéntica.
  */
 export async function joinWaitlist(params: JoinWaitlistParams) {
-  const { businessId, serviceId, clientId, desiredDate, staffId } = params;
+  const { businessId, serviceId, clientId, desiredDate, staffId, locationId } =
+    params;
   const now = params.now ?? new Date();
 
   if (!isValidDateISO(desiredDate)) {
@@ -77,6 +80,17 @@ export async function joinWaitlist(params: JoinWaitlistParams) {
     }
   }
 
+  // Aislamiento: la sede (si se indica) debe ser del negocio.
+  if (locationId) {
+    const location = await prisma.location.findFirst({
+      where: { id: locationId, businessId, active: true },
+      select: { id: true },
+    });
+    if (!location) {
+      throw new DomainError("Sede no encontrada", "LOCATION_NOT_FOUND", 404);
+    }
+  }
+
   const activeCount = await prisma.waitlistEntry.count({
     where: { clientId, status: { in: [...ACTIVE_STATUSES] } },
   });
@@ -96,6 +110,7 @@ export async function joinWaitlist(params: JoinWaitlistParams) {
       serviceId,
       desiredDate,
       staffId: staffId ?? null,
+      locationId: locationId ?? null,
       status: { in: [...ACTIVE_STATUSES] },
     },
     select: { id: true },
@@ -114,6 +129,7 @@ export async function joinWaitlist(params: JoinWaitlistParams) {
       serviceId,
       clientId,
       staffId: staffId ?? null,
+      locationId: locationId ?? null,
       desiredDate,
       status: "WAITING",
     },
@@ -172,6 +188,7 @@ export async function getBusinessWaitlist(businessId: string, now = new Date()) 
       createdAt: true,
       service: { select: { id: true, name: true } },
       staff: { select: { name: true } },
+      location: { select: { name: true } },
       client: { select: { name: true, email: true, phone: true } },
     },
   });
@@ -213,6 +230,7 @@ export async function listClientWaitlist(clientId: string) {
       business: { select: { name: true, slug: true } },
       service: { select: { id: true, name: true } },
       staff: { select: { name: true } },
+      location: { select: { name: true } },
     },
   });
 }
@@ -221,6 +239,8 @@ export interface FreedSlot {
   businessId: string;
   serviceId: string;
   staffId: string | null;
+  // Sede del hueco liberado (null = sin sede: se avisa a todos)
+  locationId?: string | null;
   desiredDate: string; // "YYYY-MM-DD" (zona del negocio)
   now?: Date;
 }
@@ -241,6 +261,11 @@ export async function notifyWaitlistForFreedSlot(
     const staffFilter = slot.staffId
       ? { OR: [{ staffId: null }, { staffId: slot.staffId }] }
       : { staffId: null };
+    // Sede: si el hueco liberado es de la sede X, se avisa a quien pidio X y
+    // a quien no puso preferencia; un hueco sin sede avisa a todos.
+    const locationFilter = slot.locationId
+      ? { AND: [{ OR: [{ locationId: null }, { locationId: slot.locationId }] }] }
+      : {};
 
     const entries = await prisma.waitlistEntry.findMany({
       where: {
@@ -249,6 +274,7 @@ export async function notifyWaitlistForFreedSlot(
         desiredDate: slot.desiredDate,
         status: "WAITING",
         ...staffFilter,
+        ...locationFilter,
       },
       select: {
         id: true,

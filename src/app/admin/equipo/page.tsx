@@ -58,6 +58,7 @@ export default async function StaffPage() {
           })),
           serviceIds: m.services.map((s) => s.serviceId),
           locationId: m.locationId,
+          commissionPercent: m.commissionPercent,
         }))}
         services={services}
         locations={locations}

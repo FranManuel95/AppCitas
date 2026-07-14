@@ -10,11 +10,13 @@ import {
   recycleNotifiedWaitlist,
 } from "../waitlist";
 import { createAppointment, cancelAppointment } from "../appointments";
+import { createLocation } from "../locations";
 import { DomainError } from "../errors";
 import {
   resetDb,
   seedBusiness,
   seedClient,
+  seedStaff,
   slotAt,
 } from "@/lib/test/factories";
 
@@ -97,6 +99,70 @@ describe("lista de espera (BD)", () => {
     const res = await leaveWaitlist(entry.id, clientId);
     expect(res).toEqual({ deleted: true });
     expect(await prisma.waitlistEntry.count()).toBe(0);
+  });
+
+  it("la sede del hueco liberado filtra los avisos (X y 'cualquiera' sí; Y no)", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    await seedStaff(businessId);
+    const centro = await createLocation(businessId, { name: "Centro" });
+    const norte = await createLocation(businessId, { name: "Norte" });
+
+    const quiereCentro = await seedClient();
+    const quiereNorte = await seedClient();
+    const daIgual = await seedClient();
+    await joinWaitlist({
+      businessId,
+      serviceId,
+      clientId: quiereCentro,
+      desiredDate: DAY,
+      locationId: centro.id,
+      now: NOW,
+    });
+    await joinWaitlist({
+      businessId,
+      serviceId,
+      clientId: quiereNorte,
+      desiredDate: DAY,
+      locationId: norte.id,
+      now: NOW,
+    });
+    await joinWaitlist({
+      businessId,
+      serviceId,
+      clientId: daIgual,
+      desiredDate: DAY,
+      now: NOW,
+    });
+
+    // Hueco liberado en Centro: avisa a Centro y a "cualquiera", no a Norte
+    const { notified } = await notifyWaitlistForFreedSlot({
+      businessId,
+      serviceId,
+      staffId: null,
+      locationId: centro.id,
+      desiredDate: DAY,
+      now: NOW,
+    });
+    expect(notified).toBe(2);
+    const norteEntry = await prisma.waitlistEntry.findFirstOrThrow({
+      where: { clientId: quiereNorte },
+    });
+    expect(norteEntry.status).toBe("WAITING");
+
+    // Sede de OTRO negocio al apuntarse → 404
+    const other = await seedBusiness();
+    await seedStaff(other.businessId);
+    const ajena = await createLocation(other.businessId, { name: "Ajena" });
+    await expect(
+      joinWaitlist({
+        businessId,
+        serviceId,
+        clientId: daIgual,
+        desiredDate: "2026-07-11",
+        locationId: ajena.id,
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ code: "LOCATION_NOT_FOUND" });
   });
 
   it("notifyWaitlistForFreedSlot avisa y marca NOTIFIED (una vez)", async () => {

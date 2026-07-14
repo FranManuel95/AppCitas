@@ -10,6 +10,7 @@ const bodySchema = z.object({
   serviceId: z.string().min(1),
   desiredDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato esperado: YYYY-MM-DD"),
   staffId: z.string().optional(),
+  locationId: z.string().optional(),
 });
 
 // POST /api/waitlist — el cliente se apunta a la lista de espera de un servicio
@@ -28,6 +29,7 @@ export const POST = apiHandler(async (request: Request) => {
     clientId: user.id,
     desiredDate: data.desiredDate,
     staffId: data.staffId,
+    locationId: data.locationId,
   });
 
   return NextResponse.json(

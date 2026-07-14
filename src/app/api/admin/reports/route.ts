@@ -6,13 +6,14 @@ import {
   getPromotionsReport,
   getRetentionCohorts,
   getServiceReport,
+  getStaffReport,
   resolveReportRange,
 } from "@/lib/domain/reports";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 
 const querySchema = z.object({
-  tipo: z.enum(["servicios", "cupones", "bonos", "cohortes"]),
+  tipo: z.enum(["servicios", "cupones", "bonos", "cohortes", "empleados"]),
   desde: z.string().optional(),
   hasta: z.string().optional(),
 });
@@ -49,6 +50,25 @@ export const GET = apiHandler(async (request: Request) => {
           c.newClients,
           c.returned,
           c.retentionPercent ?? "",
+        ]),
+      ),
+    );
+  }
+
+  if (tipo === "empleados") {
+    const rows = await getStaffReport(admin.businessId, range);
+    return csvResponse(
+      `ingresos-empleados-${suffix}.csv`,
+      toCsv(
+        ["Profesional", "Citas completadas", "Ingresos", "% comisión", "Comisión"],
+        rows.map((r) => [
+          r.name,
+          r.completed,
+          formatCents(r.revenueCents, business.currency),
+          r.commissionPercent ?? "",
+          r.commissionPercent !== null
+            ? formatCents(r.commissionCents, business.currency)
+            : "",
         ]),
       ),
     );

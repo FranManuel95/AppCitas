@@ -826,6 +826,7 @@ export async function cancelAppointment(params: {
     businessId: appointment.businessId,
     serviceId: appointment.serviceId,
     staffId: appointment.staffId,
+    locationId: appointment.locationId,
     desiredDate: toLocalDateISO(appointment.startAt, appointment.business.timezone),
     now,
   });

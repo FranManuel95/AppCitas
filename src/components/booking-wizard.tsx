@@ -619,6 +619,7 @@ export function BookingWizard({
                       serviceId={serviceId}
                       dateISO={dateISO}
                       staffId={staffId || undefined}
+                      locationId={locationId || undefined}
                       labels={{
                         join: t.waitlistJoin,
                         joining: t.waitlistJoining,

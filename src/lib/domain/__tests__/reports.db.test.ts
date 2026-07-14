@@ -6,6 +6,7 @@ import {
   getPromotionsReport,
   getRetentionCohorts,
   getServiceReport,
+  getStaffReport,
   resolveReportRange,
 } from "../reports";
 import { resetDb, seedBusiness, seedClient, slotAt } from "@/lib/test/factories";
@@ -139,6 +140,50 @@ describe("informes con BD", () => {
     // Solo el cliente realmente nuevo crea cohorte; el veterano queda fuera
     expect(june).toMatchObject({ month: "2026-06", newClients: 1, returned: 1 });
     expect(cohorts.every((c) => c.month >= "2025-05")).toBe(true);
+  });
+
+  it("ingresos por empleado: agrupa, calcula comisión y no comisiona sin %", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    const clientId = await seedClient();
+    const conComision = await prisma.staffMember.create({
+      data: { businessId, name: "Ana", commissionPercent: 20 },
+    });
+    const sinComision = await prisma.staffMember.create({
+      data: { businessId, name: "Bruno" },
+    });
+    const mk = (staffId: string | null, date: string, chargedCents: number, status = "COMPLETED") =>
+      prisma.appointment.create({
+        data: {
+          businessId,
+          serviceId,
+          clientId,
+          staffId,
+          startAt: slotAt(date, "10:00"),
+          endAt: slotAt(date, "10:30"),
+          status,
+          priceCents: chargedCents,
+          chargedCents,
+        },
+      });
+    await mk(conComision.id, "2026-06-01", 2000);
+    await mk(conComision.id, "2026-06-02", 1000);
+    await mk(sinComision.id, "2026-06-03", 3000);
+    await mk(null, "2026-06-04", 500); // sin asignar
+    await mk(conComision.id, "2026-06-05", 9999, "NO_SHOW"); // no comisiona
+
+    const range = resolveReportRange("2026-06-01", "2026-06-30", "UTC", NOW);
+    const rows = await getStaffReport(businessId, range);
+    const ana = rows.find((r) => r.staffId === conComision.id)!;
+    expect(ana).toMatchObject({
+      completed: 2,
+      revenueCents: 3000,
+      commissionPercent: 20,
+      commissionCents: 600,
+    });
+    const bruno = rows.find((r) => r.staffId === sinComision.id)!;
+    expect(bruno.commissionCents).toBe(0);
+    expect(bruno.commissionPercent).toBeNull();
+    expect(rows.find((r) => r.staffId === null)?.revenueCents).toBe(500);
   });
 
   it("promociones: usos de cupón y sesiones consumidas de bonos", async () => {

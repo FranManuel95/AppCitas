@@ -27,6 +27,8 @@ const createSchema = z.object({
   serviceIds: z.array(z.string()).max(100).optional(),
   // Sede asignada (null/omitido = todas las sedes)
   locationId: z.string().nullable().optional(),
+  // % de comisión (informe de ingresos por empleado); null = sin comisión
+  commissionPercent: z.number().int().min(0).max(100).nullable().optional(),
   // Horario propio; vacío/omitido = hereda el del negocio
   hours: z.array(hourSchema).max(28).optional(),
 });
@@ -72,6 +74,7 @@ export const POST = apiHandler(async (request: Request) => {
       phone: data.phone || null,
       color: data.color ?? "#0ea5e9",
       locationId: data.locationId ?? null,
+      commissionPercent: data.commissionPercent ?? null,
       hours: { create: data.hours ?? [] },
       services: {
         // Dedupe: StaffService tiene PK compuesto (staffId, serviceId); ids

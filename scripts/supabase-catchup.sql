@@ -597,6 +597,16 @@ ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "marketingConsent" BOOLEAN NOT NULL 
 ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "winbackDays" INTEGER;
 ALTER TABLE "Appointment" ADD COLUMN IF NOT EXISTS "winbackQueuedAt" TIMESTAMP(3);
 
+-- ── (42) Comisiones por empleado + lista de espera por sede ─────────────────
+ALTER TABLE "StaffMember" ADD COLUMN IF NOT EXISTS "commissionPercent" INTEGER;
+ALTER TABLE "WaitlistEntry" ADD COLUMN IF NOT EXISTS "locationId" TEXT;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'WaitlistEntry_locationId_fkey') THEN
+    ALTER TABLE "WaitlistEntry" ADD CONSTRAINT "WaitlistEntry_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "Location"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -640,7 +650,8 @@ FROM (VALUES
   ('20260714090000_indice_autocierre'),
   ('20260714100000_nota_interna'),
   ('20260714110000_buffers_servicio'),
-  ('20260714120000_consentimiento_winback')
+  ('20260714120000_consentimiento_winback'),
+  ('20260714130000_comisiones_sede_espera')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

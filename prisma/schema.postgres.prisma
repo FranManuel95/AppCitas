@@ -310,6 +310,7 @@ model Location {
 
   staff        StaffMember[]
   appointments Appointment[]
+  waitlist     WaitlistEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -547,6 +548,9 @@ model StaffMember {
   phone      String?
   color      String   @default("#0ea5e9")
   active     Boolean  @default(true)
+  // % de comisión sobre lo cobrado de sus citas completadas (null = sin
+  // comisión; solo informativo, para el informe de ingresos por empleado)
+  commissionPercent Int?
 
   // Cuenta de acceso al portal del empleado (rol STAFF), si se ha invitado
   userId String? @unique
@@ -900,6 +904,9 @@ model WaitlistEntry {
   // Preferencia opcional de profesional; null = cualquiera.
   staffId     String?
   staff       StaffMember? @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  // Preferencia opcional de sede; null = cualquiera.
+  locationId  String?
+  location    Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
   desiredDate String // "YYYY-MM-DD" en la zona del negocio
   // WAITING | NOTIFIED | CANCELLED

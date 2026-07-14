@@ -77,6 +77,7 @@ export default async function AdminWaitlistPage() {
                       <p className="mt-1 pl-6 text-sm text-ink-soft">
                         {e.service.name}
                         {e.staff ? ` · ${e.staff.name}` : " · cualquier profesional"}
+                        {e.location ? ` · 📍 ${e.location.name}` : ""}
                       </p>
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 pl-6 text-xs text-ink-muted">
                         {e.client.email && (

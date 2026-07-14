@@ -19,12 +19,14 @@ export function WaitlistJoinButton({
   serviceId,
   dateISO,
   staffId,
+  locationId,
   labels,
 }: {
   businessId: string;
   serviceId: string;
   dateISO: string;
   staffId?: string;
+  locationId?: string;
   labels: WaitlistJoinLabels;
 }) {
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">(
@@ -44,6 +46,7 @@ export function WaitlistJoinButton({
           serviceId,
           desiredDate: dateISO,
           staffId: staffId || undefined,
+          locationId: locationId || undefined,
         }),
       });
       const json = await res.json().catch(() => ({}));

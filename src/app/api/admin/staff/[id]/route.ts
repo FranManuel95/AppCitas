@@ -20,6 +20,8 @@ const updateSchema = z.object({
   serviceIds: z.array(z.string()).max(100).optional(),
   // Sede asignada (null = todas las sedes)
   locationId: z.string().nullable().optional(),
+  // % de comisión (informe de ingresos por empleado); null = sin comisión
+  commissionPercent: z.number().int().min(0).max(100).nullable().optional(),
   hours: z
     .array(
       z.object({
@@ -93,6 +95,9 @@ export const PATCH = apiHandler(
           ...(data.active !== undefined ? { active: data.active } : {}),
           ...(data.locationId !== undefined
             ? { locationId: data.locationId }
+            : {}),
+          ...(data.commissionPercent !== undefined
+            ? { commissionPercent: data.commissionPercent }
             : {}),
         },
         include: {

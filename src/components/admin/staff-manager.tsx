@@ -44,6 +44,7 @@ interface StaffDTO {
   hours: HourRange[];
   serviceIds: string[];
   locationId: string | null;
+  commissionPercent: number | null;
 }
 
 interface ServiceOption {
@@ -146,6 +147,7 @@ function StaffForm({
     setError(null);
 
     const form = new FormData(event.currentTarget);
+    const rawCommission = String(form.get("commissionPercent") ?? "").trim();
     const body = {
       name: String(form.get("name") ?? ""),
       email: String(form.get("email") ?? "") || null,
@@ -153,6 +155,7 @@ function StaffForm({
       color: String(form.get("color") ?? "#0ea5e9"),
       serviceIds,
       locationId: locationId || null,
+      commissionPercent: rawCommission === "" ? null : Number(rawCommission),
       hours: useOwnHours ? ownHours : [],
     };
 
@@ -207,6 +210,21 @@ function StaffForm({
             id={`${uid}-phone`}
             name="phone"
             defaultValue={initial?.phone ?? ""}
+          />
+        </Field>
+        <Field
+          label="Comisión (%)"
+          htmlFor={`${uid}-commission`}
+          hint="Solo informativo: alimenta el informe de ingresos por empleado. Vacío = sin comisión."
+        >
+          <Input
+            id={`${uid}-commission`}
+            name="commissionPercent"
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={initial?.commissionPercent ?? ""}
+            className="tabular-nums"
           />
         </Field>
         {locations.length > 0 && (

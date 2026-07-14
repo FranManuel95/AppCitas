@@ -5,6 +5,7 @@ import {
   getPromotionsReport,
   getRetentionCohorts,
   getServiceReport,
+  getStaffReport,
   resolveReportRange,
 } from "@/lib/domain/reports";
 import { SERIES_PRIMARY } from "@/lib/design/tokens";
@@ -53,9 +54,10 @@ export default async function InformesPage({
   });
   const range = resolveReportRange(params.desde, params.hasta, business.timezone);
 
-  const [cohorts, services, promos, heatmap] = await Promise.all([
+  const [cohorts, services, staffReport, promos, heatmap] = await Promise.all([
     getRetentionCohorts(admin.businessId, new Date(), business.timezone),
     getServiceReport(admin.businessId, range),
+    getStaffReport(admin.businessId, range),
     getPromotionsReport(admin.businessId, range),
     getOccupancyHeatmap(admin.businessId, range, business.timezone),
   ]);
@@ -192,6 +194,61 @@ export default async function InformesPage({
                     <td className="py-2 pr-4">
                       {s.avgTicketCents !== null
                         ? formatCents(s.avgTicketCents, currency)
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* ── Ingresos por empleado ── */}
+      <Card>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <SectionHeader
+            as="h2"
+            title="Ingresos por empleado"
+            description="Citas completadas del rango, con la comisión calculada según el % de cada profesional (se configura en Equipo)."
+          />
+          <CsvLink href={csvHref("empleados", range.fromISO, range.toISO)} />
+        </div>
+        {staffReport.length === 0 ? (
+          <p className="mt-3 text-sm text-ink-muted">
+            Sin citas completadas en el rango elegido.
+          </p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm tabular-nums">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
+                  <th className="py-2 pr-4 font-medium">Profesional</th>
+                  <th className="py-2 pr-4 font-medium">Completadas</th>
+                  <th className="py-2 pr-4 font-medium">Ingresos</th>
+                  <th className="py-2 pr-4 font-medium">% comisión</th>
+                  <th className="py-2 pr-4 font-medium">Comisión</th>
+                </tr>
+              </thead>
+              <tbody>
+                {staffReport.map((s) => (
+                  <tr
+                    key={s.staffId ?? "none"}
+                    className="border-b border-border text-ink-soft last:border-0"
+                  >
+                    <td className="py-2 pr-4 font-medium text-ink">{s.name}</td>
+                    <td className="py-2 pr-4">{s.completed}</td>
+                    <td className="py-2 pr-4">
+                      {formatCents(s.revenueCents, currency)}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {s.commissionPercent !== null
+                        ? `${s.commissionPercent}%`
+                        : "—"}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {s.commissionPercent !== null
+                        ? formatCents(s.commissionCents, currency)
                         : "—"}
                     </td>
                   </tr>
