@@ -1,4 +1,9 @@
-import { normalizePhone, type Channel, type SendResult } from "./types";
+import {
+  CHANNEL_TIMEOUT_MS,
+  normalizePhone,
+  type Channel,
+  type SendResult,
+} from "./types";
 
 // SMS vía API REST de Twilio (sin SDK: una llamada HTTP con basic auth).
 
@@ -33,6 +38,7 @@ export const smsChannel: Channel = {
             From: process.env.TWILIO_FROM!,
             Body: body,
           }),
+          signal: AbortSignal.timeout(CHANNEL_TIMEOUT_MS),
         },
       );
       const json = (await res.json()) as { sid?: string; message?: string };

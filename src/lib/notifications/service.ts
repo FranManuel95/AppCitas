@@ -52,6 +52,7 @@ type AppointmentForNotify = {
   };
   service: { name: string };
   staff: { name: string } | null;
+  location: { name: string; address: string | null } | null;
   business: {
     name: string;
     timezone: string;
@@ -90,6 +91,7 @@ async function loadAppointment(
       },
       service: { select: { name: true } },
       staff: { select: { name: true } },
+      location: { select: { name: true, address: true } },
       business: {
         select: {
           name: true,
@@ -120,6 +122,8 @@ function messageContext(a: AppointmentForNotify): AppointmentMessageContext {
     businessName: a.business.name,
     serviceName: a.service.name,
     staffName: a.staff?.name ?? null,
+    locationName: a.location?.name ?? null,
+    locationAddress: a.location?.address ?? null,
     startAt: a.startAt,
     timezone: a.business.timezone,
     currency: a.business.currency,

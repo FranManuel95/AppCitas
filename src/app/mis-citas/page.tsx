@@ -4,6 +4,7 @@ import {
   CalendarX2,
   Clock,
   Hourglass,
+  MapPin,
   Star,
   Store,
   User,
@@ -72,6 +73,7 @@ export default async function MyAppointmentsPage() {
     include: {
       service: { select: { name: true, durationMinutes: true } },
       staff: { select: { name: true } },
+      location: { select: { name: true, address: true } },
       review: { select: { rating: true } },
       business: {
         select: {
@@ -193,6 +195,19 @@ export default async function MyAppointmentsPage() {
                         {fmt(t.myAppointments.withStaff, {
                           name: a.staff.name,
                         }).replace(/^\s*·\s*/, "")}
+                      </span>
+                    </p>
+                  )}
+                  {a.location && (
+                    <p className="flex items-center gap-2">
+                      <MapPin
+                        className="h-4 w-4 shrink-0 text-ink-muted"
+                        aria-hidden
+                      />
+                      <span>
+                        {[a.location.name, a.location.address]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </span>
                     </p>
                   )}
@@ -510,6 +525,15 @@ export default async function MyAppointmentsPage() {
                         </span>
                       </span>
                     </p>
+                    {a.location && (
+                      <p className="flex items-center gap-2">
+                        <MapPin
+                          className="h-4 w-4 shrink-0 text-ink-muted"
+                          aria-hidden
+                        />
+                        <span>{a.location.name}</span>
+                      </p>
+                    )}
                   </div>
                   {a.chargedCents > 0 && (
                     <p className="mt-1.5 text-xs text-ink-muted">

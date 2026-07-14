@@ -50,6 +50,7 @@ export default async function ConfirmationPage({
       service: { select: { name: true, durationMinutes: true } },
       staff: { select: { name: true } },
       client: { select: { name: true } },
+      location: { select: { name: true, address: true } },
       business: {
         select: {
           name: true,
@@ -153,13 +154,23 @@ export default async function ConfirmationPage({
                 <Clock className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden />
                 <span>{timeStr}</span>
               </p>
-              {appointment.business.address && (
+              {(appointment.location ?? appointment.business.address) && (
                 <p className="flex items-start gap-2.5">
                   <MapPin
                     className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted"
                     aria-hidden
                   />
-                  <span>{appointment.business.address}</span>
+                  <span>
+                    {appointment.location
+                      ? [
+                          appointment.location.name,
+                          appointment.location.address ??
+                            appointment.business.address,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : appointment.business.address}
+                  </span>
                 </p>
               )}
             </div>

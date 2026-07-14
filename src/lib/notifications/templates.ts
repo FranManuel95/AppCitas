@@ -12,6 +12,9 @@ export interface AppointmentMessageContext {
   businessName: string;
   serviceName: string;
   staffName?: string | null;
+  // Sede de la cita (negocios multi-sede); sin sede, {sede} rinde ""
+  locationName?: string | null;
+  locationAddress?: string | null;
   startAt: Date;
   timezone: string;
   currency: string;
@@ -37,6 +40,7 @@ export const TEMPLATE_VARIABLES = [
   "hora",
   "precio",
   "enlace",
+  "sede",
 ] as const;
 
 export interface TemplateOverride {
@@ -146,6 +150,17 @@ function formatTimeOnly(date: Date, timezone: string): string {
   }).format(date);
 }
 
+/** "Nombre · Dirección" de la sede, o "" si la cita no tiene sede. */
+function locationLabel(ctx: AppointmentMessageContext): string {
+  return [ctx.locationName, ctx.locationAddress].filter(Boolean).join(" · ");
+}
+
+/** Línea "📍 sede" para los textos por defecto (vacía sin sede). */
+function locationLine(ctx: AppointmentMessageContext): string {
+  const label = locationLabel(ctx);
+  return label ? `\n📍 ${label}` : "";
+}
+
 /** Sustituye las variables {…} del texto propio con los datos de la cita. */
 export function renderTemplate(
   text: string,
@@ -159,6 +174,7 @@ export function renderTemplate(
     hora: formatTimeOnly(ctx.startAt, ctx.timezone),
     precio: formatCents(ctx.priceCents, ctx.currency),
     enlace: ctx.confirmationUrl,
+    sede: locationLabel(ctx),
   };
   return text.replace(/\{([a-z]+)\}/g, (token, name: string) =>
     name in values ? values[name] : token,
@@ -183,7 +199,7 @@ export function bookingConfirmedMessage(
       ? renderTemplate(custom.body, ctx)
       : `Hola ${ctx.clientName}, tu cita está confirmada. ✅\n\n` +
         `${ctx.serviceName} en ${ctx.businessName}\n` +
-        `📅 ${when}${staffLine}\n` +
+        `📅 ${when}${staffLine}${locationLine(ctx)}\n` +
         `💶 ${formatCents(ctx.priceCents, ctx.currency)}\n\n` +
         `Puedes cancelar gratis hasta ${ctx.cancellationWindowHours} horas antes. ` +
         `Después se cobra el ${ctx.lateCancellationFeePercent}% del servicio.\n` +
@@ -231,7 +247,7 @@ function defaultReminderBody(
   return (
     `Hola ${ctx.clientName} 👋 Te recordamos tu cita de ${ctx.serviceName}` +
     `${staffLine} en ${ctx.businessName}:\n` +
-    `📅 ${when}\n\n` +
+    `📅 ${when}${locationLine(ctx)}\n\n` +
     `¿Vas a asistir? Confírmanos aquí (un toque):\n` +
     `${ctx.confirmationUrl}\n\n` +
     `Si no puedes venir, cancela desde ese mismo enlace. Recuerda: cancelar ` +

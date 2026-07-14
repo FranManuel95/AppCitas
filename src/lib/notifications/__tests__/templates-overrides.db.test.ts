@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createAppointment } from "@/lib/domain/appointments";
-import { resetDb, seedBusiness, seedClient, slotAt } from "@/lib/test/factories";
+import { createLocation } from "@/lib/domain/locations";
+import {
+  resetDb,
+  seedBusiness,
+  seedClient,
+  seedStaff,
+  slotAt,
+} from "@/lib/test/factories";
 
 const NOW = new Date("2026-07-12T12:00:00.000Z");
 
@@ -50,6 +57,30 @@ describe("plantillas editables en el outbox (BD)", () => {
     expect(reminder.body).toContain("No olvides tu Servicio de mañana.");
     // El texto propio no incluía {enlace}: el enlace de confirmación se añade
     expect(reminder.body).toContain(`/c/${appointment.confirmationToken}`);
+  });
+
+  it("la cita con sede lleva la sede en el mensaje de confirmación", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    await seedStaff(businessId);
+    const centro = await createLocation(businessId, {
+      name: "Sede Centro",
+      address: "Calle Mayor 1",
+    });
+    const clientId = await seedClient();
+
+    const appointment = await createAppointment({
+      businessId,
+      serviceId,
+      clientId,
+      startAt: slotAt("2026-07-15", "10:00"),
+      locationId: centro.id,
+      now: NOW,
+    });
+
+    const confirmed = await prisma.notification.findFirstOrThrow({
+      where: { appointmentId: appointment.id, template: "BOOKING_CONFIRMED" },
+    });
+    expect(confirmed.body).toContain("📍 Sede Centro · Calle Mayor 1");
   });
 
   it("sin overrides el outbox lleva los textos por defecto", async () => {

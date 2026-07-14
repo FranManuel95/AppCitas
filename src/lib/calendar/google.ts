@@ -76,6 +76,7 @@ export async function exchangeCode(
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
     }),
+    signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
   });
   if (!res.ok) {
     throw new DomainError(
@@ -115,6 +116,7 @@ export async function revokeTokenBestEffort(token: string): Promise<void> {
   try {
     await fetch(`${REVOKE_URL}?token=${encodeURIComponent(token)}`, {
       method: "POST",
+      signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     });
   } catch {
     // best-effort: la conexión se borra igualmente

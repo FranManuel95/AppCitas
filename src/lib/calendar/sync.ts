@@ -129,6 +129,7 @@ async function runJob(jobId: string): Promise<void> {
           service: { select: { name: true } },
           client: { select: { name: true } },
           business: { select: { name: true, timezone: true, address: true } },
+          location: { select: { name: true, address: true } },
         },
       },
     },
@@ -163,7 +164,10 @@ async function runJob(jobId: string): Promise<void> {
   const payload = {
     summary: `${appointment.service.name} · ${appointment.client.name}`,
     description: `Cita de ${appointment.business.name} (AppCitas)`,
-    location: appointment.business.address ?? undefined,
+    // Multi-sede: dirección de la sede de la cita (criterio del feed iCal)
+    location: appointment.location
+      ? (appointment.location.address ?? appointment.location.name)
+      : (appointment.business.address ?? undefined),
     startAt: appointment.startAt,
     endAt: appointment.endAt,
     timezone: appointment.business.timezone,

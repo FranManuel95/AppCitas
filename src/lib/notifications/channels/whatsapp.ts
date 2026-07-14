@@ -1,4 +1,9 @@
-import { normalizePhone, type Channel, type SendResult } from "./types";
+import {
+  CHANNEL_TIMEOUT_MS,
+  normalizePhone,
+  type Channel,
+  type SendResult,
+} from "./types";
 
 // WhatsApp con tres adaptadores, por orden de preferencia:
 //
@@ -46,6 +51,7 @@ async function sendViaCloudApi(to: string, body: string): Promise<SendResult> {
         type: "text",
         text: { body },
       }),
+      signal: AbortSignal.timeout(CHANNEL_TIMEOUT_MS),
     });
     const json = (await res.json().catch(() => ({}))) as {
       messages?: Array<{ id?: string }>;
@@ -80,6 +86,7 @@ async function sendViaUltraMsg(to: string, body: string): Promise<SendResult> {
           to,
           body,
         }),
+        signal: AbortSignal.timeout(CHANNEL_TIMEOUT_MS),
       },
     );
     const json = (await res.json()) as {
@@ -115,6 +122,7 @@ async function sendViaEvolution(to: string, body: string): Promise<SendResult> {
         apikey: process.env.EVOLUTION_API_KEY!,
       },
       body: JSON.stringify({ number: to, text: body }),
+      signal: AbortSignal.timeout(CHANNEL_TIMEOUT_MS),
     });
     const json = (await res.json().catch(() => ({}))) as {
       key?: { id?: string };

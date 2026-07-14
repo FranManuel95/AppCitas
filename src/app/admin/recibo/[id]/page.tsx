@@ -34,6 +34,7 @@ export default async function ReceiptPage({
       staff: { select: { name: true } },
       client: { select: { name: true, email: true, phone: true } },
       coupon: { select: { code: true } },
+      location: { select: { name: true, address: true } },
     },
   });
   if (!appointment) notFound();
@@ -70,7 +71,7 @@ export default async function ReceiptPage({
 
       {invoice && (
         <p className="mb-4 rounded-lg bg-surface-3 px-3 py-2 text-sm text-ink-soft print:hidden">
-          Este cobro tiene factura fiscal:{" "}
+          {r.hasInvoice}{" "}
           <Link
             href={`/admin/factura/${invoice.id}`}
             className="font-medium text-brand-700 hover:underline"
@@ -126,6 +127,16 @@ export default async function ReceiptPage({
             <div className="flex justify-between gap-4">
               <dt className="text-ink-muted">{r.staff}</dt>
               <dd className="text-ink">{appointment.staff.name}</dd>
+            </div>
+          )}
+          {appointment.location && (
+            <div className="flex justify-between gap-4">
+              <dt className="text-ink-muted">{r.location}</dt>
+              <dd className="text-ink">
+                {[appointment.location.name, appointment.location.address]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </dd>
             </div>
           )}
           <div className="flex justify-between gap-4">

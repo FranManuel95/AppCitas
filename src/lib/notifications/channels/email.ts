@@ -18,6 +18,11 @@ function getTransporter(): Transporter {
       auth: process.env.SMTP_USER
         ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
         : undefined,
+      // Un SMTP colgado no puede bloquear el drenaje del outbox (el fallo se
+      // reintenta desde el cron, mismo criterio que los timeouts de Google).
+      connectionTimeout: 8_000,
+      greetingTimeout: 8_000,
+      socketTimeout: 8_000,
     });
   }
   return transporter;
@@ -122,7 +127,12 @@ async function buildIcsAttachment(
   try {
     const appointment = await prisma.appointment.findUnique({
       where: { confirmationToken: token },
-      include: { service: true, business: true, staff: true },
+      include: {
+        service: true,
+        business: true,
+        staff: true,
+        location: { select: { name: true, address: true } },
+      },
     });
     if (!appointment || appointment.status !== "CONFIRMED") return null;
     const url = `${baseUrl()}/c/${appointment.confirmationToken}`;
@@ -133,6 +143,11 @@ async function buildIcsAttachment(
         : []),
       `Gestiona tu cita: ${url}`,
     ].join("\n");
+    // Multi-sede: el evento lleva la dirección de la sede de la cita (mismo
+    // criterio que el feed iCal); sin sede, la del negocio.
+    const location = appointment.location
+      ? (appointment.location.address ?? appointment.location.name)
+      : appointment.business.address;
     return {
       filename: "cita.ics",
       content: buildAppointmentIcs({
@@ -141,7 +156,7 @@ async function buildIcsAttachment(
         endAt: appointment.endAt,
         summary: `${appointment.service.name} · ${appointment.business.name}`,
         description,
-        location: appointment.business.address ?? undefined,
+        location: location ?? undefined,
         url,
       }),
       contentType: "text/calendar; charset=utf-8; method=PUBLISH",

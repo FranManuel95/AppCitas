@@ -44,6 +44,36 @@ describe("plantillas de notificación editables", () => {
     expect(msg.body).toContain("tu cita está confirmada");
   });
 
+  it("{sede} renderiza nombre · dirección, y vacío sin sede", () => {
+    const withLocation = bookingConfirmedMessage(
+      { ...CTX, locationName: "Sede Centro", locationAddress: "Calle Mayor 1" },
+      { BOOKING_CONFIRMED: { body: "Te esperamos en {sede}. {enlace}" } },
+    );
+    expect(withLocation.body).toContain(
+      "Te esperamos en Sede Centro · Calle Mayor 1.",
+    );
+
+    const withoutLocation = bookingConfirmedMessage(CTX, {
+      BOOKING_CONFIRMED: { body: "Te esperamos en {sede}. {enlace}" },
+    });
+    expect(withoutLocation.body).toContain("Te esperamos en .");
+
+    // El texto por defecto añade la línea 📍 solo si hay sede
+    const defaultWith = bookingConfirmedMessage({
+      ...CTX,
+      locationName: "Sede Centro",
+      locationAddress: null,
+    });
+    expect(defaultWith.body).toContain("📍 Sede Centro");
+    expect(bookingConfirmedMessage(CTX).body).not.toContain("📍");
+
+    // {sede} es variable válida en la validación de overrides
+    expect(
+      validateTemplateOverrides({ REMINDER: { body: "En {sede}: {enlace}" } })
+        .ok,
+    ).toBe(true);
+  });
+
   it("un override parcial (solo subject) mantiene el body por defecto", () => {
     const msg = bookingConfirmedMessage(CTX, {
       BOOKING_CONFIRMED: { subject: "Reserva OK en {negocio}" },
