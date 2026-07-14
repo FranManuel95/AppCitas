@@ -56,3 +56,47 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  # El grueso de los tests corre con SQLite (rápido y sin servicios), pero el
+  # bloqueo anti doble-reserva depende de `pg_advisory_xact_lock`, que es un
+  # no-op en SQLite: la única forma de ejercitarlo de verdad es contra Postgres.
+  # Este job levanta un Postgres real, aplica el esquema PG, siembra y lanza N
+  # reservas concurrentes al mismo hueco; espera exactamente 1 creada.
+  concurrencia-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: appcitas_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/appcitas_ci"
+      AUTH_SECRET: "ci-secret-solo-para-postgres"
+      # Varias conexiones para que las reservas concurrentes se ejecuten de
+      # verdad en paralelo y sea el advisory lock —no el pool— quien las
+      # serialice (con max=1 la cola del pool enmascararía la carrera).
+      PG_POOL_MAX: "8"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Generar cliente Prisma para PostgreSQL
+        run: npx prisma generate --schema prisma/schema.postgres.prisma
+      - name: Aplicar esquema a PostgreSQL
+        run: npx prisma db push --schema prisma/schema.postgres.prisma --skip-generate --accept-data-loss
+      - name: Sembrar datos de demo
+        run: npm run db:seed
+      - name: Verificar bloqueo anti doble-reserva (advisory locks reales)
+        run: npx tsx scripts/verify-concurrent-booking.ts

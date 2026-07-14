@@ -117,17 +117,17 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const business = await prisma.business.findFirst({
-    where: { slug, active: true },
-    select: { name: true, description: true },
-  });
-  if (!business) return {};
-  const description = business.description ?? undefined;
+  // Reusa el árbol cacheado (60 s) en vez de una consulta propia por request:
+  // en la página pública más visitada, metadata ya no toca la BD en cada hit.
+  const data = await getPublicBusinessData(slug);
+  if (!data) return {};
+  const { name, description: businessDescription } = data.business;
+  const description = businessDescription ?? undefined;
   return {
-    title: business.name,
+    title: name,
     description,
     openGraph: {
-      title: business.name,
+      title: name,
       description,
       type: "website",
     },

@@ -59,7 +59,7 @@ export default async function AgendaSemanalPage({
     semana && isValidDateISO(semana) ? semana : today,
   );
   const days = Array.from({ length: 7 }, (_, i) => addDaysISO(monday, i));
-  const agenda = await getWeekAgenda(admin.businessId, monday);
+  const agenda = await getWeekAgenda(admin.businessId, monday, business.timezone);
 
   // Franja horaria visible: del primer al último tramo del horario semanal
   // (fallback 08–20 si el negocio aún no configuró horario)

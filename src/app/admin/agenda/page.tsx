@@ -27,7 +27,10 @@ export default async function AgendaPage({
   const admin = await requireBusinessAdmin();
   const { locale, t } = await getDict();
   const { fecha } = await searchParams;
-  const [business, services, staff] = await Promise.all([
+  // Selector de sede en la cita manual: misma regla que el wizard público
+  // (solo con >1 sede activa y equipo). Entra en el Promise.all para no colgar
+  // un paso secuencial extra al preparar la página.
+  const [business, services, staff, locations] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: admin.businessId },
       select: {
@@ -47,14 +50,12 @@ export default async function AgendaPage({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    getBookableLocations(admin.businessId),
   ]);
-  // Selector de sede en la cita manual: misma regla que el wizard público
-  // (solo con >1 sede activa y equipo)
-  const locations = await getBookableLocations(admin.businessId);
 
   const today = toLocalDateISO(new Date(), business.timezone);
   const day = fecha && isValidDateISO(fecha) ? fecha : today;
-  const agenda = await getDayAgenda(admin.businessId, day);
+  const agenda = await getDayAgenda(admin.businessId, day, new Date(), business.timezone);
   const now = Date.now();
 
   const dayLabel = new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en", {

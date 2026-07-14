@@ -32,23 +32,29 @@ export const metadata = { title: "Dashboard" };
 
 export default async function AdminDashboardPage() {
   const admin = await requireBusinessAdmin();
-  const [business, stats, agenda, onboarding, { locale, t }] =
-    await Promise.all([
-      prisma.business.findUniqueOrThrow({
-        where: { id: admin.businessId },
-        select: {
-          currency: true,
-          timezone: true,
-          plan: true,
-          subscriptionStatus: true,
-          trialEndsAt: true,
-        },
-      }),
-      getDashboardStats(admin.businessId),
-      getDayAgenda(admin.businessId),
-      loadOnboardingStatus(admin.businessId, admin.id),
-      getDict(),
-    ]);
+  const [business, stats, onboarding, { locale, t }] = await Promise.all([
+    prisma.business.findUniqueOrThrow({
+      where: { id: admin.businessId },
+      select: {
+        currency: true,
+        timezone: true,
+        plan: true,
+        subscriptionStatus: true,
+        trialEndsAt: true,
+      },
+    }),
+    getDashboardStats(admin.businessId),
+    loadOnboardingStatus(admin.businessId, admin.id),
+    getDict(),
+  ]);
+  // La agenda del día reutiliza la zona ya cargada (evita un point-lookup;
+  // con PG_POOL_MAX=1 el Promise.all no paraleliza en BD de todos modos).
+  const agenda = await getDayAgenda(
+    admin.businessId,
+    undefined,
+    new Date(),
+    business.timezone,
+  );
   const chartLocale = locale === "es" ? "es-ES" : "en";
 
   return (

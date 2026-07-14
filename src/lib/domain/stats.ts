@@ -287,17 +287,23 @@ export async function getDashboardStats(
 // Agenda de una semana (7 días desde el lunes pedido) para la vista de
 // calendario del panel: una sola consulta, filas estrechas, sin canceladas
 // (solo lo que bloquea agenda; el ruido de canceladas vive en /admin/citas).
-export async function getWeekAgenda(businessId: string, mondayISO: string) {
-  const business = await prisma.business.findUniqueOrThrow({
-    where: { id: businessId },
-    select: { timezone: true },
-  });
-  const weekStart = wallTimeToUtc(mondayISO, "00:00", business.timezone);
-  const weekEnd = wallTimeToUtc(
-    addDaysISO(mondayISO, 7),
-    "00:00",
-    business.timezone,
-  );
+export async function getWeekAgenda(
+  businessId: string,
+  mondayISO: string,
+  // El llamador suele tener ya la zona del negocio: pasarla evita un
+  // point-lookup extra sobre la única conexión (PG_POOL_MAX=1).
+  timezone?: string,
+) {
+  const tz =
+    timezone ??
+    (
+      await prisma.business.findUniqueOrThrow({
+        where: { id: businessId },
+        select: { timezone: true },
+      })
+    ).timezone;
+  const weekStart = wallTimeToUtc(mondayISO, "00:00", tz);
+  const weekEnd = wallTimeToUtc(addDaysISO(mondayISO, 7), "00:00", tz);
   return prisma.appointment.findMany({
     where: {
       businessId,
@@ -323,14 +329,21 @@ export async function getDayAgenda(
   businessId: string,
   dateISO?: string,
   now = new Date(),
+  // El llamador suele tener ya la zona del negocio: pasarla evita un
+  // point-lookup extra sobre la única conexión (PG_POOL_MAX=1).
+  timezone?: string,
 ) {
-  const business = await prisma.business.findUniqueOrThrow({
-    where: { id: businessId },
-    select: { timezone: true },
-  });
-  const day = dateISO ?? toLocalDateISO(now, business.timezone);
-  const dayStart = wallTimeToUtc(day, "00:00", business.timezone);
-  const dayEnd = wallTimeToUtc(addDaysISO(day, 1), "00:00", business.timezone);
+  const tz =
+    timezone ??
+    (
+      await prisma.business.findUniqueOrThrow({
+        where: { id: businessId },
+        select: { timezone: true },
+      })
+    ).timezone;
+  const day = dateISO ?? toLocalDateISO(now, tz);
+  const dayStart = wallTimeToUtc(day, "00:00", tz);
+  const dayEnd = wallTimeToUtc(addDaysISO(day, 1), "00:00", tz);
 
   return prisma.appointment.findMany({
     where: { businessId, startAt: { gte: dayStart, lt: dayEnd } },
