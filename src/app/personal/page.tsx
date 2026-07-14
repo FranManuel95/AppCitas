@@ -15,6 +15,7 @@ import { SiteHeader } from "@/components/site-header";
 import { StatusBadge } from "@/components/status-badge";
 import { AppointmentActions } from "@/components/admin/appointment-actions";
 import { CalendarConnectCard } from "@/components/calendar-connect-card";
+import { SelfTimeOff } from "@/components/staff/self-time-off";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -47,6 +48,38 @@ export default async function StaffPortalPage({
     where: { businessId: staff.businessId, staffId: staff.staffId },
     select: { googleEmail: true, status: true, simulated: true },
   });
+
+  // Ausencias propias (autogestión): futuras primero.
+  const timeOff = await prisma.staffTimeOff.findMany({
+    where: { staffId: staff.staffId },
+    orderBy: { startDate: "desc" },
+    take: 50,
+    select: { id: true, startDate: true, endDate: true, reason: true },
+  });
+  const timeOffLabels =
+    locale === "es"
+      ? {
+          title: "Mis ausencias",
+          hint: "Vacaciones o días libres: no se te asignarán citas en ese rango.",
+          from: "Desde",
+          to: "Hasta",
+          reason: "Motivo (opcional)",
+          add: "Añadir",
+          remove: "Quitar",
+          empty: "Sin ausencias registradas.",
+          error: "No se pudo guardar la ausencia.",
+        }
+      : {
+          title: "My time off",
+          hint: "Holidays or days off: no appointments will be assigned in that range.",
+          from: "From",
+          to: "To",
+          reason: "Reason (optional)",
+          add: "Add",
+          remove: "Remove",
+          empty: "No time off recorded.",
+          error: "Could not save the time off.",
+        };
 
   const [agenda, upcomingCount] = await Promise.all([
     prisma.appointment.findMany({
@@ -192,6 +225,10 @@ export default async function StaffPortalPage({
               title={t.admin.personal.noAppointmentsThatDay}
             />
           )}
+        </div>
+
+        <div className="mt-8">
+          <SelfTimeOff initial={timeOff} labels={timeOffLabels} />
         </div>
 
         <div className="mt-8">

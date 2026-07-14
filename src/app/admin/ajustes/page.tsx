@@ -9,6 +9,7 @@ import { LogoutAllButton } from "@/components/logout-all-button";
 import { TwoFactorSetup } from "@/components/two-factor-setup";
 import { AUDIT_EVENT_LABELS } from "@/lib/audit";
 import { Card } from "@/components/ui/card";
+import { buttonClasses } from "@/components/ui/button";
 import { SectionHeader } from "@/components/ui/section-header";
 
 export const dynamic = "force-dynamic";
@@ -92,6 +93,51 @@ export default async function SettingsPage() {
         initial={business.customDomain}
         isPro={business.plan === "pro"}
       />
+
+      {/* Exportar todos los datos del negocio (anti lock-in / portabilidad) */}
+      <Card>
+        <SectionHeader
+          as="h2"
+          title={locale === "es" ? "Exportar tus datos" : "Export your data"}
+        />
+        <p className="mt-1 text-sm text-ink-muted">
+          {locale === "es"
+            ? "Descarga tus datos en CSV cuando quieras. Son tuyos."
+            : "Download your data as CSV whenever you want. It's yours."}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {[
+            {
+              href: "/api/admin/export/appointments",
+              label: locale === "es" ? "Citas" : "Appointments",
+            },
+            {
+              href: "/api/admin/export/clients",
+              label: locale === "es" ? "Clientes" : "Clients",
+            },
+            {
+              href: "/api/admin/export/services",
+              label: locale === "es" ? "Servicios" : "Services",
+            },
+            {
+              href: "/api/admin/export/revenue",
+              label: locale === "es" ? "Ingresos" : "Revenue",
+            },
+            {
+              href: `/api/admin/invoices?year=${new Date().getFullYear()}&format=csv`,
+              label: locale === "es" ? "Facturas (año)" : "Invoices (year)",
+            },
+          ].map((x) => (
+            <a
+              key={x.href}
+              href={x.href}
+              className={buttonClasses({ variant: "secondary", size: "sm" })}
+            >
+              {x.label}
+            </a>
+          ))}
+        </div>
+      </Card>
 
       {/* Seguridad de la cuenta */}
       <Card>

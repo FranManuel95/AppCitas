@@ -4,12 +4,18 @@ Estado del proyecto a **julio de 2026**, tras las rondas de UX (U-1…U-5), de
 producto (V-1…V-7), la ronda **W-1…W-12** que ejecutó prácticamente todo lo
 que este documento listaba como pendiente, la ronda **X-1…X-5** de cierre
 (cabos sueltos de integración, optimización de consultas/índices y watch
-channels de Google Calendar) y la ronda **Y-1…Y-10** (multi-sede de cara al
+channels de Google Calendar), la ronda **Y-1…Y-10** (multi-sede de cara al
 cliente, purga del outbox y cota en solapamientos, reprogramar desde el
 admin, nota interna por cita, vista de calendario semanal, tira multi-día en
 el wizard, buffers por servicio, consentimiento de marketing con baja de un
 clic + win-back, comisiones por empleado, lista de espera por sede y
-notificaciones bilingües). Complementa a
+notificaciones bilingües) y la ronda **Z-1…Z-7** de escalabilidad y producto
+(outbox con envío en paralelo + drenado inline de avisos time-sensitive,
+observabilidad del cron con `/api/health` enriquecido, índices de purga, CI de
+concurrencia contra Postgres real, avisos al equipo de reservas/cancelaciones,
+cierres del negocio por rango, buscador de clientes, duración/precio por
+empleado y autogestión de ausencias del empleado + export completo de datos).
+Complementa a
 [`ANALISIS-COMPETENCIA.md`](./ANALISIS-COMPETENCIA.md) (dónde estamos frente a
 Booksy/Apúntalo/TuAgenda) y a [`PUESTA-AL-DIA.md`](./PUESTA-AL-DIA.md) (cómo
 aplicar SQL y variables).
@@ -60,7 +66,7 @@ aplicar SQL y variables).
   **JSON-LD LocalBusiness** (SEO local), **dominio propio por negocio (Pro)**,
   widget embebible, PWA instalable + guías `docs/TWA.md` y
   `docs/RESERVE-WITH-GOOGLE.md`.
-- **Calidad**: 301 tests unitarios/BD + 30 E2E (reserva, cancelación, no-show,
+- **Calidad**: 320 tests unitarios/BD + 30 E2E (reserva, cancelación, no-show,
   admin, aislamiento, SaaS, RGPD, lista de espera, móvil, invitado,
   **ausencias, series recurrentes, widget, 2FA, feed iCal, membresías,
   sellos, multi-sede e informes**).
