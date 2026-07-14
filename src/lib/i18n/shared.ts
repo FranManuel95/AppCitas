@@ -523,6 +523,10 @@ const es = {
       nameLabel: "Nombre",
       descriptionLabel: "Descripción (opcional)",
       durationLabel: "Duración (minutos)",
+      bufferBeforeLabel: "Margen antes (minutos)",
+      bufferAfterLabel: "Margen después (minutos)",
+      bufferHint:
+        "Minutos bloqueados antes/después de cada cita (limpieza, preparación). No cambian el precio ni la duración visible.",
       priceLabel: "Precio (€)",
       colorLabel: "Color en la agenda",
       saveError: "No se pudo guardar el servicio",
@@ -1277,6 +1281,10 @@ const en: Dict = {
       nameLabel: "Name",
       descriptionLabel: "Description (optional)",
       durationLabel: "Duration (minutes)",
+      bufferBeforeLabel: "Buffer before (minutes)",
+      bufferAfterLabel: "Buffer after (minutes)",
+      bufferHint:
+        "Minutes blocked before/after each appointment (cleanup, prep). They don't change the price or the visible duration.",
       priceLabel: "Price (€)",
       colorLabel: "Agenda color",
       saveError: "Could not save the service",

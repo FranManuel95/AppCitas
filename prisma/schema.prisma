@@ -624,6 +624,10 @@ model Service {
   priceCents      Int
   color           String  @default("#6366f1")
   active          Boolean @default(true)
+  // Margen bloqueado antes/después de cada cita del servicio (limpieza,
+  // preparación). No cambia precio ni duración visible, solo el bloqueo.
+  bufferBeforeMinutes Int @default(0)
+  bufferAfterMinutes  Int @default(0)
 
   appointments Appointment[]
   staff        StaffService[]

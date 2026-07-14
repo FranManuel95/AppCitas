@@ -47,6 +47,8 @@ export default async function ServicesPage() {
           priceCents: s.priceCents,
           color: s.color,
           active: s.active,
+          bufferBeforeMinutes: s.bufferBeforeMinutes,
+          bufferAfterMinutes: s.bufferAfterMinutes,
         }))}
         currency={business.currency}
         labels={{ servicios: t.admin.servicios, common: t.admin.common }}

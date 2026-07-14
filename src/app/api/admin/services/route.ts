@@ -9,6 +9,9 @@ const createSchema = z.object({
   description: z.string().trim().max(500).optional(),
   durationMinutes: z.number().int().min(5).max(600),
   priceCents: z.number().int().min(0).max(1_000_000),
+  // Margen bloqueado antes/después (no cambia precio ni duración visible)
+  bufferBeforeMinutes: z.number().int().min(0).max(120).optional(),
+  bufferAfterMinutes: z.number().int().min(0).max(120).optional(),
   color: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)

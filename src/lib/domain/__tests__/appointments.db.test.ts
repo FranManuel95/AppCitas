@@ -123,6 +123,57 @@ describe("createAppointment (BD)", () => {
     ).rejects.toMatchObject({ code: "BUSINESS_NOT_FOUND" });
   });
 
+  it("los buffers del servicio bloquean el hueco contiguo a una cita existente", async () => {
+    const { businessId, serviceId } = await seedBusiness({
+      durationMinutes: 60,
+    });
+    const clientId = await seedClient();
+
+    // Cita existente 10:00–11:00
+    await createAppointment({
+      businessId,
+      serviceId,
+      clientId,
+      startAt: slotAt(DATE, "10:00"),
+      now: NOW,
+    });
+
+    // Sin buffer, el hueco pegado (11:00) se reserva sin problema…
+    const contiguous = await createAppointment({
+      businessId,
+      serviceId,
+      clientId,
+      startAt: slotAt(DATE, "11:00"),
+      now: NOW,
+    });
+    await prisma.appointment.delete({ where: { id: contiguous.id } });
+
+    // …con buffer after de 30 min en el servicio, deja de ofertarse
+    await prisma.service.update({
+      where: { id: serviceId },
+      data: { bufferAfterMinutes: 30 },
+    });
+    await expect(
+      createAppointment({
+        businessId,
+        serviceId,
+        clientId,
+        startAt: slotAt(DATE, "11:00"),
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ code: "SLOT_UNAVAILABLE" });
+
+    // El hueco a las 12:00 (fuera del margen) sigue disponible
+    const after = await createAppointment({
+      businessId,
+      serviceId,
+      clientId,
+      startAt: slotAt(DATE, "12:00"),
+      now: NOW,
+    });
+    expect(after.status).toBe("CONFIRMED");
+  });
+
   it("aplica un cupón PERCENT y cuenta el canje de forma atómica con la reserva", async () => {
     const { businessId, serviceId } = await seedBusiness({ priceCents: 1000 });
     const clientId = await seedClient();

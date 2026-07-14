@@ -588,6 +588,10 @@ CREATE INDEX IF NOT EXISTS "Appointment_status_endAt_idx" ON "Appointment"("stat
 -- ── (39) Nota interna del equipo por cita ───────────────────────────────────
 ALTER TABLE "Appointment" ADD COLUMN IF NOT EXISTS "internalNote" TEXT;
 
+-- ── (40) Buffers por servicio (margen entre citas) ──────────────────────────
+ALTER TABLE "Service" ADD COLUMN IF NOT EXISTS "bufferBeforeMinutes" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Service" ADD COLUMN IF NOT EXISTS "bufferAfterMinutes" INTEGER NOT NULL DEFAULT 0;
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -629,7 +633,8 @@ FROM (VALUES
   ('20260713180000_indices_membresia_cupon'),
   ('20260713190000_calendar_watch'),
   ('20260714090000_indice_autocierre'),
-  ('20260714100000_nota_interna')
+  ('20260714100000_nota_interna'),
+  ('20260714110000_buffers_servicio')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

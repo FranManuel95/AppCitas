@@ -19,6 +19,8 @@ interface ServiceDTO {
   priceCents: number;
   color: string;
   active: boolean;
+  bufferBeforeMinutes: number;
+  bufferAfterMinutes: number;
 }
 
 export interface ServicesManagerLabels {
@@ -30,6 +32,9 @@ export interface ServicesManagerLabels {
     | "durationLabel"
     | "priceLabel"
     | "colorLabel"
+    | "bufferBeforeLabel"
+    | "bufferAfterLabel"
+    | "bufferHint"
     | "saveError"
     | "submitCreate"
     | "emptyTitle"
@@ -75,6 +80,8 @@ function ServiceForm({
       description: String(form.get("description") ?? "") || undefined,
       durationMinutes: Number(form.get("durationMinutes")),
       priceCents: Math.round(Number(form.get("price")) * 100),
+      bufferBeforeMinutes: Number(form.get("bufferBeforeMinutes") ?? 0),
+      bufferAfterMinutes: Number(form.get("bufferAfterMinutes") ?? 0),
       color: String(form.get("color") ?? "#6366f1"),
     };
 
@@ -143,6 +150,37 @@ function ServiceForm({
           step="0.01"
           required
           defaultValue={initial ? initial.priceCents / 100 : ""}
+          className="tabular-nums"
+        />
+      </Field>
+      <Field
+        label={labels.servicios.bufferBeforeLabel}
+        htmlFor={`${fid}-buffer-before`}
+        hint={labels.servicios.bufferHint}
+      >
+        <Input
+          id={`${fid}-buffer-before`}
+          name="bufferBeforeMinutes"
+          type="number"
+          min={0}
+          max={120}
+          step={5}
+          defaultValue={initial?.bufferBeforeMinutes ?? 0}
+          className="tabular-nums"
+        />
+      </Field>
+      <Field
+        label={labels.servicios.bufferAfterLabel}
+        htmlFor={`${fid}-buffer-after`}
+      >
+        <Input
+          id={`${fid}-buffer-after`}
+          name="bufferAfterMinutes"
+          type="number"
+          min={0}
+          max={120}
+          step={5}
+          defaultValue={initial?.bufferAfterMinutes ?? 0}
           className="tabular-nums"
         />
       </Field>

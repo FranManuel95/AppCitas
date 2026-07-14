@@ -51,6 +51,48 @@ describe("computeDaySlots — motor de disponibilidad", () => {
     expect(labels).toEqual(["09:00", "11:00"]);
   });
 
+  it("buffers: el margen del servicio y el de la cita existente bloquean huecos contiguos", () => {
+    const labelsOf = (input: SlotEngineInput) =>
+      computeDaySlots(input).map((s) => toLocalTime(s.start, BASE.timezone));
+    // Cita existente 10:00–11:00 local, SIN expandir (su servicio sin buffers)
+    const busy = [
+      {
+        startAt: wallTimeToUtc("2026-07-08", "10:00", BASE.timezone),
+        endAt: wallTimeToUtc("2026-07-08", "11:00", BASE.timezone),
+      },
+    ];
+    // Sin buffers: 09:00 y 11:00 se ofertan pegados a la cita
+    expect(labelsOf({ ...BASE, busy })).toEqual(["09:00", "11:00"]);
+
+    // Buffer BEFORE del servicio reservado: 11:00 exige libre desde 10:30 → fuera
+    expect(labelsOf({ ...BASE, busy, bufferBeforeMinutes: 30 })).toEqual([
+      "09:00",
+    ]);
+
+    // Buffer AFTER: 09:00 exige libre hasta 10:30 → fuera; 11:00 sigue
+    expect(labelsOf({ ...BASE, busy, bufferAfterMinutes: 30 })).toEqual([
+      "11:00",
+    ]);
+
+    // La cita existente llega YA expandida por su servicio (09:45–11:15):
+    // se suman ambos márgenes y no queda ningún hueco de 60 min
+    const expandedBusy = [
+      {
+        startAt: wallTimeToUtc("2026-07-08", "09:45", BASE.timezone),
+        endAt: wallTimeToUtc("2026-07-08", "11:15", BASE.timezone),
+      },
+    ];
+    expect(
+      labelsOf({ ...BASE, busy: expandedBusy, bufferAfterMinutes: 30 }),
+    ).toEqual([]);
+
+    // El buffer no recorta contra la apertura: el primer hueco del día se
+    // oferta aunque su margen caiga antes de abrir
+    expect(labelsOf({ ...BASE, busy: [], bufferBeforeMinutes: 60 })).toContain(
+      "09:00",
+    );
+  });
+
   it("día marcado como cerrado no ofrece huecos", () => {
     const slots = computeDaySlots({ ...BASE, closedDates: ["2026-07-08"] });
     expect(slots).toEqual([]);

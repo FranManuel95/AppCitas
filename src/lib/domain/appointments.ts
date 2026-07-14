@@ -197,7 +197,24 @@ async function loadAvailabilityContext(params: {
       endAt: { gt: dayStart },
       ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
     },
-    select: { startAt: true, endAt: true, staffId: true },
+    select: {
+      startAt: true,
+      endAt: true,
+      staffId: true,
+      // Buffers del servicio de CADA cita existente: su bloqueo se expande
+      service: {
+        select: { bufferBeforeMinutes: true, bufferAfterMinutes: true },
+      },
+    },
+  });
+
+  // Intervalo de bloqueo de una cita existente = cita ± buffers de su
+  // servicio. La ocupación externa (Google) y las ausencias quedan crudas.
+  const blockOf = (a: (typeof dayAppointments)[number]) => ({
+    startAt: new Date(
+      a.startAt.getTime() - a.service.bufferBeforeMinutes * 60_000,
+    ),
+    endAt: new Date(a.endAt.getTime() + a.service.bufferAfterMinutes * 60_000),
   });
 
   // Ocupación externa (Google Calendar entrante): el "ocupado" personal del
@@ -251,10 +268,8 @@ async function loadAvailabilityContext(params: {
         ...(absentStaffIds.has(m.id)
           ? [{ startAt: dayStart, endAt: dayEnd }]
           : []),
-        ...dayAppointments
-          .filter((a) => a.staffId === m.id)
-          .map((a) => ({ startAt: a.startAt, endAt: a.endAt })),
-        ...unassignedBusy.map((a) => ({ startAt: a.startAt, endAt: a.endAt })),
+        ...dayAppointments.filter((a) => a.staffId === m.id).map(blockOf),
+        ...unassignedBusy.map(blockOf),
         ...(externalBusy.byStaff.get(m.id) ?? []),
       ],
     })),
@@ -264,16 +279,15 @@ async function loadAvailabilityContext(params: {
       timezone: business.timezone,
       closedDates: business.closures.map((c) => c.date),
       durationMinutes: service.durationMinutes,
+      bufferBeforeMinutes: service.bufferBeforeMinutes,
+      bufferAfterMinutes: service.bufferAfterMinutes,
       granularityMinutes: business.slotGranularityMinutes,
       minNoticeMinutes,
       maxAdvanceBookingDays: business.maxAdvanceBookingDays,
       now,
     },
     businessBusy: [
-      ...dayAppointments.map((a) => ({
-        startAt: a.startAt,
-        endAt: a.endAt,
-      })),
+      ...dayAppointments.map(blockOf),
       ...externalBusy.businessLevel,
     ],
   };
@@ -449,6 +463,9 @@ export async function createAppointment(params: {
       where: {
         businessId,
         status: { in: [...BLOCKING_STATUSES] },
+        // Intervalos CRUDOS (sin buffers): garantiza el no-solape duro. En la
+        // carrera extrema de dos reservas simultáneas puede quedar un buffer
+        // comprimido, nunca un solape (el motor de ofertas sí aplica buffers).
         // Misma cota inferior que en loadAvailabilityContext: el caso feliz
         // (sin conflicto) no debe recorrer el histórico bajo el advisory lock.
         startAt: {

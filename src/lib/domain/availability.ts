@@ -21,6 +21,13 @@ export interface SlotEngineInput {
   closedDates?: string[]; // festivos / cierres puntuales ("YYYY-MM-DD")
   busy: BusyInterval[]; // citas que bloquean agenda ese día (UTC)
   durationMinutes: number;
+  // Margen del SERVICIO que se reserva (limpieza/preparación): el hueco
+  // exige libre [start − before, end + after]. No cambia la hora ni la
+  // duración visible del hueco, solo el bloqueo. Los intervalos `busy`
+  // llegan YA expandidos con los buffers de sus propios servicios, así que
+  // los márgenes de ambos lados se suman (estándar del sector).
+  bufferBeforeMinutes?: number;
+  bufferAfterMinutes?: number;
   granularityMinutes: number;
   minNoticeMinutes: number;
   maxAdvanceBookingDays: number;
@@ -40,6 +47,8 @@ export function computeDaySlots(input: SlotEngineInput): Slot[] {
     closedDates = [],
     busy,
     durationMinutes,
+    bufferBeforeMinutes = 0,
+    bufferAfterMinutes = 0,
     granularityMinutes,
     minNoticeMinutes,
     maxAdvanceBookingDays,
@@ -77,8 +86,12 @@ export function computeDaySlots(input: SlotEngineInput): Slot[] {
       if (start < earliestStart.getTime()) continue;
       if (start > latestStart.getTime()) continue;
 
+      // El buffer no recorta contra el horario de apertura (el primer y el
+      // último hueco del día no se pierden): solo se compara contra `busy`.
+      const blockStart = start - bufferBeforeMinutes * 60_000;
+      const blockEnd = end + bufferAfterMinutes * 60_000;
       const overlaps = busy.some(
-        (b) => start < b.endAt.getTime() && end > b.startAt.getTime(),
+        (b) => blockStart < b.endAt.getTime() && blockEnd > b.startAt.getTime(),
       );
       if (overlaps) continue;
 
