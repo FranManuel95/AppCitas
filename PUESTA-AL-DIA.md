@@ -62,7 +62,7 @@ historial está resumido en **un solo script idempotente**.
    ```
    scripts/supabase-catchup.sql
    ```
-   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→43):
+   Aplica **todas** las mejoras posteriores al esquema base (migraciones 2→44):
    rate limit, autocierre y 2º recordatorio, reseñas, suscripción SaaS,
    idempotencia de webhooks, consentimiento RGPD, índices, búsqueda por
    trigramas, lista de espera, forma de pago, Stripe Connect, **señal al

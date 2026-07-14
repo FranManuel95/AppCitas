@@ -13,6 +13,7 @@ import {
   expireStaleWaitlist,
   recycleNotifiedWaitlist,
 } from "@/lib/domain/waitlist";
+import { recordJobRun } from "@/lib/domain/platform-health";
 
 // Tareas programadas de la plataforma, en UN solo sitio: las ejecutan tanto
 // el endpoint de cron (/api/jobs/notifications, serverless) como el worker
@@ -92,7 +93,7 @@ export async function runScheduledJobs(
   // Win-back: "vuelve a reservar" para clientes sin cita posterior.
   const winbacksQueued = await processWinbacks(now);
 
-  return {
+  const result: ScheduledJobsResult = {
     sent,
     failed,
     skipped,
@@ -108,4 +109,9 @@ export async function runScheduledJobs(
     watchChannelsRenewed,
     winbacksQueued,
   };
+
+  // Sella la ejecución para la sonda /api/health (best-effort).
+  await recordJobRun(result, now);
+
+  return result;
 }

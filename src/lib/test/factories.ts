@@ -130,4 +130,6 @@ export async function resetDb(): Promise<void> {
   await prisma.auditLog.deleteMany();
   await prisma.user.deleteMany();
   await prisma.business.deleteMany();
+  // Singleton global (fila "platform"): se recrea de forma perezosa.
+  await prisma.platformSetting.deleteMany();
 }

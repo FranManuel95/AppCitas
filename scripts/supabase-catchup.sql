@@ -610,6 +610,13 @@ END $$;
 -- ── (43) Idioma preferido del usuario (notificaciones bilingües) ────────────
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "locale" TEXT;
 
+-- ── (44) Observabilidad del cron + índices de purga ─────────────────────────
+ALTER TABLE "PlatformSetting" ADD COLUMN IF NOT EXISTS "lastJobRunAt" TIMESTAMP(3);
+ALTER TABLE "PlatformSetting" ADD COLUMN IF NOT EXISTS "lastJobRunResult" TEXT;
+CREATE INDEX IF NOT EXISTS "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
+CREATE INDEX IF NOT EXISTS "Notification_status_createdAt_idx" ON "Notification"("status", "createdAt");
+CREATE INDEX IF NOT EXISTS "CalendarSyncJob_status_createdAt_idx" ON "CalendarSyncJob"("status", "createdAt");
+
 -- ── Registro en _prisma_migrations (sin duplicar si ya están) ───────────────
 INSERT INTO "_prisma_migrations" ("id","checksum","migration_name","finished_at","applied_steps_count")
 SELECT gen_random_uuid()::text, 'manual-sql-editor', m, now(), 1
@@ -655,7 +662,8 @@ FROM (VALUES
   ('20260714110000_buffers_servicio'),
   ('20260714120000_consentimiento_winback'),
   ('20260714130000_comisiones_sede_espera'),
-  ('20260714140000_locale_usuario')
+  ('20260714140000_locale_usuario'),
+  ('20260715090000_observabilidad_purga')
 ) AS v(m)
 WHERE NOT EXISTS (
   SELECT 1 FROM "_prisma_migrations" p WHERE p."migration_name" = v.m

@@ -401,6 +401,8 @@ model CalendarSyncJob {
   updatedAt DateTime @updatedAt
 
   @@index([status, scheduledFor])
+  // La purga borra las resueltas por status + createdAt < cutoff.
+  @@index([status, createdAt])
 }
 
 // Caché corta (60 s) del freebusy de una conexión y día, compartida entre
@@ -540,6 +542,9 @@ model AuditLog {
 
   @@index([userId, createdAt])
   @@index([event, createdAt])
+  // La purga de retención borra por createdAt < cutoff (sin filtro de negocio):
+  // un índice que lidere por createdAt evita el seq-scan cada 5 min.
+  @@index([createdAt])
 }
 
 model StaffMember {
@@ -890,6 +895,8 @@ model Notification {
   @@index([businessId, createdAt])
   @@index([appointmentId])
   @@index([channel, status, sentAt])
+  // La purga borra las resueltas por status + createdAt < cutoff.
+  @@index([status, createdAt])
 }
 
 // Lista de espera: un cliente se apunta para un servicio en un día concreto
@@ -979,5 +986,9 @@ model PlatformSetting {
   smsMsgCostCents       Int      @default(8)
   stripeFeeBps          Int      @default(140)
   stripeFeeFixedCents   Int      @default(25)
+  // Telemetría de la última ejecución del cron: la sonda /api/health la usa
+  // para detectar que el cron dejó de dispararse (monitor de uptime externo).
+  lastJobRunAt          DateTime?
+  lastJobRunResult      String?
   updatedAt             DateTime @updatedAt
 }

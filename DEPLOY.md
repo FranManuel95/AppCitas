@@ -209,4 +209,9 @@ hace al arrancar; en Vercel se ejecuta desde tu máquina o CI).
   (`4242 4242 4242 4242`) antes de activar el modo live.
 - Configura backups del Postgres (Neon/Supabase los incluyen; en VPS,
   `pg_dump` en un cron).
-- Monitorización: apunta un uptime checker a `/api/health`.
+- Monitorización: apunta un uptime checker externo (cron-job.org, BetterStack,
+  UptimeRobot… gratuitos) a `/api/health`. Además de comprobar la BD, la sonda
+  devuelve `503` si el cron dejó de dispararse (>15 min sin ejecutarse), así que
+  el mismo monitor te avisa si el GitHub Action de notificaciones se cae. El JSON
+  incluye `cron.ageSeconds` y `outbox.pendingOverdue` (backlog de avisos sin
+  enviar) para diagnóstico.
