@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { getLocale } from "@/lib/i18n";
+import { SwRegister } from "@/components/sw-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,7 +26,10 @@ export default async function RootLayout({
   const locale = await getLocale();
   return (
     <html lang={locale} className={`${GeistSans.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
+      <body className="flex min-h-full flex-col font-sans">
+        <SwRegister />
+        {children}
+      </body>
     </html>
   );
 }
