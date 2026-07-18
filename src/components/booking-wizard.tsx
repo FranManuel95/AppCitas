@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   CalendarDays,
@@ -134,6 +134,8 @@ export function BookingWizard({
   const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
   const [dateISO, setDateISO] = useState(addDays(todayISO(), 1));
   const [slots, setSlots] = useState<SlotOption[] | null>(null);
+  // Nº de secuencia de la petición de huecos en vuelo (ver loadSlots)
+  const slotsRequestSeq = useRef(0);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<SlotOption | null>(null);
   const [notes, setNotes] = useState("");
@@ -289,6 +291,11 @@ export function BookingWizard({
 
   const loadSlots = useCallback(async () => {
     if (!serviceId || !dateISO) return;
+    // Guard anti-respuestas-obsoletas: si el usuario cambia de fecha con una
+    // petición en vuelo, la respuesta antigua puede llegar DESPUÉS que la
+    // nueva y machacar la lista (p. ej. el domingo por defecto, sin huecos,
+    // pisando la fecha elegida). Solo la petición más reciente puede escribir.
+    const seq = ++slotsRequestSeq.current;
     setLoadingSlots(true);
     setSelectedSlot(null);
     setError(null);
@@ -300,13 +307,17 @@ export function BookingWizard({
         `/api/businesses/${business.slug}/availability?${params.toString()}`,
       );
       const json = await res.json();
+      if (seq !== slotsRequestSeq.current) return; // ya hay otra en vuelo
       if (!res.ok) throw new Error(localizeError(json, t.errors, t.availabilityError));
       setSlots(json.slots);
     } catch (e) {
+      if (seq !== slotsRequestSeq.current) return;
       setSlots([]);
       setError(e instanceof Error ? e.message : t.networkError);
     } finally {
-      setLoadingSlots(false);
+      if (seq === slotsRequestSeq.current) {
+        setLoadingSlots(false);
+      }
     }
   }, [business.slug, serviceId, staffId, locationId, dateISO]);
 
