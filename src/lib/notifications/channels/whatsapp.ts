@@ -2,8 +2,10 @@ import {
   CHANNEL_TIMEOUT_MS,
   normalizePhone,
   type Channel,
+  type SendOptions,
   type SendResult,
 } from "./types";
+import { logWarn } from "@/lib/logger";
 
 // WhatsApp con tres adaptadores, por orden de preferencia:
 //
@@ -24,11 +26,35 @@ import {
 //    barata: 0 € de licencia. https://github.com/EvolutionAPI/evolution-api
 //    Vars: EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE
 //
-// Con varios configurados gana el de número más bajo (oficial primero).
+// SELECCIÓN DE VÍA — conmutable SOLO por variable de entorno:
+//   WHATSAPP_PROVIDER = auto | cloud | ultramsg | evolution | off
+// `auto` (default, retrocompatible): con varios configurados gana el de número
+// más bajo (oficial primero). Un valor concreto FUERZA esa vía (si sus claves
+// faltan, el canal queda como no configurado → el outbox marca SKIPPED).
+// `off` apaga el canal aunque haya claves. Valor desconocido → auto (con
+// aviso en el log, fail-open).
 // Aviso: UltraMsg/Evolution usan WhatsApp Web por detrás (riesgo de baneo);
 // conviene un número dedicado y migrar a la API oficial cuanto antes.
 
 const GRAPH_BASE = "https://graph.facebook.com/v20.0";
+
+type WhatsappProvider = "auto" | "cloud" | "ultramsg" | "evolution" | "off";
+
+function selectedProvider(): WhatsappProvider {
+  const raw = (process.env.WHATSAPP_PROVIDER ?? "auto").trim().toLowerCase();
+  if (raw === "") return "auto";
+  if (
+    raw === "auto" ||
+    raw === "cloud" ||
+    raw === "ultramsg" ||
+    raw === "evolution" ||
+    raw === "off"
+  ) {
+    return raw;
+  }
+  logWarn("whatsapp.provider.unknown", { value: raw, fallback: "auto" });
+  return "auto";
+}
 
 function cloudApiConfigured(): boolean {
   return (
@@ -36,8 +62,56 @@ function cloudApiConfigured(): boolean {
   );
 }
 
-async function sendViaCloudApi(to: string, body: string): Promise<SendResult> {
+function ultramsgConfigured(): boolean {
+  return !!process.env.ULTRAMSG_INSTANCE_ID && !!process.env.ULTRAMSG_TOKEN;
+}
+
+function evolutionConfigured(): boolean {
+  return (
+    !!process.env.EVOLUTION_API_URL &&
+    !!process.env.EVOLUTION_API_KEY &&
+    !!process.env.EVOLUTION_INSTANCE
+  );
+}
+
+// ¿La vía EFECTIVA es el Cloud API oficial? El despachador lo consulta para
+// preparar (o no) los parámetros de plantilla de Meta antes de enviar.
+export function whatsappUsesCloudApi(): boolean {
+  const p = selectedProvider();
+  if (p === "cloud") return cloudApiConfigured();
+  if (p === "auto") return cloudApiConfigured();
+  return false;
+}
+
+async function sendViaCloudApi(
+  to: string,
+  body: string,
+  waTemplate?: SendOptions["waTemplate"],
+): Promise<SendResult> {
   const phoneId = process.env.WHATSAPP_CLOUD_PHONE_ID!;
+  // Fuera de la ventana de 24 h Meta solo acepta PLANTILLAS aprobadas: si el
+  // despachador mapeó una para este tipo de mensaje, se envía por plantilla
+  // (nombre + idioma + variables de cuerpo); si no, texto libre como siempre.
+  const payload = waTemplate
+    ? {
+        messaging_product: "whatsapp",
+        to,
+        type: "template",
+        template: {
+          name: waTemplate.name,
+          language: { code: waTemplate.lang },
+          components: [
+            {
+              type: "body",
+              parameters: waTemplate.vars.map((text) => ({
+                type: "text",
+                text,
+              })),
+            },
+          ],
+        },
+      }
+    : { messaging_product: "whatsapp", to, type: "text", text: { body } };
   try {
     const res = await fetch(`${GRAPH_BASE}/${phoneId}/messages`, {
       method: "POST",
@@ -45,12 +119,7 @@ async function sendViaCloudApi(to: string, body: string): Promise<SendResult> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.WHATSAPP_CLOUD_TOKEN}`,
       },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to,
-        type: "text",
-        text: { body },
-      }),
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(CHANNEL_TIMEOUT_MS),
     });
     const json = (await res.json().catch(() => ({}))) as {
@@ -148,23 +217,42 @@ export const whatsappChannel: Channel = {
   key: "WHATSAPP",
 
   isConfigured() {
-    const ultramsg =
-      !!process.env.ULTRAMSG_INSTANCE_ID && !!process.env.ULTRAMSG_TOKEN;
-    const evolution =
-      !!process.env.EVOLUTION_API_URL &&
-      !!process.env.EVOLUTION_API_KEY &&
-      !!process.env.EVOLUTION_INSTANCE;
-    return cloudApiConfigured() || ultramsg || evolution;
+    switch (selectedProvider()) {
+      case "off":
+        return false;
+      case "cloud":
+        return cloudApiConfigured();
+      case "ultramsg":
+        return ultramsgConfigured();
+      case "evolution":
+        return evolutionConfigured();
+      case "auto":
+        return (
+          cloudApiConfigured() || ultramsgConfigured() || evolutionConfigured()
+        );
+    }
   },
 
-  async send(recipient, _subject, body): Promise<SendResult> {
+  async send(recipient, _subject, body, options): Promise<SendResult> {
     const to = normalizePhone(recipient);
-    if (cloudApiConfigured()) {
-      return sendViaCloudApi(to, body);
+    switch (selectedProvider()) {
+      case "off":
+        // Defensa: con "off" isConfigured() es false y el outbox no llega aquí.
+        return { ok: false, error: "Canal WhatsApp desactivado (WHATSAPP_PROVIDER=off)" };
+      case "cloud":
+        return sendViaCloudApi(to, body, options?.waTemplate);
+      case "ultramsg":
+        return sendViaUltraMsg(to, body);
+      case "evolution":
+        return sendViaEvolution(to, body);
+      case "auto":
+        if (cloudApiConfigured()) {
+          return sendViaCloudApi(to, body, options?.waTemplate);
+        }
+        if (ultramsgConfigured()) {
+          return sendViaUltraMsg(to, body);
+        }
+        return sendViaEvolution(to, body);
     }
-    if (process.env.ULTRAMSG_INSTANCE_ID && process.env.ULTRAMSG_TOKEN) {
-      return sendViaUltraMsg(to, body);
-    }
-    return sendViaEvolution(to, body);
   },
 };

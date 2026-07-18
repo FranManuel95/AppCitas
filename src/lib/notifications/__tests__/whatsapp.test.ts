@@ -5,6 +5,7 @@ import { whatsappChannel } from "../channels/whatsapp";
 // UltraMsg/Evolution y envía por graph.facebook.com con el token Bearer.
 describe("whatsappChannel (Cloud API oficial)", () => {
   const ENV_KEYS = [
+    "WHATSAPP_PROVIDER",
     "WHATSAPP_CLOUD_TOKEN",
     "WHATSAPP_CLOUD_PHONE_ID",
     "ULTRAMSG_INSTANCE_ID",
@@ -69,6 +70,91 @@ describe("whatsappChannel (Cloud API oficial)", () => {
     expect(body.messaging_product).toBe("whatsapp");
     expect(body.to).toBe("34600111222"); // teléfono normalizado
     expect(body.text.body).toBe("Hola");
+  });
+
+  it("WHATSAPP_PROVIDER=evolution fuerza esa vía aunque UltraMsg esté configurado", async () => {
+    process.env.WHATSAPP_PROVIDER = "evolution";
+    process.env.ULTRAMSG_INSTANCE_ID = "u1";
+    process.env.ULTRAMSG_TOKEN = "u2";
+    process.env.EVOLUTION_API_URL = "https://evo.local";
+    process.env.EVOLUTION_API_KEY = "k";
+    process.env.EVOLUTION_INSTANCE = "main";
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ key: { id: "evo-1" } }), { status: 200 }),
+    );
+
+    const result = await whatsappChannel.send("+34600111222", null, "Hola");
+    expect(result.ok).toBe(true);
+    const [url] = fetchMock.mock.calls[0] as unknown as [string];
+    expect(url).toBe("https://evo.local/message/sendText/main");
+  });
+
+  it("WHATSAPP_PROVIDER=off apaga el canal aunque haya claves", () => {
+    process.env.WHATSAPP_PROVIDER = "off";
+    process.env.WHATSAPP_CLOUD_TOKEN = "tok";
+    process.env.WHATSAPP_CLOUD_PHONE_ID = "12345";
+    expect(whatsappChannel.isConfigured()).toBe(false);
+  });
+
+  it("WHATSAPP_PROVIDER=cloud sin claves deja el canal como no configurado", () => {
+    process.env.WHATSAPP_PROVIDER = "cloud";
+    process.env.ULTRAMSG_INSTANCE_ID = "u1"; // presente, pero la vía forzada es cloud
+    process.env.ULTRAMSG_TOKEN = "u2";
+    expect(whatsappChannel.isConfigured()).toBe(false);
+  });
+
+  it("un valor desconocido de WHATSAPP_PROVIDER cae a auto (fail-open)", () => {
+    process.env.WHATSAPP_PROVIDER = "paloma-mensajera";
+    process.env.WHATSAPP_CLOUD_TOKEN = "tok";
+    process.env.WHATSAPP_CLOUD_PHONE_ID = "12345";
+    expect(whatsappChannel.isConfigured()).toBe(true);
+  });
+
+  it("con plantilla mapeada envía type=template con las variables en orden", async () => {
+    process.env.WHATSAPP_CLOUD_TOKEN = "tok";
+    process.env.WHATSAPP_CLOUD_PHONE_ID = "12345";
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ messages: [{ id: "wamid.tpl" }] }), {
+        status: 200,
+      }),
+    );
+
+    const vars = [
+      "Marta",
+      "Corte",
+      "Barbería Norte",
+      "12 ago 2026, 10:00",
+      "https://app.local/c/tok123",
+    ];
+    const result = await whatsappChannel.send("+34600111222", null, "ignorado", {
+      waTemplate: { name: "cita_recordatorio", lang: "es", vars },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.providerRef).toBe("wamid.tpl");
+
+    const [, init] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    const body = JSON.parse(String(init.body)) as {
+      type: string;
+      template: {
+        name: string;
+        language: { code: string };
+        components: Array<{
+          type: string;
+          parameters: Array<{ type: string; text: string }>;
+        }>;
+      };
+    };
+    expect(body.type).toBe("template");
+    expect(body.template.name).toBe("cita_recordatorio");
+    expect(body.template.language.code).toBe("es");
+    expect(body.template.components[0].parameters.map((p) => p.text)).toEqual(
+      vars,
+    );
   });
 
   it("propaga el error de Meta cuando la API rechaza", async () => {

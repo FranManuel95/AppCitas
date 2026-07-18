@@ -47,9 +47,28 @@ export interface PaymentProvider {
 
 import { stripeProvider } from "./stripe";
 import { devProvider } from "./dev";
+import { DomainError } from "@/lib/domain/errors";
+
+// La simulación de pagos (devProvider) NUNCA debe ejecutarse en producción:
+// allí la ausencia de STRIPE_SECRET_KEY es un error de despliegue, no un modo
+// válido — cobraría "SIMULATED" en silencio. Mismo criterio que billing,
+// Connect y membresías (assertSimulationAllowed → 503). Los caminos sin cargo
+// real (cancelación sin penalización, sin tarjeta guardada…) retornan antes de
+// llegar aquí, así que el guard solo salta en intentos reales de cobro.
+function assertSimulationAllowed(): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new DomainError(
+      "Los pagos no están configurados en este entorno",
+      "PAYMENTS_NOT_CONFIGURED",
+      503,
+    );
+  }
+}
 
 export function getPaymentProvider(): PaymentProvider {
-  return stripeProvider.isConfigured() ? stripeProvider : devProvider;
+  if (stripeProvider.isConfigured()) return stripeProvider;
+  assertSimulationAllowed();
+  return devProvider;
 }
 
 export function paymentsPubliclyConfigured(): boolean {

@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { emailChannel } from "./channels/email";
 import { smsChannel } from "./channels/sms";
-import { whatsappChannel } from "./channels/whatsapp";
+import { whatsappChannel, whatsappUsesCloudApi } from "./channels/whatsapp";
 import { webPushChannel } from "./channels/webpush";
-import type { Channel } from "./channels/types";
+import type { Channel, SendOptions } from "./channels/types";
 import { isSentinelEmail } from "@/lib/domain/guest-clients";
 import {
   bookingConfirmedMessage,
@@ -372,13 +372,64 @@ export async function processDueNotifications(
     return sender;
   }
 
+  // Modo Cloud API oficial: fuera de la ventana de 24 h Meta exige plantillas
+  // aprobadas, así que para las filas de WhatsApp con plantilla mapeada por env
+  // (WHATSAPP_CLOUD_TEMPLATE_<tipo>) y cita asociada se preparan aquí las
+  // variables del cuerpo ({{1}} cliente · {{2}} servicio · {{3}} negocio ·
+  // {{4}} fecha y hora local · {{5}} enlace de gestión). Caché por lote, mismo
+  // patrón que senderFor. Sin plantilla mapeada (o vía gateway) se envía el
+  // body como texto libre, igual que siempre.
+  const waTemplateLang =
+    (process.env.WHATSAPP_CLOUD_TEMPLATE_LANG ?? "es").trim() || "es";
+  const waVarsCache = new Map<string, string[] | null>();
+  async function waTemplateFor(n: {
+    template: string;
+    appointmentId: string | null;
+  }): Promise<SendOptions | undefined> {
+    if (!whatsappUsesCloudApi()) return undefined;
+    const name = process.env[`WHATSAPP_CLOUD_TEMPLATE_${n.template}`]?.trim();
+    if (!name || !n.appointmentId) return undefined;
+    let vars = waVarsCache.get(n.appointmentId);
+    if (vars === undefined) {
+      const a = await prisma.appointment.findUnique({
+        where: { id: n.appointmentId },
+        select: {
+          startAt: true,
+          confirmationToken: true,
+          client: { select: { name: true } },
+          service: { select: { name: true } },
+          business: { select: { name: true, timezone: true } },
+        },
+      });
+      vars = a
+        ? [
+            a.client.name,
+            a.service.name,
+            a.business.name,
+            new Intl.DateTimeFormat(
+              waTemplateLang.startsWith("en") ? "en" : "es-ES",
+              {
+                dateStyle: "medium",
+                timeStyle: "short",
+                timeZone: a.business.timezone,
+              },
+            ).format(a.startAt),
+            `${baseUrl()}/c/${a.confirmationToken}`,
+          ]
+        : null;
+      waVarsCache.set(n.appointmentId, vars);
+    }
+    if (!vars) return undefined;
+    return { waTemplate: { name, lang: waTemplateLang, vars } };
+  }
+
   // Fase 1 (secuencial, BD): reclama cada fila y resuelve en el acto lo que no
   // requiere I/O externo (centinela sin email, canal desconocido o no
   // configurado). Lo que sí necesita un envío real se acumula en `toSend`.
   type Deliverable = {
     n: (typeof due)[number];
     channel: Channel;
-    options: { fromName: string | null; replyTo: string | null } | undefined;
+    options: SendOptions | undefined;
   };
   const toSend: Deliverable[] = [];
 
@@ -433,8 +484,12 @@ export async function processDueNotifications(
       continue;
     }
 
-    const options =
-      n.channel === "EMAIL" ? await senderFor(n.businessId) : undefined;
+    let options: SendOptions | undefined;
+    if (n.channel === "EMAIL") {
+      options = await senderFor(n.businessId);
+    } else if (n.channel === "WHATSAPP") {
+      options = await waTemplateFor(n);
+    }
     toSend.push({ n, channel, options });
   }
 

@@ -16,6 +16,12 @@ export const CHANNEL_TIMEOUT_MS = 8_000;
 export interface SendOptions {
   fromName?: string | null;
   replyTo?: string | null;
+  // WhatsApp Cloud API: mensaje de PLANTILLA aprobada (obligatoria fuera de la
+  // ventana de 24 h para mensajes iniciados por el negocio). Lo rellena el
+  // despachador solo cuando hay plantilla mapeada por env para el tipo de
+  // mensaje; sin él, el canal envía el body como texto libre (gateways, o
+  // Cloud dentro de ventana). Los demás canales lo ignoran.
+  waTemplate?: { name: string; lang: string; vars: string[] };
 }
 
 export interface Channel {
