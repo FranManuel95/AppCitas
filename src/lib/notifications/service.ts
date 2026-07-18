@@ -322,6 +322,59 @@ export async function enqueueNoShowNotification(
 
 // Despacha los mensajes vencidos. Lo invoca el endpoint de cron o el worker.
 //
+// Respaldo opcional (NOTIFY_FALLBACK_EMAIL=true): cuando un canal distinto de
+// email agota sus reintentos (dead-letter), se encola un email con el mismo
+// contenido para que el aviso llegue igualmente — salvo que el fan-out ya
+// hubiera encolado una fila EMAIL para esa cita y tipo de mensaje (sería un
+// duplicado). Con el env apagado (default) el fan-out multicanal de
+// enabledDeliveries ES la redundancia. Fail-open: un fallo aquí no altera el
+// dead-letter original.
+async function maybeEnqueueEmailFallback(
+  n: {
+    businessId: string;
+    appointmentId: string | null;
+    channel: string;
+    template: string;
+    subject: string | null;
+    body: string;
+  },
+  now: Date,
+): Promise<void> {
+  if (process.env.NOTIFY_FALLBACK_EMAIL !== "true") return;
+  if (n.channel === "EMAIL" || !n.appointmentId) return;
+  try {
+    const sibling = await prisma.notification.findFirst({
+      where: {
+        appointmentId: n.appointmentId,
+        template: n.template,
+        channel: "EMAIL",
+      },
+      select: { id: true },
+    });
+    if (sibling) return;
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: n.appointmentId },
+      select: { client: { select: { email: true } } },
+    });
+    const email = appointment?.client.email;
+    if (!email || isSentinelEmail(email)) return;
+    await prisma.notification.create({
+      data: {
+        businessId: n.businessId,
+        appointmentId: n.appointmentId,
+        channel: "EMAIL",
+        template: n.template,
+        recipient: email,
+        subject: n.subject,
+        body: n.body,
+        scheduledFor: now,
+      },
+    });
+  } catch {
+    // best-effort: el cron drenará el respaldo si se llegó a crear.
+  }
+}
+
 // Seguridad ante concurrencia: si el cron de Vercel y el worker (o dos crons)
 // coinciden, no deben enviar el mismo mensaje dos veces. Cada fila se reclama
 // con un `updateMany` atómico PENDING→SENDING; solo el proceso cuya
@@ -545,6 +598,9 @@ export async function processDueNotifications(
         },
       });
       failed++;
+      if (exhausted) {
+        await maybeEnqueueEmailFallback(n, now);
+      }
     }
   }
 

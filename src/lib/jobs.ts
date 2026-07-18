@@ -29,7 +29,12 @@ export interface ScheduledJobsResult {
   skipped: number;
   autoClosed: number;
   trialsDegraded: number;
-  purged: { auditLogs: number; webhookEvents: number };
+  purged: {
+    auditLogs: number;
+    webhookEvents: number;
+    notifications: number;
+    calendarSyncJobs: number;
+  };
   waitlistExpired: number;
   waitlistRecycled: number;
   invoicesIssued: number;

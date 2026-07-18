@@ -12,15 +12,22 @@ const INTERVAL_MS = 30_000;
 async function tick() {
   try {
     const r = await runScheduledJobs(new Date(), { timeBudgetMs: 25_000 });
+    const purged =
+      r.purged.auditLogs + r.purged.webhookEvents + r.purged.notifications +
+      r.purged.calendarSyncJobs;
     const activity =
       r.sent + r.failed + r.skipped + r.autoClosed + r.invoicesIssued +
-      r.membershipsRenewed + r.membershipsEnded + r.calendarEventsSynced;
+      r.membershipsRenewed + r.membershipsEnded + r.calendarEventsSynced +
+      r.waitlistExpired + r.waitlistRecycled + r.winbacksQueued +
+      r.watchChannelsRenewed + r.trialsDegraded + purged;
     if (activity > 0) {
       console.log(
         `[worker] enviados=${r.sent} fallidos=${r.failed} omitidos=${r.skipped} ` +
           `autocerradas=${r.autoClosed} facturas=${r.invoicesIssued} ` +
           `membresias=${r.membershipsRenewed + r.membershipsEnded} ` +
-          `calendario=${r.calendarEventsSynced}`,
+          `calendario=${r.calendarEventsSynced} espera=${r.waitlistExpired + r.waitlistRecycled} ` +
+          `winback=${r.winbacksQueued} watch=${r.watchChannelsRenewed} ` +
+          `pruebas=${r.trialsDegraded} purgados=${purged}`,
       );
     }
   } catch (error) {
