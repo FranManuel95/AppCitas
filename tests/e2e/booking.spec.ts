@@ -38,6 +38,10 @@ test.describe("reserva", () => {
     await page.waitForResponse(
       (r) => r.url().includes(`date=${date}`) && r.ok(),
     );
+    // La tira multi-día sigue pidiendo los contadores de otros días y cada
+    // respuesta re-renderiza la lista (clic sobre botón "detached" bajo
+    // carga): espera a que la red quede ociosa antes de clicar.
+    await page.waitForLoadState("networkidle");
     const slot = page.getByRole("button", { name: /^\d{2}:\d{2}$/ }).first();
     await expect(slot).toBeVisible({ timeout: 15_000 });
     const slotLabel = await slot.textContent();
@@ -95,6 +99,9 @@ test.describe("reserva", () => {
     await page.waitForResponse(
       (r) => r.url().includes(`date=${date}`) && r.ok(),
     );
+    // Ídem test del wizard con cuenta: la tira multi-día re-renderiza la
+    // lista con cada contador que llega; red ociosa antes de clicar.
+    await page.waitForLoadState("networkidle");
     const slot = page.getByRole("button", { name: /^\d{2}:\d{2}$/ }).first();
     await expect(slot).toBeVisible({ timeout: 15_000 });
     await slot.click();
