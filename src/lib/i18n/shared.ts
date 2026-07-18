@@ -260,6 +260,8 @@ const es = {
     pushHint: "Recordatorios gratis en tu móvil u ordenador, sin depender del email.",
     pushDenied:
       "Los avisos están bloqueados en este navegador. Actívalos en los permisos del sitio si los quieres.",
+    pushIosHint:
+      "En iPhone/iPad los avisos requieren instalar la app: toca Compartir → \"Añadir a pantalla de inicio\" y ábrela desde el icono.",
     reviewCta: "Valorar",
     reviewTitle: "¿Cómo fue tu cita?",
     reviewCommentLabel: "Comentario (opcional)",
@@ -1039,6 +1041,8 @@ const en: Dict = {
     pushHint: "Free reminders on your phone or computer, without relying on email.",
     pushDenied:
       "Alerts are blocked in this browser. Enable them in the site permissions if you want them.",
+    pushIosHint:
+      "On iPhone/iPad alerts require installing the app: tap Share → \"Add to Home Screen\" and open it from the icon.",
     reviewCta: "Rate",
     reviewTitle: "How was your appointment?",
     reviewCommentLabel: "Comment (optional)",

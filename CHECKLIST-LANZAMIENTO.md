@@ -118,15 +118,23 @@ avisos; actívalo y comprueba que llega un push con la próxima notificación.
 - SMS: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`.
 - WhatsApp oficial (recomendado): guía completa en
   `INTEGRACIONES-EXTERNAS.md` §2 (app de Meta, número dedicado,
-  `WHATSAPP_CLOUD_TOKEN` + `WHATSAPP_CLOUD_PHONE_ID`, y plantillas aprobadas
-  para mensajes fuera de la ventana de 24 h).
+  `WHATSAPP_CLOUD_TOKEN` + `WHATSAPP_CLOUD_PHONE_ID`, **plantillas aprobadas
+  mapeadas con `WHATSAPP_CLOUD_TEMPLATE_*`** — imprescindibles para
+  recordatorios — y `WHATSAPP_PROVIDER=cloud` para fijar la vía).
+- La vía de WhatsApp se cambia SOLO con `WHATSAPP_PROVIDER`
+  (`auto`/`cloud`/`ultramsg`/`evolution`/`off`); opcional
+  `NOTIFY_FALLBACK_EMAIL=true` para encolar un email de respaldo si un canal
+  agota sus reintentos.
 
 ---
 
 ## Momento 3 · Para cobrar de verdad (Stripe)
 
-Hasta entonces, los pagos van en **modo simulado** (perfecto para enseñar la
-app). Guía detallada con prueba de humo en `INTEGRACIONES-EXTERNAS.md` §1.
+En desarrollo los pagos van en **modo simulado** (perfecto para enseñar la
+app). En **producción sin claves**, cualquier intento real de cobro aborta con
+un error claro (503) en vez de simularse en silencio — configúralas antes de
+activar señales/no-show. Guía detallada con prueba de humo en
+`INTEGRACIONES-EXTERNAS.md` §1.
 
 ### ☐ 3.1 Claves y webhook
 
@@ -237,8 +245,17 @@ No bloquean nada; son apuestas de crecimiento con guía propia:
   partner en el Actions Center. El código ya cumple los requisitos (JSON-LD,
   API de disponibilidad). Guía: `docs/RESERVE-WITH-GOOGLE.md`.
 - ☐ **App en Google Play (TWA)**: cuenta de desarrollador (25 $ una vez) +
-  Bubblewrap + editar `public/.well-known/assetlinks.json` con tu fingerprint
-  real. Receta completa: `docs/TWA.md`.
+  Bubblewrap + editar `public/.well-known/assetlinks.json` con tu package name
+  y fingerprint reales (con **Play App Signing**, el fingerprint es el de la
+  clave de firma de Google, no el del keystore local). Antes de la ficha:
+  sustituye los iconos placeholder de `public/icons/` por arte real y saca
+  capturas para Play (y opcionalmente para `screenshots` del manifest).
+  Receta completa: `docs/TWA.md`.
+- ☐ **iPhone/iPad**: la app ya es instalable desde Safari (Compartir →
+  "Añadir a pantalla de inicio"): icono, pantalla completa y avisos push
+  (iOS 16.4+); la propia pantalla de avisos guía al usuario. Publicar en la
+  App Store (wrapper nativo) queda como apuesta futura: exige Mac+Xcode,
+  cuenta Apple (99 $/año) y pasar la revisión de Apple.
 - ☐ Mientras tanto: cada negocio puede poner su enlace de AppCitas (o su
   dominio propio) como "sitio de reservas" en su Google Business Profile.
 

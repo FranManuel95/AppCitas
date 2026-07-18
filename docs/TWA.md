@@ -35,6 +35,11 @@ Android publicable en Google Play. Sin mantener código nativo.
 
 - La app es la web: cada deploy de la web actualiza la "app" al instante,
   sin pasar por revisión (solo cambia si tocas manifest/iconos/paquete).
+- **Play App Signing (importante)**: si Play Console re-firma tu app (es lo
+  habitual en apps nuevas), el fingerprint que va en `assetlinks.json` es el
+  de la **clave de firma de Google** (Play Console → Configuración →
+  Integridad de la app → Firma de apps), NO el de tu keystore local. Si usas
+  el del keystore y Play re-firma, la app abrirá con barra de navegador.
 - Si Google Play muestra barra de navegador al abrir, el assetlinks no
   coincide (fingerprint o package_name mal) — corrígelo y redeploya la web.
 - iOS/App Store no admite TWA; el equivalente (PWA en App Store vía wrapper)

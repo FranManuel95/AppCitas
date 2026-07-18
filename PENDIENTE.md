@@ -15,7 +15,14 @@ observabilidad del cron con `/api/health` enriquecido, índices de purga, CI de
 concurrencia contra Postgres real, avisos al equipo de reservas/cancelaciones,
 cierres del negocio por rango, buscador de clientes, duración/precio por
 empleado y autogestión de ausencias del empleado + export completo de datos).
-Complementa a
+La ronda **AA-1…AA-4** añadió las vías conmutables por variable de entorno
+(selector `WHATSAPP_PROVIDER`, envío por plantillas aprobadas de Meta en el
+Cloud API oficial — modo "número de la plataforma que envía de parte del
+negocio" —, guard de producción en pagos B2C y fallback opcional a email) y
+la preparación para tiendas de apps (PWA instalable de calidad con offline y
+registro global del service worker, iOS instalable desde Safari con guía
+integrada, y Google Play listo salvo los valores del assetlinks que salen del
+keystore del usuario). Complementa a
 [`ANALISIS-COMPETENCIA.md`](./ANALISIS-COMPETENCIA.md) (dónde estamos frente a
 Booksy/Apúntalo/TuAgenda) y a [`PUESTA-AL-DIA.md`](./PUESTA-AL-DIA.md) (cómo
 aplicar SQL y variables).

@@ -55,27 +55,54 @@ activarlo en vivo.
 
 ## 2. WhatsApp API oficial de Meta (Cloud API)
 
-**Qué desbloquea**: recordatorios y campañas de WhatsApp sin riesgo de baneo.
-El canal ya está implementado y tiene prioridad automática si configuras las
-variables.
+**Qué desbloquea**: recordatorios y avisos de WhatsApp sin riesgo de baneo,
+con UN número de la plataforma que envía **de parte de cada negocio** (patrón
+Booking: los textos ya nombran al negocio). El canal, el selector de vía y el
+envío por **plantillas aprobadas** están implementados; solo hay que
+configurar Meta y las variables.
+
+La vía se elige con `WHATSAPP_PROVIDER` (`auto` | `cloud` | `ultramsg` |
+`evolution` | `off`): con `cloud` fuerzas la oficial; con `auto` (default) la
+oficial gana en cuanto tiene claves.
 
 **Tú (≈1 h + verificación de Meta):**
 1. Crea una app en [developers.facebook.com](https://developers.facebook.com)
    (tipo Business) y añade el producto **WhatsApp**.
-2. Vincula (o crea) el **WhatsApp Business Account** y añade un número de
-   teléfono dedicado (no puede estar en uso en la app normal de WhatsApp).
-3. Copia el **phone_number_id** → variable `WHATSAPP_CLOUD_PHONE_ID`.
+2. Vincula (o crea) el **WhatsApp Business Account**, verifica tu empresa
+   (Business Manager → Seguridad) y añade un número dedicado (no puede estar
+   en la app normal de WhatsApp).
+3. Copia el **phone_number_id** → `WHATSAPP_CLOUD_PHONE_ID`.
 4. Genera un **token permanente** (System User en Business Settings → tokens
    con permiso `whatsapp_business_messaging`) → `WHATSAPP_CLOUD_TOKEN`.
-5. Ponlas en Vercel y Redeploy. Listo: el canal oficial gana a UltraMsg/Evolution.
+5. **Crea las plantillas** (WhatsApp Manager → Plantillas, categoría
+   *Utility*; aprobación en horas). Todas usan el MISMO contrato de
+   variables: `{{1}}` cliente · `{{2}}` servicio · `{{3}}` negocio ·
+   `{{4}}` fecha y hora · `{{5}}` enlace de gestión. Textos sugeridos
+   (espejan los mensajes por defecto de la app):
+   - `cita_confirmada` → "Hola {{1}}, tu cita de {{2}} en {{3}} está
+     confirmada para el {{4}}. Gestiona tu cita: {{5}}"
+   - `cita_recordatorio` → "Hola {{1}} 👋 Te recordamos tu cita de {{2}} en
+     {{3}}: {{4}}. ¿Vas a asistir? Confírmanos aquí: {{5}}"
+   - `cita_cancelada` → "Hola {{1}}, tu cita de {{2}} en {{3}} del {{4}} ha
+     quedado cancelada. Reserva de nuevo: {{5}}"
+6. Mapea cada plantilla por env: `WHATSAPP_CLOUD_TEMPLATE_BOOKING_CONFIRMED`,
+   `WHATSAPP_CLOUD_TEMPLATE_REMINDER`, `WHATSAPP_CLOUD_TEMPLATE_CANCELLED`
+   (opcionales: `_NO_SHOW`, `_WINBACK`) + `WHATSAPP_CLOUD_TEMPLATE_LANG` con
+   el código de idioma EXACTO de Meta (p. ej. `es`). Pon todo en Vercel con
+   `WHATSAPP_PROVIDER=cloud` y Redeploy.
 
-**Importante (regla de Meta)**: fuera de la "ventana de 24 h" desde el último
-mensaje del cliente, los mensajes iniciados por el negocio necesitan
-**plantillas aprobadas** por Meta. Crea en el panel de Meta plantillas para
-"recordatorio de cita" y "hueco libre" (aprobación en horas/días).
+**Cómo funciona por dentro**: para cada aviso ligado a una cita con plantilla
+mapeada, la app envía `type=template` con esas 5 variables; sin plantilla
+mapeada (o avisos sin cita, como campañas) envía texto libre, que Meta solo
+entrega dentro de la **ventana de 24 h** desde el último mensaje del cliente
+— el error queda visible en `/admin/notificaciones` si ocurre. Las campañas
+de marketing por WhatsApp oficial necesitarían plantillas de categoría
+*Marketing*; mientras tanto, envíalas por email (ya soportado) o mantén un
+gateway para ese caso.
 
-**Yo, después**: ampliar el canal para enviar por plantilla (`sendViaCloudApi`
-tiene señalado el punto de extensión) y el webhook de entrada para respuestas.
+**Costes**: Meta cobra por conversación de plantilla (categoría utility,
+precio por país). El coste estimado por mensaje se modela en
+`/superadmin/economia` (`whatsappMsgCostCents`).
 
 ---
 

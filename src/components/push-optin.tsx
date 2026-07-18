@@ -7,7 +7,7 @@ import type { Dict } from "@/lib/i18n/shared";
 
 type PushLabels = Pick<
   Dict["myAppointments"],
-  "pushEnable" | "pushDisable" | "pushHint" | "pushDenied"
+  "pushEnable" | "pushDisable" | "pushHint" | "pushDenied" | "pushIosHint"
 >;
 
 // Convierte la clave pública VAPID (base64url) al Uint8Array que espera
@@ -25,14 +25,21 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
 // soporta y el servidor tiene claves VAPID configuradas.
 export function PushOptIn({ labels }: { labels: PushLabels }) {
   const [state, setState] = useState<
-    "unsupported" | "loading" | "off" | "on" | "denied"
+    "unsupported" | "loading" | "off" | "on" | "denied" | "ios-install"
   >("loading");
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setState("unsupported");
+      // En iOS Safari, PushManager solo existe con la PWA instalada en la
+      // pantalla de inicio (iOS 16.4+). En vez de ocultar el bloque sin
+      // explicación, se guía al usuario a instalarla.
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (navigator as { standalone?: boolean }).standalone === true;
+      setState(isIOS && !standalone ? "ios-install" : "unsupported");
       return;
     }
     let cancelled = false;
@@ -107,6 +114,9 @@ export function PushOptIn({ labels }: { labels: PushLabels }) {
   }
 
   if (state === "unsupported" || state === "loading") return null;
+  if (state === "ios-install") {
+    return <p className="text-xs text-ink-muted">{labels.pushIosHint}</p>;
+  }
   if (state === "denied") {
     return <p className="text-xs text-ink-muted">{labels.pushDenied}</p>;
   }

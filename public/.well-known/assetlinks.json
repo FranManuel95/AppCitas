@@ -1,6 +1,6 @@
 [
   {
-    "comment": "PLACEHOLDER para la TWA de Google Play (docs/TWA.md). Sustituye package_name y sha256_cert_fingerprints por los de tu app firmada (los da Bubblewrap / Play Console) y redeploya.",
+    "comment": "PLACEHOLDER para la TWA de Google Play (docs/TWA.md). Sustituye package_name y sha256_cert_fingerprints por los de tu app firmada y redeploya. OJO: con Play App Signing el fingerprint correcto es el de la clave de firma de GOOGLE (Play Console > Integridad de la app), no el del keystore local.",
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",

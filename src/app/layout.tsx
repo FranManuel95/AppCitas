@@ -12,6 +12,13 @@ export const metadata: Metadata = {
   },
   description:
     "Plataforma genérica de agendación de citas: tus clientes reservan online y tú gestionas agenda, ingresos y estadísticas.",
+  // iOS: instalada desde Safari ("Añadir a pantalla de inicio") se abre a
+  // pantalla completa con su nombre e icono (apple-icon.png en esta carpeta).
+  appleWebApp: {
+    capable: true,
+    title: "AppCitas",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
