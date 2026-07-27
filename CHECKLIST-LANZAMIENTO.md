@@ -175,6 +175,9 @@ activar señales/no-show. Guía detallada con prueba de humo en
 4. Hazte socio de una membresía → aparece la suscripción en Stripe con
    `kind: membership` en metadata.
 5. Todo verde → cambia a claves **live** (sin cambios de código).
+6. Con Stripe.js funcionando en producción sin avisos de CSP en la consola
+   del navegador, añade `CSP_ENFORCE=true` en Vercel y Redeploy: la política
+   de seguridad de contenido pasa de solo-informe a bloqueo real.
 
 ---
 

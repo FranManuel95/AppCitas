@@ -160,16 +160,24 @@ export function computeStaffDaySlots(
   );
 }
 
+// Candidatos de un hueco ordenados por preferencia de asignación automática:
+// menos carga (citas del día) primero; a igual carga, orden estable.
+export function rankStaffIds(
+  candidates: string[],
+  dayLoadByStaff: Map<string, number>,
+): string[] {
+  return [...candidates].sort((a, b) => {
+    const loadDiff =
+      (dayLoadByStaff.get(a) ?? 0) - (dayLoadByStaff.get(b) ?? 0);
+    return loadDiff !== 0 ? loadDiff : a.localeCompare(b);
+  });
+}
+
 // Asignación automática: entre los candidatos de un hueco, elige el empleado
 // con menos carga (citas del día). Determinista: a igual carga, orden estable.
 export function chooseStaffId(
   candidates: string[],
   dayLoadByStaff: Map<string, number>,
 ): string | null {
-  if (candidates.length === 0) return null;
-  return [...candidates].sort((a, b) => {
-    const loadDiff =
-      (dayLoadByStaff.get(a) ?? 0) - (dayLoadByStaff.get(b) ?? 0);
-    return loadDiff !== 0 ? loadDiff : a.localeCompare(b);
-  })[0];
+  return rankStaffIds(candidates, dayLoadByStaff)[0] ?? null;
 }

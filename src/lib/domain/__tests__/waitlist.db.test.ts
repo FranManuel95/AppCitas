@@ -199,6 +199,33 @@ describe("lista de espera (BD)", () => {
     expect(second.notified).toBe(0);
   });
 
+  it("dos liberaciones simultáneas del mismo hueco no duplican el aviso (claim-first)", async () => {
+    const { businessId, serviceId } = await seedBusiness();
+    const clientId = await seedClient();
+    await joinWaitlist({ businessId, serviceId, clientId, desiredDate: DAY, now: NOW });
+
+    // Dos cancelaciones a la vez del mismo servicio+día: solo el proceso que
+    // gana el claim WAITING→NOTIFIED construye el aviso.
+    const freed = {
+      businessId,
+      serviceId,
+      staffId: null,
+      desiredDate: DAY,
+      now: NOW,
+    };
+    const [a, b] = await Promise.all([
+      notifyWaitlistForFreedSlot(freed),
+      notifyWaitlistForFreedSlot(freed),
+    ]);
+
+    expect(a.notified + b.notified).toBe(1);
+    expect(
+      await prisma.notification.count({
+        where: { businessId, template: "WAITLIST_SLOT_FREED" },
+      }),
+    ).toBe(1);
+  });
+
   it("al cancelar una cita se avisa a la lista de espera de ese día", async () => {
     const { businessId, serviceId } = await seedBusiness();
     const booker = await seedClient();

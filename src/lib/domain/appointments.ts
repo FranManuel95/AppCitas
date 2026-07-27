@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import {
   chooseStaffId,
+  rankStaffIds,
   computeDaySlots,
   computeStaffDaySlots,
   isOfferedSlot,
@@ -447,12 +448,17 @@ export async function createAppointment(params: {
     );
   }
 
-  // Con equipo: usa el empleado pedido o asigna el menos cargado del hueco
+  // Con equipo: el empleado pedido, o los candidatos del hueco por orden de
+  // preferencia (menos cargado primero). Si el candidato auto-asignado choca
+  // por su duración propia (override más largo que la base con la que se
+  // generó el hueco), se prueba el siguiente antes de rechazar la reserva.
   const hasStaff = ctx.staff.length > 0;
-  const assignedStaffId = hasStaff
-    ? (staffId ?? chooseStaffId(slot.staffIds, ctx.dayLoadByStaff))
-    : null;
-  if (hasStaff && !assignedStaffId) {
+  const candidateStaffIds: Array<string | null> = hasStaff
+    ? staffId
+      ? [staffId]
+      : rankStaffIds(slot.staffIds, ctx.dayLoadByStaff)
+    : [null];
+  if (hasStaff && candidateStaffIds.every((c) => !c)) {
     throw new DomainError(
       "No hay profesionales disponibles en ese horario",
       "SLOT_UNAVAILABLE",
@@ -460,25 +466,34 @@ export async function createAppointment(params: {
     );
   }
 
-  // Override por empleado (StaffService): si la cita lleva un empleado concreto
-  // con duración/precio propios para este servicio, mandan sobre la base. Con
-  // hueco "sin preferencia" (aún sin asignar) se usa la base del servicio.
-  const staffOverride = assignedStaffId
-    ? await prisma.staffService.findUnique({
-        where: {
-          staffId_serviceId: { staffId: assignedStaffId, serviceId },
-        },
-        select: { durationMinutes: true, priceCents: true },
-      })
-    : null;
-  const effectiveDurationMinutes =
-    staffOverride?.durationMinutes ?? ctx.service.durationMinutes;
-  const effectivePriceCents =
-    staffOverride?.priceCents ?? ctx.service.priceCents;
-
-  const endAt = new Date(
-    startAt.getTime() + effectiveDurationMinutes * 60_000,
-  );
+  // Overrides por empleado (StaffService): duración/precio propios del
+  // candidato mandan sobre la base del servicio. Se cargan de una vez para
+  // todos los candidatos.
+  const overridesByStaff = new Map<
+    string,
+    { durationMinutes: number | null; priceCents: number | null }
+  >();
+  const candidateIds = candidateStaffIds.filter((s): s is string => !!s);
+  if (candidateIds.length > 0) {
+    const overrideRows = await prisma.staffService.findMany({
+      where: { serviceId, staffId: { in: candidateIds } },
+      select: { staffId: true, durationMinutes: true, priceCents: true },
+    });
+    for (const row of overrideRows) {
+      overridesByStaff.set(row.staffId, {
+        durationMinutes: row.durationMinutes,
+        priceCents: row.priceCents,
+      });
+    }
+  }
+  const effectiveFor = (candidate: string | null) => {
+    const override = candidate ? overridesByStaff.get(candidate) : undefined;
+    return {
+      durationMinutes:
+        override?.durationMinutes ?? ctx.service.durationMinutes,
+      priceCents: override?.priceCents ?? ctx.service.priceCents,
+    };
+  };
 
   // Transacción: re-comprueba el solapamiento justo antes de insertar para
   // cerrar la carrera entre dos reservas simultáneas del mismo hueco, y
@@ -491,29 +506,48 @@ export async function createAppointment(params: {
     // Cupo del plan comprobado bajo el lock (no en la ruta): así el conteo ve
     // las reservas concurrentes ya confirmadas y no se cuelan dos en el límite.
     await assertAppointmentWithinPlanTx(tx, businessId, now);
-    const conflict = await tx.appointment.findFirst({
-      where: {
-        businessId,
-        status: { in: [...BLOCKING_STATUSES] },
-        // Intervalos CRUDOS (sin buffers): garantiza el no-solape duro. En la
-        // carrera extrema de dos reservas simultáneas puede quedar un buffer
-        // comprimido, nunca un solape (el motor de ofertas sí aplica buffers).
-        // Misma cota inferior que en loadAvailabilityContext: el caso feliz
-        // (sin conflicto) no debe recorrer el histórico bajo el advisory lock.
-        startAt: {
-          lt: endAt,
-          gte: new Date(startAt.getTime() - MAX_APPOINTMENT_SPAN_MS),
+    // Elige el primer candidato SIN conflicto, comprobando con SU duración
+    // efectiva. Con empleado pedido explícitamente hay un solo candidato
+    // (comportamiento de siempre); con auto-asignación, un choque prueba el
+    // siguiente en vez de dejar el hueco irreservable.
+    let assignedStaffId: string | null = null;
+    let endAt: Date | null = null;
+    let effectivePriceCents = ctx.service.priceCents;
+    for (const candidate of candidateStaffIds) {
+      const eff = effectiveFor(candidate);
+      const candidateEnd = new Date(
+        startAt.getTime() + eff.durationMinutes * 60_000,
+      );
+      const conflict = await tx.appointment.findFirst({
+        where: {
+          businessId,
+          status: { in: [...BLOCKING_STATUSES] },
+          // Intervalos CRUDOS (sin buffers): garantiza el no-solape duro. En la
+          // carrera extrema de dos reservas simultáneas puede quedar un buffer
+          // comprimido, nunca un solape (el motor de ofertas sí aplica buffers).
+          // Misma cota inferior que en loadAvailabilityContext: el caso feliz
+          // (sin conflicto) no debe recorrer el histórico bajo el advisory lock.
+          startAt: {
+            lt: candidateEnd,
+            gte: new Date(startAt.getTime() - MAX_APPOINTMENT_SPAN_MS),
+          },
+          endAt: { gt: startAt },
+          // Con empleado asignado solo chocan sus propias citas (o las de sala,
+          // sin empleado); sin equipo choca cualquiera.
+          ...(candidate
+            ? { OR: [{ staffId: candidate }, { staffId: null }] }
+            : {}),
         },
-        endAt: { gt: startAt },
-        // Con empleado asignado solo chocan sus propias citas (o las de sala,
-        // sin empleado); sin equipo choca cualquiera.
-        ...(assignedStaffId
-          ? { OR: [{ staffId: assignedStaffId }, { staffId: null }] }
-          : {}),
-      },
-      select: { id: true },
-    });
-    if (conflict) {
+        select: { id: true },
+      });
+      if (!conflict) {
+        assignedStaffId = candidate;
+        endAt = candidateEnd;
+        effectivePriceCents = eff.priceCents;
+        break;
+      }
+    }
+    if (!endAt) {
       throw new DomainError(
         "Otro cliente acaba de reservar este hueco",
         "SLOT_TAKEN",
@@ -750,7 +784,9 @@ export async function cancelAppointment(params: {
 
   const isOwnerOfAppointment = appointment.clientId === actorUserId;
   if (!isOwnerOfAppointment && !actorIsBusinessAdmin) {
-    throw new DomainError("No tienes permiso sobre esta cita", "FORBIDDEN", 403);
+    // 404 (no 403) para no revelar la existencia de citas ajenas — mismo
+    // criterio deliberado que la ruta de reprogramación.
+    throw new DomainError("Cita no encontrada", "APPOINTMENT_NOT_FOUND", 404);
   }
 
   if (appointment.status !== "CONFIRMED") {
@@ -1062,8 +1098,24 @@ export async function rescheduleAppointment(params: {
     );
   }
 
+  // Mismo override por empleado que createAppointment: sin él, la cita de un
+  // empleado con duración propia se "encogería" a la base al reprogramarla y
+  // dejaría un hueco fantasma reservable → solape real de agenda.
+  const rescheduleOverride = assignedStaffId
+    ? await prisma.staffService.findUnique({
+        where: {
+          staffId_serviceId: {
+            staffId: assignedStaffId,
+            serviceId: appointment.serviceId,
+          },
+        },
+        select: { durationMinutes: true },
+      })
+    : null;
   const newEndAt = new Date(
-    newStartAt.getTime() + ctx.service.durationMinutes * 60_000,
+    newStartAt.getTime() +
+      (rescheduleOverride?.durationMinutes ?? ctx.service.durationMinutes) *
+        60_000,
   );
 
   // Transacción: re-comprueba el solapamiento justo antes de mover la cita
@@ -1096,8 +1148,14 @@ export async function rescheduleAppointment(params: {
       );
     }
 
+    // Anula también una confirmación antigua aún PENDING: la reprogramación
+    // encola su propia confirmación con la hora nueva (evita el doble aviso).
     await tx.notification.updateMany({
-      where: { appointmentId, status: "PENDING", template: "REMINDER" },
+      where: {
+        appointmentId,
+        status: "PENDING",
+        template: { in: ["REMINDER", "BOOKING_CONFIRMED"] },
+      },
       data: { status: "SKIPPED", lastError: "Cita reprogramada" },
     });
 

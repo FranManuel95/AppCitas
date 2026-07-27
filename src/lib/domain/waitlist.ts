@@ -267,12 +267,33 @@ export async function notifyWaitlistForFreedSlot(
       ? { AND: [{ OR: [{ locationId: null }, { locationId: slot.locationId }] }] }
       : {};
 
-    const entries = await prisma.waitlistEntry.findMany({
+    // CLAIM primero (patrón loyalty/winback): dos cancelaciones simultáneas
+    // del mismo servicio+día invocan esta función a la vez; sin claim, ambas
+    // leerían las mismas entradas WAITING y el cliente recibiría el aviso dos
+    // veces. Solo el proceso cuya transición WAITING→NOTIFIED afecta filas
+    // construye avisos. Si el createMany posterior fallara, la entrada queda
+    // NOTIFIED sin aviso y recycleNotifiedWaitlist la recicla (mejor un aviso
+    // de menos reciclable que avisos duplicados).
+    const claimed = await prisma.waitlistEntry.updateMany({
       where: {
         businessId: slot.businessId,
         serviceId: slot.serviceId,
         desiredDate: slot.desiredDate,
         status: "WAITING",
+        ...staffFilter,
+        ...locationFilter,
+      },
+      data: { status: "NOTIFIED", notifiedAt: now },
+    });
+    if (claimed.count === 0) return { notified: 0 };
+
+    const entries = await prisma.waitlistEntry.findMany({
+      where: {
+        businessId: slot.businessId,
+        serviceId: slot.serviceId,
+        desiredDate: slot.desiredDate,
+        status: "NOTIFIED",
+        notifiedAt: now,
         ...staffFilter,
         ...locationFilter,
       },
@@ -365,19 +386,14 @@ export async function notifyWaitlistForFreedSlot(
           scheduledFor: now,
         });
       }
-      // Se marca NOTIFIED aunque no haya canal (evita reintentos infinitos).
+      // La entrada ya quedó NOTIFIED en el claim aunque no tenga canal
+      // (evita reintentos infinitos).
       notifiedIds.push(entry.id);
     }
 
-    await prisma.$transaction([
-      ...(rows.length > 0
-        ? [prisma.notification.createMany({ data: rows })]
-        : []),
-      prisma.waitlistEntry.updateMany({
-        where: { id: { in: notifiedIds } },
-        data: { status: "NOTIFIED", notifiedAt: now },
-      }),
-    ]);
+    if (rows.length > 0) {
+      await prisma.notification.createMany({ data: rows });
+    }
 
     return { notified: notifiedIds.length };
   } catch (error) {

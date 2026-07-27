@@ -151,6 +151,45 @@ describe("facturas fiscales (BD)", () => {
     expect(newF?.code).toBe("2026-000002");
   });
 
+  it("la rectificativa niega EXACTAMENTE la base y el IVA (importes frontera)", async () => {
+    // 13,13 € al 4 % (IVA superreducido): base 1262,5 → Math.round da 1263.
+    // Recalcular el desglose sobre el total negativo daría -1262 (el
+    // redondeo es asimétrico en negativos): la R debe copiar y negar.
+    const { businessId, serviceId } = await seedBusiness({ priceCents: 1313 });
+    await prisma.business.update({
+      where: { id: businessId },
+      data: { invoicingEnabled: true, taxId: "B12345678", taxPercent: 4 },
+    });
+    const clientId = await seedClient();
+    const appt = await bookAndComplete(
+      businessId,
+      serviceId,
+      clientId,
+      slotAt("2026-07-14", "10:00"),
+    );
+
+    await setAppointmentStatus({
+      appointmentId: appt.id,
+      businessId,
+      status: "CONFIRMED",
+      now: NOW,
+    });
+
+    const f = await prisma.invoice.findFirstOrThrow({
+      where: { businessId, series: "F" },
+    });
+    const r = await prisma.invoice.findFirstOrThrow({
+      where: { businessId, series: "R" },
+    });
+    expect(f.baseCents).toBe(1263);
+    expect(f.taxCents).toBe(50);
+    expect(r.baseCents).toBe(-1263);
+    expect(r.taxCents).toBe(-50);
+    expect(f.baseCents + r.baseCents).toBe(0);
+    expect(f.taxCents + r.taxCents).toBe(0);
+    expect(f.totalCents + r.totalCents).toBe(0);
+  });
+
   it("el concepto deja traza de la membresía que abarató la cita", async () => {
     const { businessId, serviceId } = await seedBusiness({ priceCents: 2000 });
     await enableInvoicing(businessId);

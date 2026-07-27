@@ -20,6 +20,10 @@ export function WinbackCard({
   const [enabled, setEnabled] = useState(initialDays !== null);
   const [days, setDays] = useState(initialDays ?? 45);
   const [busy, setBusy] = useState(false);
+  // Vaciar el input numérico da Number("") = 0 y el guardado es onClick (el
+  // min/max del input no se valida): se bloquea aquí antes de llegar al 422
+  // del servidor.
+  const daysOutOfRange = enabled && (days < 7 || days > 365);
   const [message, setMessage] = useState<{
     kind: "ok" | "error";
     text: string;
@@ -74,10 +78,19 @@ export function WinbackCard({
               onChange={(e) => setDays(Number(e.target.value))}
               disabled={disabled || busy}
             />
+            {daysOutOfRange && (
+              <p className="mt-1 text-xs text-danger-strong">
+                Entre 7 y 365 días.
+              </p>
+            )}
           </Field>
         )}
         <div className="flex items-center gap-2">
-          <Button size="sm" disabled={disabled || busy} onClick={save}>
+          <Button
+            size="sm"
+            disabled={disabled || busy || daysOutOfRange}
+            onClick={save}
+          >
             {busy ? "Guardando…" : "Guardar"}
           </Button>
           {message && (

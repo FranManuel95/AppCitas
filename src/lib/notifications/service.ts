@@ -328,7 +328,10 @@ export async function enqueueNoShowNotification(
 // hubiera encolado una fila EMAIL para esa cita y tipo de mensaje (sería un
 // duplicado). Con el env apagado (default) el fan-out multicanal de
 // enabledDeliveries ES la redundancia. Fail-open: un fallo aquí no altera el
-// dead-letter original.
+// dead-letter original. Limitación asumida: si dos crons solapados agotan a la
+// vez dos filas hermanas NO-email de la misma cita, ambas pueden encolar el
+// respaldo (1 email extra); las condiciones son tan estrechas que no compensa
+// un claim adicional.
 async function maybeEnqueueEmailFallback(
   n: {
     businessId: string;

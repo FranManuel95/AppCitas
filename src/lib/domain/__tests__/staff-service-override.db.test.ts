@@ -61,6 +61,64 @@ describe("override de duración/precio por empleado (BD)", () => {
     expect(appt.endAt.getTime() - appt.startAt.getTime()).toBe(30 * 60_000);
   });
 
+  it("'cualquiera' reintenta con otro profesional si el override del primero choca", async () => {
+    const { businessId, serviceId } = await seedBusiness({
+      durationMinutes: 30,
+      priceCents: 1000,
+    });
+    await prisma.business.update({
+      where: { id: businessId },
+      data: { slotGranularityMinutes: 30 },
+    });
+    const ana = await seedStaff(businessId, { serviceIds: [serviceId] });
+    const bea = await seedStaff(businessId, { serviceIds: [serviceId] });
+    await prisma.staffService.update({
+      where: { staffId_serviceId: { staffId: ana, serviceId } },
+      data: { durationMinutes: 45 },
+    });
+
+    // Ana tiene cita a las 10:30: no choca con la base 30' (el hueco de las
+    // 10:00 la incluye como candidata) pero SÍ con su duración propia de 45'.
+    await createAppointment({
+      businessId,
+      serviceId,
+      clientId: await seedClient(),
+      staffId: ana,
+      startAt: slotAt(DATE, "10:30"),
+      now: NOW,
+    });
+    // Bea, más cargada (2 citas por la tarde): el ranking prueba a Ana primero.
+    await createAppointment({
+      businessId,
+      serviceId,
+      clientId: await seedClient(),
+      staffId: bea,
+      startAt: slotAt(DATE, "15:00"),
+      now: NOW,
+    });
+    await createAppointment({
+      businessId,
+      serviceId,
+      clientId: await seedClient(),
+      staffId: bea,
+      startAt: slotAt(DATE, "16:00"),
+      now: NOW,
+    });
+
+    // Sin el reintento por candidato esto lanzaría SLOT_TAKEN aunque Bea
+    // pueda atender el hueco perfectamente.
+    const appt = await createAppointment({
+      businessId,
+      serviceId,
+      clientId: await seedClient(),
+      startAt: slotAt(DATE, "10:00"),
+      now: NOW,
+    });
+    expect(appt.staffId).toBe(bea);
+    expect(appt.endAt.getTime() - appt.startAt.getTime()).toBe(30 * 60_000);
+    expect(appt.priceCents).toBe(1000);
+  });
+
   it("la disponibilidad para ese empleado genera huecos con su duración override", async () => {
     const { businessId, serviceId } = await seedBusiness({
       durationMinutes: 30,

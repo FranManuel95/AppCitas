@@ -85,6 +85,10 @@ async function createInvoiceTx(
       totalCents: number;
       taxPercent: number;
     };
+    // Desglose explícito (rectificativas): la R debe NEGAR exactamente la
+    // base/IVA de la F original; recalcular con Math.round es asimétrico en
+    // negativos y puede desviar ±1 céntimo en importes frontera.
+    breakdown?: { baseCents: number; taxCents: number };
     rectifiesId?: string;
   },
 ) {
@@ -107,10 +111,9 @@ async function createInvoiceTx(
   // Tras el upsert, nextNumber apunta al SIGUIENTE: el asignado es el previo
   const number = counter.nextNumber - 1;
 
-  const { baseCents, taxCents } = taxBreakdown(
-    params.snapshot.totalCents,
-    params.snapshot.taxPercent,
-  );
+  const { baseCents, taxCents } =
+    params.breakdown ??
+    taxBreakdown(params.snapshot.totalCents, params.snapshot.taxPercent);
   return tx.invoice.create({
     data: {
       businessId: params.businessId,
@@ -236,6 +239,11 @@ export async function rectifyInvoicesForAppointment(
         currency: invoice.currency,
         totalCents: -invoice.totalCents,
         taxPercent: invoice.taxPercent,
+      },
+      // Negación exacta del desglose original (no recalcular).
+      breakdown: {
+        baseCents: -invoice.baseCents,
+        taxCents: -invoice.taxCents,
       },
       rectifiesId: invoice.id,
     });

@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { runScheduledJobs } from "@/lib/jobs";
 
@@ -23,7 +24,11 @@ async function handleCron(request: Request) {
       { status: 501 },
     );
   }
-  if (secret && provided !== secret) {
+  // Comparación en tiempo constante (mismo criterio que marketing-token.ts):
+  // el !== corto-circuita por carácter y en teoría filtra el secreto por timing.
+  const a = Buffer.from(provided ?? "");
+  const b = Buffer.from(secret ?? "");
+  if (secret && (a.length !== b.length || !timingSafeEqual(a, b))) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
